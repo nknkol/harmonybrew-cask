@@ -55,8 +55,7 @@ class BinarySignTool < Formula
            "CXX=clang++",
            "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
            "OPENSSL_PREFIX=#{openssl_prefix}",
-           "PROJ=#{buildpath}",
-           "-j#{ENV.make_jobs}"
+           "PROJ=#{buildpath}"
 
     # ── Install ───────────────────────────────────────────────────
     bin.install "build/binary-sign-tool" => "binary-sign-tool-fix"
