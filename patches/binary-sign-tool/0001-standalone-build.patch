@@ -3,7 +3,7 @@ Subject: [PATCH] Add standalone build support (compat.h + Makefile)
 Allows building binary_sign_tool independently without the full OpenHarmony
 GN build system.  The compat.h header force-includes missing standard library
 headers that the GN build normally injects globally.  The Makefile compiles
-all needed source files (including cJSON) and links against external dependencies.
+all needed source files and links against external dependencies.
 
 ---
  compat.h  |  24 ++++++++++
@@ -87,7 +87,6 @@ all needed source files (including cJSON) and links against external dependencie
 +  -I$(T)/third_party_elfio \
 +  -I$(T)/third_party_elfio/elfio \
 +  -I$(T)/third_party_json/single_include \
-+  -I$(T)/third_party_cjson \
 +  -I$(T)/third_party_bounds_checking_function/include \
 +  -I$(T)/third_party_bounds_checking_function/src \
 +  -I$(T)/third_party_zlib/contrib/minizip \
@@ -139,10 +138,6 @@ all needed source files (including cJSON) and links against external dependencie
 +  $(H)/utils/src/string_utils.cpp \
 +  $(H)/utils/src/verify_hap_openssl_utils.cpp
 +
-+# cJSON
-+JSON_SRCS := \
-+  $(T)/third_party_cjson/cJSON.c
-+
 +# bounds_checking_function sources
 +SEC_SRCS := \
 +  $(T)/third_party_bounds_checking_function/src/memcpy_s.c \
@@ -159,7 +154,6 @@ all needed source files (including cJSON) and links against external dependencie
 +  $(T)/third_party_bounds_checking_function/src/secureprintoutput_a.c
 +
 +OBJS := $(patsubst %.cpp, $(BLD)/%.o, $(SRCS))
-+JSON_OBJS := $(patsubst %.c, $(BLD)/%.o, $(JSON_SRCS))
 +SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
 +
 +LDFLAGS := -L$(OPENSSL_PREFIX)/lib -lssl -lcrypto -ldl
@@ -182,7 +176,7 @@ all needed source files (including cJSON) and links against external dependencie
 +	@echo "[CC]  $<"
 +	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 +
-+$(TARGET): $(OBJS) $(JSON_OBJS) $(SEC_OBJS)
++$(TARGET): $(OBJS) $(SEC_OBJS)
 +	@echo "[LD]  $@"
 +	@$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 +

@@ -16,21 +16,22 @@ class BinarySignTool < Formula
     file "patches/binary-sign-tool/0001-standalone-build.patch"
   end
 
+  patch do
+    # Replaces cJSON with nlohmann/json (header-only, no link needed)
+    # The OpenHarmony GN build uses bundled cJSON; standalone build
+    # uses nlohmann for simpler dependency management
+    file "patches/binary-sign-tool/0002-cjson-to-nlohmann-json.patch"
+  end
+
   # ELFIO — C++ header-only library for ELF parsing
   resource "elfio" do
     url "https://github.com/openharmony/third_party_elfio/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "efaf64750081b10300430da5c4b1720758da02719f8d82c4f747962c29fda18b"
   end
 
-  # nlohmann/json — C++ JSON library (header-only)
+  # nlohmann/json — C++ JSON library (header-only, replaces cJSON)
   resource "nlohmann-json" do
-    url "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz"
-    sha256 "d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d"
-  end
-
-  # cJSON — lightweight JSON parser (used by sign_elf / verify_elf)
-  resource "cjson" do
-    url "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.18.tar.gz"
+    url "https://github.com/openharmony/third_party_json/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "<TODO>"
   end
 
@@ -45,7 +46,6 @@ class BinarySignTool < Formula
     (buildpath/"third_party").mkpath
     (buildpath/"third_party/third_party_elfio").install resource("elfio")
     (buildpath/"third_party/third_party_json").install resource("nlohmann-json")
-    (buildpath/"third_party/third_party_cjson").install resource("cjson")
     (buildpath/"third_party/third_party_bounds_checking_function").install resource("bounds_checking_function")
 
     # ── Build ─────────────────────────────────────────────────────

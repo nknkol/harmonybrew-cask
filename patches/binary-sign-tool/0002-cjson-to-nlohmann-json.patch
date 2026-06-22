@@ -1,0 +1,2801 @@
+--- developtools_hapsigner/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:04:41.395196249 +0800
++++ binary_sign_tool/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:10:12.015197968 +0800
+@@ -15,19 +15,25 @@
+ 
+ #include "sign_elf.h"
+ #include <unistd.h>
++#include <cstring>
++#include <vector>
++#include <fstream>
++#include <sys/stat.h>
+ 
+-#include "cJSON.h"
+ #include "file_utils.h"
+ #include "string_utils.h"
+ #include "constant.h"
+ #include "code_signing.h"
+ #include "param_constants.h"
+ #include "profile_sign_tool.h"
+-#include "compare_elf.h"
+ 
+ namespace OHOS {
+ namespace SignatureTools {
+-constexpr size_t MAX_SECTION_SIZE = static_cast<size_t>(10240);
++
++const std::string SignElf::codesignSec = ".codesign";
++const std::string SignElf::profileSec = ".profile";
++const std::string SignElf::permissionSec = ".permission";
++constexpr size_t MAX_SECTION_SIZE = static_cast<size_t>(0xFFFFFFFF);
+ 
+ bool SignElf::Sign(SignerConfig& signerConfig, std::map<std::string, std::string>& signParams)
+ {
+@@ -37,9 +43,6 @@
+         SIGNATURE_TOOLS_LOGE("[SignElf] Failed to load input ELF file");
+         return false;
+     }
+-    elfReader.sections.del_last(CODE_SIGN_SEC_NAME);
+-    elfReader.sections.del_last(PERMISSION_SEC_NAME);
+-    elfReader.sections.del_last(PROFILE_SEC_NAME);
+     bool writeProfilFlag = WriteSecDataToFile(elfReader, signerConfig, signParams);
+     if (!writeProfilFlag) {
+         SIGNATURE_TOOLS_LOGE("[SignElf] WriteSecDataToFile error");
+@@ -47,30 +50,25 @@
+     }
+     std::string outputFile = signParams.at(ParamConstants::PARAM_BASIC_OUTPUT_FILE);
+     std::string tmpOutputFile = outputFile;
+-    if (access(outputFile.c_str(), F_OK) == 0 && FileUtils::IsSameFile(inputFile, outputFile)) {
+-        tmpOutputFile = inputFile + "-tmp-signed";
++    if (outputFile == inputFile) {
++        tmpOutputFile = "tmp-signed-elf";
+     }
+     uint64_t csOffset = 0;
+-    bool writeCodeSignFlag = WriteCodeSignBlock(elfReader, tmpOutputFile, csOffset);
++    bool writeCodeSignFlag = WriteCodeSignBlock(elfReader, inputFile, tmpOutputFile, csOffset);
+     if  (!writeCodeSignFlag) {
+-        unlink(tmpOutputFile.c_str());
+         SIGNATURE_TOOLS_LOGE("[SignElf] WriteCodeSignBlock error");
+         return false;
+     }
+-
+-    // Validate the saved ELF file against original before generating code signature
+-    CompareElf compareElf(inputFile, tmpOutputFile);
+-    if (!compareElf.Validate()) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] ELF file validation failed");
++    // cs offset > 0 and 4K alignment
++    if (csOffset == 0 || (csOffset % PAGE_SIZE) != 0) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] csOffset is not 4K alignment");
++        return false;
+     }
+-
+     std::string selfSign = signParams.at(ParamConstants::PARAM_SELF_SIGN);
+     bool generateCodeSignFlag = GenerateCodeSignByte(signerConfig, tmpOutputFile, csOffset, selfSign);
+     if  (!generateCodeSignFlag) {
+-        unlink(tmpOutputFile.c_str());
+         return false;
+     }
+-    FileUtils::CopyPermissions(inputFile, tmpOutputFile);
+     return FileUtils::CopyTmpFileAndDel(tmpOutputFile, outputFile);
+ }
+ 
+@@ -86,7 +84,7 @@
+         SIGNATURE_TOOLS_LOGI("[SignElf] No module file");
+     }
+     if (moduleContent.size() > MAX_SECTION_SIZE) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] moduleContent size exceeds maximum allowed section size (10KB)");
++        SIGNATURE_TOOLS_LOGE("[SignElf] moduleContent size exceeds maximum allowed section size (4GB)");
+         return false;
+     }
+     return true;
+@@ -116,7 +114,7 @@
+         p7b = profileContent;
+     }
+     if (p7b.size() > MAX_SECTION_SIZE) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] profileContent size exceeds maximum allowed section size (10KB)");
++        SIGNATURE_TOOLS_LOGE("[SignElf] profileContent size exceeds maximum allowed section size (4GB)");
+         return false;
+     }
+     return true;
+@@ -134,32 +132,14 @@
+     return false;
+ }
+ 
+-bool SignElf::WriteCodeSignBlock(ELFIO::elfio& reader, std::string& outputFile, uint64_t& csOffset)
++bool SignElf::WriteCodeSignBlock(ELFIO::elfio& reader, const std::string& inputFile,
++                                   std::string& outputFile, uint64_t& csOffset)
+ {
+-    ELFIO::section* sec = reader.sections[CODE_SIGN_SEC_NAME];
+-    if (sec) {
++    if (reader.sections[codesignSec]) {
+         SIGNATURE_TOOLS_LOGE("[SignElf] .codesign section already exists");
+         return false;
+     }
+-    sec = reader.sections.add(CODE_SIGN_SEC_NAME);
+-    if (!sec) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] Failed to create .codesign section");
+-        return false;
+-    }
+-    sec->set_type(ELFIO::SHT_PROGBITS);
+-    sec->set_addr_align(PAGE_SIZE);
+-    char codesignData[PAGE_SIZE];
+-    sec->set_data(codesignData, PAGE_SIZE);
+-
+-    if (!reader.save(outputFile)) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] Failed to save 4K data to .codesign section");
+-        return false;
+-    }
+-    ELFIO::Elf64_Off secOff = sec->get_offset();
+-    csOffset = secOff;
+-    PrintMsg("add codesign section success");
+-    SIGNATURE_TOOLS_LOGD("[SignElf] .codesign section offset: %lu, size: %lu", secOff, sec->get_size());
+-    return true;
++    return AppendCodeSignSectionPreservingLayout(inputFile, outputFile, csOffset);
+ }
+ 
+ bool SignElf::WriteSection(ELFIO::elfio& reader, const std::string& content, const std::string& secName)
+@@ -175,6 +155,7 @@
+         return false;
+     }
+     sec->set_type(ELFIO::SHT_PROGBITS);
++    sec->set_flags(ELFIO::SHF_ALLOC);
+     sec->set_addr_align(1);
+     sec->set_data(content);
+     return true;
+@@ -186,12 +167,16 @@
+     if (signParams.at(ParamConstants::PARAM_SELF_SIGN) == ParamConstants::SELF_SIGN_TYPE_1) {
+         return true;
+     }
++    // check elf bin or so
++    if (!isExecElf(reader)) {
++        return true;
++    }
+     std::string p7b;
+     if (!loadProfileAndSign(signerConfig, signParams, p7b)) {
+         return false;
+     }
+     if (!p7b.empty()) {
+-        if (WriteSection(reader, p7b, PROFILE_SEC_NAME)) {
++        if (WriteSection(reader, p7b, profileSec)) {
+             PrintMsg("add profile section success");
+         } else {
+             return false;
+@@ -203,12 +188,7 @@
+     }
+ 
+     if (!moduleContent.empty()) {
+-        std::string ret;
+-        if (!WritePermissionVersion(moduleContent, ret)) {
+-            SIGNATURE_TOOLS_LOGE("[SignElf] Write Permission Version error");
+-            return false;
+-        }
+-        if (WriteSection(reader, ret, PERMISSION_SEC_NAME)) {
++        if (WriteSection(reader, moduleContent, permissionSec)) {
+             PrintMsg("add permission section success");
+         } else {
+             return false;
+@@ -220,11 +200,6 @@
+ bool SignElf::GenerateCodeSignByte(SignerConfig& signerConfig, const std::string& inputFile, uint64_t& csOffset,
+                                    const std::string& selfSign)
+ {
+-    // cs offset > 0 and 4K alignment
+-    if (csOffset == 0 || (csOffset % PAGE_SIZE) != 0) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] csOffset is not 4K alignment");
+-        return false;
+-    }
+     CodeSigning codeSigning(&signerConfig, (selfSign == ParamConstants::SELF_SIGN_TYPE_1));
+     std::vector<int8_t> codesignData;
+     bool getElfCodeSignBlockFlag = codeSigning.GetElfCodeSignBlock(inputFile, csOffset, codesignData);
+@@ -271,32 +246,307 @@
+     return true;
+ }
+ 
+-bool SignElf::WritePermissionVersion(const std::string& moduleContent, std::string& result)
++/*
++ * AppendCodeSignSectionPreservingLayout
++ *
++ * Instead of using ELFIO::save() which re-serializes the entire ELF and can
++ * collapse inter-segment padding (breaking p_offset alignment constraints),
++ * this function works on raw bytes:
++ *
++ *   1. Copy the original ELF file byte-for-byte.
++ *   2. Parse ELF header and Section Header Table.
++ *   3. Append a PAGE_SIZE .codesign placeholder at a page-aligned offset.
++ *   4. Build a new shstrtab (old + ".codesign\0").
++ *   5. Write a new Section Header Table at the end.
++ *   6. Patch e_shoff, e_shnum, e_shstrndx in the ELF header.
++ *
++ * All original Program Headers, section addresses, offsets, and sizes
++ * are preserved exactly.
++ */
++bool SignElf::AppendCodeSignSectionPreservingLayout(const std::string& inputFile,
++                                                     const std::string& outputFile,
++                                                     uint64_t& csOffset)
+ {
+-    cJSON* root = cJSON_Parse(moduleContent.c_str());
+-    if (!root) {
+-        SIGNATURE_TOOLS_LOGE("[SignElf] moduleFile json read error");
++    // 1. Read the entire original ELF file
++    std::ifstream inFile(inputFile, std::ios::binary | std::ios::ate);
++    if (!inFile) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Failed to open input file: %s", inputFile.c_str());
++        return false;
++    }
++    std::streamsize fileSize = inFile.tellg();
++    inFile.seekg(0, std::ios::beg);
++    if (fileSize <= 0) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Input file empty or unreadable");
++        return false;
++    }
++    std::vector<char> origBytes(static_cast<size_t>(fileSize));
++    if (!inFile.read(origBytes.data(), fileSize)) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Failed to read input file data");
++        return false;
++    }
++    inFile.close();
++    uint64_t origFileSize = static_cast<uint64_t>(fileSize);
++    if (origFileSize < 64) { // Minimum ELF64 header size
++        SIGNATURE_TOOLS_LOGE("[SignElf] Input file too small to be a valid ELF");
++        return false;
++    }
++
++    // 2. Parse ELF header (Elf64_Ehdr, 64 bytes)
++    // e_shoff: offset 0x28 (8 bytes, uint64_t LE)
++    // e_shentsize: offset 0x3A (2 bytes, uint16_t LE)
++    // e_shnum: offset 0x3C (2 bytes, uint16_t LE)
++    // e_shstrndx: offset 0x3E (2 bytes, uint16_t LE)
++
++    auto readU16 = [](const char* p) -> uint16_t {
++        return static_cast<uint16_t>(static_cast<unsigned char>(p[0])) |
++               (static_cast<uint16_t>(static_cast<unsigned char>(p[1])) << 8);
++    };
++    auto readU64 = [](const char* p) -> uint64_t {
++        return static_cast<uint64_t>(static_cast<unsigned char>(p[0])) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[1])) << 8) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[2])) << 16) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[3])) << 24) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[4])) << 32) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[5])) << 40) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[6])) << 48) |
++               (static_cast<uint64_t>(static_cast<unsigned char>(p[7])) << 56);
++    };
++    auto writeU16 = [](char* p, uint16_t v) {
++        p[0] = static_cast<char>(v & 0xFF);
++        p[1] = static_cast<char>((v >> 8) & 0xFF);
++    };
++    auto writeU32 = [](char* p, uint32_t v) {
++        p[0] = static_cast<char>(v & 0xFF);
++        p[1] = static_cast<char>((v >> 8) & 0xFF);
++        p[2] = static_cast<char>((v >> 16) & 0xFF);
++        p[3] = static_cast<char>((v >> 24) & 0xFF);
++    };
++    auto writeU64 = [](char* p, uint64_t v) {
++        p[0] = static_cast<char>(v & 0xFF);
++        p[1] = static_cast<char>((v >> 8) & 0xFF);
++        p[2] = static_cast<char>((v >> 16) & 0xFF);
++        p[3] = static_cast<char>((v >> 24) & 0xFF);
++        p[4] = static_cast<char>((v >> 32) & 0xFF);
++        p[5] = static_cast<char>((v >> 40) & 0xFF);
++        p[6] = static_cast<char>((v >> 48) & 0xFF);
++        p[7] = static_cast<char>((v >> 56) & 0xFF);
++    };
++
++    char* ehdr = origBytes.data();
++    uint64_t e_shoff     = readU64(ehdr + 0x28);
++    uint16_t e_shentsize = readU16(ehdr + 0x3A);
++    uint16_t e_shnum     = readU16(ehdr + 0x3C);
++    uint16_t e_shstrndx  = readU16(ehdr + 0x3E);
++
++    if (e_shentsize < 64 || e_shnum == 0 || e_shstrndx >= e_shnum) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Invalid section header table in ELF");
++        return false;
++    }
++
++    // 3. Read the shstrtab section header to find its data
++    uint64_t shstrtabHdrOff = e_shoff + static_cast<uint64_t>(e_shstrndx) * 64;
++    if (shstrtabHdrOff + 64 > origFileSize) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] shstrtab header out of file bounds");
++        return false;
++    }
++    char* shstrtabHdr = ehdr + shstrtabHdrOff;
++    uint64_t shstrtabOff  = readU64(shstrtabHdr + 0x18); // sh_offset
++    uint64_t shstrtabSize = readU64(shstrtabHdr + 0x20); // sh_size
++
++    if (shstrtabOff + shstrtabSize > origFileSize) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] shstrtab data out of file bounds");
++        return false;
++    }
++
++    // 4. Build new shstrtab: original + ".codesign\0"
++    const char* codesignName = ".codesign";
++    const size_t codesignNameLen = std::strlen(codesignName) + 1; // include null terminator
++    size_t newShstrtabSize = shstrtabSize + codesignNameLen;
++    size_t codesignNameOffset = shstrtabSize; // offset of ".codesign" in new shstrtab
++
++    // 5. Compute the page-aligned offset for .codesign section
++    // Place it right after the original file, aligned to PAGE_SIZE
++    uint64_t codesignOffset = (origFileSize + PAGE_SIZE - 1) & ~static_cast<uint64_t>(PAGE_SIZE - 1);
++    uint64_t paddingSize = codesignOffset - origFileSize;
++
++    // 6. Build new Section Header Table
++    // Original SHT size: e_shnum * 64
++    // New SHT: original entries updated + 1 new entry for .codesign
++    uint16_t newShnum = e_shnum + 1;
++    size_t newShtSize = static_cast<size_t>(newShnum) * 64;
++
++    // Update shstrtab section header to reflect new size and offset
++    // (the current shstrtab entry in ehdr points to the old location;
++    //  we'll create a new SHT with updated values)
++
++    // SHT layout: [old entries (updated shstrtab)] + [new .codesign entry]
++    // Old shstrtab section header index needs sh_size and sh_offset updated
++    uint64_t newShstrtabOff = codesignOffset + PAGE_SIZE; // right after .codesign
++    uint64_t newShtOff = newShstrtabOff + newShstrtabSize;
++
++    // 7. Write output file
++    std::ofstream out(outputFile, std::ios::binary | std::ios::trunc);
++    if (!out) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Failed to create output file: %s", outputFile.c_str());
++        return false;
++    }
++
++    // Write original ELF bytes unchanged
++    out.write(origBytes.data(), origFileSize);
++
++    // Write alignment padding (zeros)
++    std::vector<char> padding(paddingSize, 0);
++    out.write(padding.data(), paddingSize);
++
++    // Write .codesign placeholder (PAGE_SIZE zeros, will be overwritten later)
++    std::vector<char> codesignPlaceholder(PAGE_SIZE, 0);
++    out.write(codesignPlaceholder.data(), PAGE_SIZE);
++
++    // Build and write new shstrtab
++    std::vector<char> newShstrtab(newShstrtabSize, 0);
++    // Copy old shstrtab content
++    std::memcpy(newShstrtab.data(), ehdr + shstrtabOff, shstrtabSize);
++    // Append ".codesign\0"
++    std::memcpy(newShstrtab.data() + shstrtabSize, codesignName, codesignNameLen);
++    out.write(newShstrtab.data(), newShstrtabSize);
++
++    // Build and write new Section Header Table
++    std::vector<char> newSht(newShtSize, 0);
++
++    // Copy old SHT entries, updating the shstrtab entry
++    for (uint16_t i = 0; i < e_shnum; i++) {
++        uint64_t oldEntryOff = e_shoff + static_cast<uint64_t>(i) * 64;
++        const char* oldEntry = ehdr + oldEntryOff;
++        char* newEntry = newSht.data() + static_cast<size_t>(i) * 64;
++
++        if (i == e_shstrndx) {
++            // Update shstrtab: new offset and size
++            std::memcpy(newEntry, oldEntry, 64);
++            writeU64(newEntry + 0x18, newShstrtabOff);  // sh_offset
++            writeU64(newEntry + 0x20, newShstrtabSize); // sh_size
++        } else {
++            std::memcpy(newEntry, oldEntry, 64);
++        }
++    }
++
++    // Add new .codesign section header (last entry)
++    char* csEntry = newSht.data() + static_cast<size_t>(e_shnum) * 64;
++    std::memset(csEntry, 0, 64);
++    writeU32(csEntry + 0x00, static_cast<uint32_t>(codesignNameOffset)); // sh_name
++    writeU32(csEntry + 0x04, 1);                // sh_type = SHT_PROGBITS
++    writeU64(csEntry + 0x08, 0x2);              // sh_flags = SHF_ALLOC
++    writeU64(csEntry + 0x10, 0);                // sh_addr = 0
++    writeU64(csEntry + 0x18, codesignOffset);   // sh_offset
++    writeU64(csEntry + 0x20, PAGE_SIZE);        // sh_size
++    // sh_link = 0, sh_info = 0
++    writeU64(csEntry + 0x30, PAGE_SIZE);        // sh_addralign = 4096
++    // sh_entsize = 0
++
++    out.write(newSht.data(), newShtSize);
++
++    // 8. Patch ELF header: e_shoff, e_shnum, e_shstrndx
++    writeU64(ehdr + 0x28, newShtOff);
++    writeU16(ehdr + 0x3C, newShnum);
++    writeU16(ehdr + 0x3E, e_shstrndx); // shstrtab index stays the same
++
++    // Re-write the first 64 bytes (ELF header) with updated values
++    out.seekp(0, std::ios::beg);
++    out.write(origBytes.data(), 64);
++
++    out.flush();
++    out.close();
++
++    csOffset = codesignOffset;
++
++    // Preserve the input file's permissions on the output
++    struct stat st;
++    if (stat(inputFile.c_str(), &st) == 0) {
++        chmod(outputFile.c_str(), st.st_mode);
++    }
++
++    PrintMsg("add codesign section success");
++    SIGNATURE_TOOLS_LOGD("[SignElf] .codesign section offset: %lu, size: %lu", csOffset,
++                         static_cast<uint64_t>(PAGE_SIZE));
++    return true;
++}
++
++/*
++ * ValidateProgramHeaders
++ *
++ * Checks that all PT_LOAD segments in the signed file have the same offset,
++ * vaddr, filesz, memsz, flags, and align as in the original file.
++ * Also checks that p_offset % p_align == p_vaddr % p_align.
++ */
++bool SignElf::ValidateProgramHeaders(const std::string& originalFile, const std::string& signedFile)
++{
++    ELFIO::elfio origReader;
++    ELFIO::elfio signedReader;
++
++    if (!origReader.load(originalFile)) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Validate: Failed to load original ELF");
+         return false;
+     }
+-    cJSON* version = cJSON_GetObjectItemCaseSensitive(root, "version");
+-    if (!version) {
+-        cJSON_AddNumberToObject(root, "version", PERMISSION_VERSION);
+-    } else {
+-        if (!cJSON_IsNumber(version) || cJSON_GetNumberValue(version) != PERMISSION_VERSION) {
+-            SIGNATURE_TOOLS_LOGE("[SignElf] the value of 'version' in moduleFile json should be int %d",
+-                PERMISSION_VERSION);
+-            cJSON_Delete(root);
+-            return false;
+-        }
++    if (!signedReader.load(signedFile)) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Validate: Failed to load signed ELF");
++        return false;
+     }
+-    char* jsonString = cJSON_PrintUnformatted(root);
+-    if (!jsonString) {
+-        cJSON_Delete(root);
++
++    ELFIO::Elf_Half origSegNum = origReader.segments.size();
++    ELFIO::Elf_Half signedSegNum = signedReader.segments.size();
++
++    if (signedSegNum != origSegNum) {
++        SIGNATURE_TOOLS_LOGE("[SignElf] Program Header count changed: %d -> %d",
++                             origSegNum, signedSegNum);
+         return false;
+     }
+-    result = jsonString;
+-    free(jsonString);
+-    cJSON_Delete(root);
++
++    for (ELFIO::Elf_Half i = 0; i < origSegNum; i++) {
++        const ELFIO::segment* origSeg = origReader.segments[i];
++        const ELFIO::segment* signedSeg = signedReader.segments[i];
++
++        if (origSeg->get_offset() != signedSeg->get_offset()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_offset changed: 0x%lx -> 0x%lx",
++                                 i, origSeg->get_offset(), signedSeg->get_offset());
++            return false;
++        }
++        if (origSeg->get_virtual_address() != signedSeg->get_virtual_address()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_vaddr changed: 0x%lx -> 0x%lx",
++                                 i, origSeg->get_virtual_address(), signedSeg->get_virtual_address());
++            return false;
++        }
++        if (origSeg->get_file_size() != signedSeg->get_file_size()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_filesz changed: 0x%lx -> 0x%lx",
++                                 i, origSeg->get_file_size(), signedSeg->get_file_size());
++            return false;
++        }
++        if (origSeg->get_memory_size() != signedSeg->get_memory_size()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_memsz changed: 0x%lx -> 0x%lx",
++                                 i, origSeg->get_memory_size(), signedSeg->get_memory_size());
++            return false;
++        }
++        if (origSeg->get_flags() != signedSeg->get_flags()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_flags changed: 0x%x -> 0x%x",
++                                 i, origSeg->get_flags(), signedSeg->get_flags());
++            return false;
++        }
++        if (origSeg->get_align() != signedSeg->get_align()) {
++            SIGNATURE_TOOLS_LOGE("[SignElf] Segment %d p_align changed: 0x%lx -> 0x%lx",
++                                 i, origSeg->get_align(), signedSeg->get_align());
++            return false;
++        }
++
++        // Check p_offset % p_align == p_vaddr % p_align for PT_LOAD segments
++        if (origSeg->get_type() == ELFIO::PT_LOAD && origSeg->get_align() > 1) {
++            uint64_t align = origSeg->get_align();
++            if ((signedSeg->get_offset() % align) != (signedSeg->get_virtual_address() % align)) {
++                SIGNATURE_TOOLS_LOGE(
++                    "[SignElf] Segment %d p_offset%%p_align != p_vaddr%%p_align: "
++                    "offset=0x%lx vaddr=0x%lx align=0x%lx",
++                    i, signedSeg->get_offset(), signedSeg->get_virtual_address(), align);
++                return false;
++            }
++        }
++    }
+     return true;
+ }
+ } // namespace SignatureTools
+--- developtools_hapsigner/binary_sign_tool/hap/verify/src/verify_elf.cpp	2026-06-23 01:04:41.395196249 +0800
++++ binary_sign_tool/binary_sign_tool/hap/verify/src/verify_elf.cpp	2026-06-23 01:10:12.015197968 +0800
+@@ -16,14 +16,17 @@
+ #include "verify_elf.h"
+ 
+ #include <fstream>
+-#include "cJSON.h"
+ #include "constant.h"
+ #include "signature_tools_log.h"
+ #include "verify_hap_openssl_utils.h"
+ 
+ namespace OHOS {
+ namespace SignatureTools {
++
+ const int FLAG_SELF_SIGN = 1 << 4;
++const std::string VerifyElf::codesignSec = ".codesign";
++const std::string VerifyElf::profileSec = ".profile";
++const std::string VerifyElf::permissionSec = ".permission";
+ 
+ bool VerifyElf::Verify(Options* options)
+ {
+@@ -38,7 +41,6 @@
+         SIGNATURE_TOOLS_LOGE("failed to load input ELF file");
+         return false;
+     }
+-    PrintPermissionContent(elfReader);
+     // get codesignSec section
+     bool signFlag = ParseSignBlock(elfReader);
+     if (!signFlag) {
+@@ -47,37 +49,9 @@
+     return true;
+ }
+ 
+-void VerifyElf::PrintPermissionContent(const ELFIO::elfio& elfReader)
+-{
+-    ELFIO::section* sec = elfReader.sections[PERMISSION_SEC_NAME];
+-    if (!sec) {
+-        PrintMsg("permission is not found");
+-        return;
+-    }
+-    const char* data = sec->get_data();
+-    if (sec->get_size() == 0 || data == nullptr) {
+-        PrintMsg("permission is empty");
+-        return;
+-    }
+-    std::string content(data);
+-    cJSON* root = cJSON_Parse(data);
+-    if (root) {
+-        char* jsonFormat = cJSON_Print(root);
+-        if (jsonFormat) {
+-            content = jsonFormat;
+-            free(jsonFormat);
+-            goto out;
+-        }
+-        free(jsonFormat);
+-    }
+-out:
+-    cJSON_Delete(root);
+-    PrintMsg("+++++++++++++++++++++++++++++++++permission+++++++++++++++++++++++++++++++++++++\n" + content);
+-}
+-
+ bool VerifyElf::ParseSignBlock(const ELFIO::elfio& elfReader)
+ {
+-    ELFIO::section* sec = elfReader.sections[CODE_SIGN_SEC_NAME];
++    ELFIO::section* sec = elfReader.sections[codesignSec];
+     if (!sec) {
+         PrintMsg("code signature is not found");
+         return true;
+@@ -94,15 +68,7 @@
+         SIGNATURE_TOOLS_LOGE("code signature section size is not aligned");
+         return false;
+     }
+-    if (csBlockSize < sizeof(ElfSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("csBlockSize is too small: %lu", csBlockSize);
+-        return false;
+-    }
+     const ElfSignInfo* signInfo = reinterpret_cast<const ElfSignInfo*>(data);
+-    if (signInfo->signSize == 0 || (signInfo->signSize > csBlockSize - sizeof(ElfSignInfo))) {
+-        SIGNATURE_TOOLS_LOGE("invalid signSize: %u", signInfo->signSize);
+-        return false;
+-    }
+     if ((signInfo->flags & FLAG_SELF_SIGN) == FLAG_SELF_SIGN) {
+         PrintMsg("code signature is self-sign");
+         return true;
+--- developtools_hapsigner/binary_sign_tool/api/src/sign_tool_service_impl.cpp	2026-06-23 01:04:41.383197655 +0800
++++ binary_sign_tool/binary_sign_tool/api/src/sign_tool_service_impl.cpp	2026-06-23 01:10:12.003199061 +0800
+@@ -15,6 +15,10 @@
+ 
+ #include "sign_tool_service_impl.h"
+ #include "pkcs7_data.h"
++#include "profile_sign_tool.h"
++#include "nlohmann/json.hpp"
++#include "profile_info.h"
++#include "profile_verify.h"
+ #include "signature_tools_errno.h"
+ #include "self_sign_sign_provider.h"
+ #include "local_sign_provider.h"
+@@ -49,6 +53,28 @@
+     return signProvider->SignElf(options);
+ }
+ 
++int SignToolServiceImpl::GetProvisionContent(const std::string& input, std::string& ret)
++{
++    std::string bytes;
++    if (FileUtils::ReadFile(input, bytes) < 0) {
++        SIGNATURE_TOOLS_LOGE("provision read faild!");
++        return IO_ERROR;
++    }
++    nlohmann::json obj = nlohmann::json::parse(bytes);
++    if (obj.is_discarded() || (!obj.is_structured())) {
++        PrintErrorNumberMsg("PARSE ERROR", PARSE_ERROR, "Parsing provision failed!");
++        return PARSE_ERROR;
++    }
++    ret = obj.dump();
++    ProfileInfo provision;
++    AppProvisionVerifyResult result = ParseProvision(ret, provision);
++    if (result != PROVISION_OK) {
++        SIGNATURE_TOOLS_LOGE("invalid provision");
++        return INVALIDPARAM_ERROR;
++    }
++    return 0;
++}
++
+ bool SignToolServiceImpl::Verify(Options* option)
+ {
+     VerifyElf verifyElf;
+--- developtools_hapsigner/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-06-23 01:04:41.395196249 +0800
++++ binary_sign_tool/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-06-23 01:10:12.011199218 +0800
+@@ -20,12 +20,14 @@
+ #include <cinttypes>
+ #include <algorithm>
+ 
++#include "nlohmann/json.hpp"
+ #include "string_utils.h"
+ #include "file_utils.h"
+ #include "sign_elf.h"
+ #include "params.h"
+ #include "constant.h"
+ 
++using namespace nlohmann;
+ namespace OHOS {
+ namespace SignatureTools {
+ std::vector<std::string> SignProvider::VALID_SIGN_ALG_NAME = {
+--- developtools_hapsigner/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp	2026-06-23 01:04:41.595197343 +0800
++++ binary_sign_tool/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp	2026-06-23 01:10:12.175196718 +0800
+@@ -18,7 +18,7 @@
+ 
+ #include "pkcs7_data.h"
+ #include "profile_sign_tool.h"
+-#include "cJSON.h"
++#include "nlohmann/json.hpp"
+ #include "profile_info.h"
+ #include "profile_verify.h"
+ #include "signature_tools_errno.h"
+@@ -531,21 +531,6 @@
+     return true;
+ }
+ 
+-bool SignToolServiceImpl::ReSignHap(Options* options)
+-{
+-    std::string mode = options->GetString(Options::MODE);
+-    std::shared_ptr<SignProvider> signProvider;
+-    if (LOCAL_SIGN == mode) {
+-        signProvider = std::make_shared<LocalSignProvider>();
+-    } else if (REMOTE_SIGN == mode) {
+-        signProvider = std::make_shared<RemoteSignProvider>();
+-    } else {
+-        SIGNATURE_TOOLS_LOGE("Not implemented mode");
+-        return false;
+-    }
+-    return signProvider->ReSignHap(options);
+-}
+-
+ bool SignToolServiceImpl::VerifyProfile(Options* options)
+ {
+     LocalizationAdapter adapter(options);
+@@ -626,25 +611,12 @@
+         SIGNATURE_TOOLS_LOGE("provision read faild!");
+         return IO_ERROR;
+     }
+-    cJSON* root = cJSON_ParseWithOpts(bytes.c_str(), nullptr, 1);
+-    if (root == nullptr) {
+-        PrintErrorNumberMsg("PARSE ERROR", PARSE_ERROR, "Failed to parse appProvision, JSON is invalid or empty!");
+-        return PARSE_ERROR;
+-    }
+-    if (!(cJSON_IsObject(root) || cJSON_IsArray(root))) {
+-        PrintErrorNumberMsg("PARSE ERROR", PARSE_ERROR, "appProvision must be a JSON object or array!");
+-        cJSON_Delete(root);
+-        return PARSE_ERROR;
+-    }
+-    char* jsonStr = cJSON_PrintUnformatted(root);
+-    if (jsonStr == nullptr) {
+-        cJSON_Delete(root);
+-        SIGNATURE_TOOLS_LOGE("Failed to convert JSON to string!");
++    nlohmann::json obj = nlohmann::json::parse(bytes);
++    if (obj.is_discarded() || (!obj.is_structured())) {
++        PrintErrorNumberMsg("PARSE ERROR", PARSE_ERROR, "Parsing appProvision failed!");
+         return PARSE_ERROR;
+     }
+-    ret = jsonStr;
+-    free(jsonStr);
+-    cJSON_Delete(root);
++    ret = obj.dump();
+     ProfileInfo provision;
+     AppProvisionVerifyResult result = ParseProvision(ret, provision);
+     if (result != PROVISION_OK) {
+--- developtools_hapsigner/hapsigntool_cpp/hap/provider/src/sign_provider.cpp	2026-06-23 01:04:41.619197343 +0800
++++ binary_sign_tool/hapsigntool_cpp/hap/provider/src/sign_provider.cpp	2026-06-23 01:10:12.199196561 +0800
+@@ -21,10 +21,8 @@
+ #include <cinttypes>
+ #include <filesystem>
+ #include <algorithm>
+-#include <numeric>
+ 
+-#include "cJSON.h"
+-#include "digest_common.h"
++#include "nlohmann/json.hpp"
+ #include "string_utils.h"
+ #include "file_utils.h"
+ #include "pkcs7_data.h"
+@@ -32,8 +30,8 @@
+ #include "sign_bin.h"
+ #include "params.h"
+ #include "constant.h"
+-#include "verify_hap.h"
+ 
++using namespace nlohmann;
+ namespace OHOS {
+ namespace SignatureTools {
+ std::vector<std::string> SignProvider::VALID_SIGN_ALG_NAME = {
+@@ -42,8 +40,6 @@
+     ParamConstants::HAP_SIG_ALGORITHM_SHA512_ECDSA
+ };
+ 
+-const std::string SignProvider::PROFILE_PREFIX = "$profile:";
+-
+ bool SignProvider::PrintErrorLog(const std::string& log, const int& errorCode, std::string path)
+ {
+     SIGNATURE_TOOLS_LOGE("%s", std::string("(Error Code: " + std::to_string(errorCode) + ")" + log).c_str());
+@@ -61,7 +57,7 @@
+         return false;
+     }
+     int CompatibleVersion;
+-    if (!StringUtils::CheckStringToInt(signParams.at(ParamConstants::PARAM_BASIC_COMPATIBLE_VERSION),
++    if (!StringUtils::CheckStringToint(signParams.at(ParamConstants::PARAM_BASIC_COMPATIBLE_VERSION),
+         CompatibleVersion)) {
+         SIGNATURE_TOOLS_LOGE("[SignHap] CompatibleVersion String To int failed");
+         return false;
+@@ -141,7 +137,7 @@
+                                  const std::string& Path)
+ {
+     int alignment;
+-    if (!StringUtils::CheckStringToInt(signParams.at(ParamConstants::PARAM_BASIC_ALIGNMENT), alignment)) {
++    if (!StringUtils::CheckStringToint(signParams.at(ParamConstants::PARAM_BASIC_ALIGNMENT), alignment)) {
+         SIGNATURE_TOOLS_LOGE("[signHap] alignment String To int failed");
+         inputStream->close();
+         tmpOutput->close();
+@@ -247,8 +243,8 @@
+     DataSource* contents[] = {dataSrcContents.beforeCentralDir,
+         dataSrcContents.centralDir, dataSrcContents.endOfCentralDir
+     };
+-    if (!AppendPropertyBlock(&signerConfig, tmpOutputFilePath, suffix, dataSrcContents.cDOffset, *zip)) {
+-        return PrintErrorLog("[SignCode] AppendPropertyBlock failed", SIGN_ERROR, tmpOutputFilePath);
++    if (!AppendCodeSignBlock(&signerConfig, tmpOutputFilePath, suffix, dataSrcContents.cDOffset, *zip)) {
++        return PrintErrorLog("[SignCode] AppendCodeSignBlock failed", SIGN_ERROR, tmpOutputFilePath);
+     }
+ 
+     ByteBuffer signingBlock;
+@@ -271,113 +267,6 @@
+     return DoAfterSign(isPathOverlap, tmpOutputFilePath, inputFilePath);
+ }
+ 
+-bool SignProvider::PrepareReSignBlocks(Options* options)
+-{
+-    VerifyHap hapVerify;
+-    int32_t ret = hapVerify.VerifyBeforeResign(options->GetString(Options::IN_FILE), options);
+-    if (ret != RET_OK) {
+-        SIGNATURE_TOOLS_LOGE("hap verify failed !");
+-        return false;
+-    }
+-    
+-    std::string inputFilePath = options->GetString(Options::IN_FILE);
+-    RandomAccessFile inputFile;
+-    if (!inputFile.Init(inputFilePath)) {
+-        return PrintErrorLog("[ReSignHap] Failed to init input HAP file", IO_ERROR, inputFilePath);
+-    }
+-    SignatureInfo hapSignInfo;
+-    if (!HapSignerBlockUtils::FindHapSignature(inputFile, hapSignInfo)) {
+-        return PrintErrorLog("[ReSignHap] Failed to find HAP signature", ZIP_ERROR, inputFilePath);
+-    }
+-
+-    if (!VerifyHap::IsEnterpriseProfileDistributionType(hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Enterprise Profile failed");
+-        return false;
+-    }
+-
+-    optionalBlocks.clear();
+-
+-    for (const auto& block : hapSignInfo.optionBlocks) {
+-        if (block.optionalType == HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID ||
+-            block.optionalType == HapUtils::HAP_PROFILE_BLOCK_ID ||
+-            block.optionalType == HapUtils::HAP_PROPERTY_BLOCK_ID) {
+-            optionalBlocks.push_back(block);
+-        }
+-    }
+-    bool foundOriginalHapSignBlock = false;
+-    for (const auto& block : optionalBlocks) {
+-        if (block.optionalType == HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID) {
+-            foundOriginalHapSignBlock = true;
+-            break;
+-        }
+-    }
+-    if (!foundOriginalHapSignBlock) {
+-        OptionalBlock originalMainSignBlock = {
+-            HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID,
+-            hapSignInfo.hapSignatureBlock
+-        };
+-        optionalBlocks.push_back(originalMainSignBlock);
+-    }
+-    return true;
+-}
+-
+-bool SignProvider::ReSignHap(Options* options)
+-{
+-    if (!PrepareReSignBlocks(options)) {
+-        return PrintErrorLog("Get Resign Blocks failed", COMMAND_PARAM_ERROR);
+-    }
+-    bool isPathOverlap = false;
+-    SignerConfig signerConfig;
+-    std::string suffix;
+-    if (CheckParmaAndInitConfig(signerConfig, options, suffix) != RET_OK) {
+-        return PrintErrorLog("Check Parma And Init Config failed", COMMAND_PARAM_ERROR);
+-    }
+-    std::string inputFilePath = options->GetString(Options::IN_FILE);
+-    auto [inputStream, tmpOutput, tmpOutputFilePath] = PrepareIOStreams(inputFilePath,
+-        signParams.at(ParamConstants::PARAM_BASIC_OUTPUT_FILE), isPathOverlap);
+-
+-    if (!inputStream || !tmpOutput) {
+-        return PrintErrorLog("[ReSignHap] Prepare IO Streams failed", IO_ERROR);
+-    }
+-
+-    std::shared_ptr<ZipSigner> zip = std::make_shared<ZipSigner>();
+-    std::shared_ptr<RandomAccessFile> outputHap = std::make_shared<RandomAccessFile>();
+-    if (!InitZipOutput(outputHap, zip, inputStream, tmpOutput, tmpOutputFilePath)) {
+-        return PrintErrorLog("[ReSignHap] Init Zip Output failed", IO_ERROR);
+-    }
+-
+-    DataSourceContents dataSrcContents;
+-    if (!InitDataSourceContents(*outputHap, dataSrcContents)) {
+-        return PrintErrorLog("[ReSignHap] Init Data Source Contents failed", ZIP_ERROR, tmpOutputFilePath);
+-    }
+-
+-    DataSource* contents[] = {dataSrcContents.beforeCentralDir,
+-        dataSrcContents.centralDir, dataSrcContents.endOfCentralDir};
+-
+-    if (!AppendReCodeSignBlock(&signerConfig, tmpOutputFilePath, suffix, dataSrcContents.cDOffset, *zip)) {
+-        return PrintErrorLog("[SignCode] AppendPropertyBlock failed", SIGN_ERROR, tmpOutputFilePath);
+-    }
+-
+-    ByteBuffer signingBlock;
+-    if (!SignHap::SignWithEnterpriseResign(contents, sizeof(contents) / sizeof(contents[0]),
+-                                           signerConfig, optionalBlocks, signingBlock)) {
+-        return PrintErrorLog("[ReSignHap] SignHap Sign failed.", SIGN_ERROR, tmpOutputFilePath);
+-    }
+-
+-    int64_t newCentralDirectoryOffset = dataSrcContents.cDOffset + signingBlock.GetCapacity();
+-    SIGNATURE_TOOLS_LOGI("new Central Directory Offset is %" PRId64, newCentralDirectoryOffset);
+-    dataSrcContents.eocdPair.first.SetPosition(0);
+-    if (!ZipUtils::SetCentralDirectoryOffset(dataSrcContents.eocdPair.first, newCentralDirectoryOffset)) {
+-        return PrintErrorLog("[ReSignHap] Set Central Directory Offset.", ZIP_ERROR, tmpOutputFilePath);
+-    }
+-
+-    if (!OutputSignedFile(outputHap.get(), dataSrcContents.cDOffset, signingBlock, dataSrcContents.centralDir,
+-                          dataSrcContents.eocdPair.first)) {
+-        return PrintErrorLog("[ReSignHap] write output signed file failed.", ZIP_ERROR, tmpOutputFilePath);
+-    }
+-    return DoAfterSign(isPathOverlap, tmpOutputFilePath, inputFilePath);
+-}
+-
+ bool SignProvider::SignElf(Options* options)
+ {
+     bool isPathOverlap = false;
+@@ -456,521 +345,45 @@
+     return true;
+ }
+ 
+-bool SignProvider::AppendPropertyBlock(SignerConfig* signerConfig, std::string outputFilePath,
++bool SignProvider::AppendCodeSignBlock(SignerConfig* signerConfig, std::string outputFilePath,
+                                        const std::string& suffix, int64_t centralDirectoryOffset, ZipSigner& zip)
+ {
+-    auto [enableCodeSign, enablePermSign] = CheckSignEnabled();
+-    if (!enableCodeSign && !enablePermSign) {
+-        return true;
+-    }
+-
+-    std::string suffixTmp = suffix;
+-    std::transform(suffixTmp.begin(), suffixTmp.end(), suffixTmp.begin(), ::tolower);
+-    if (!IsCodeSignAndPermSignSupportedFile(suffixTmp)) {
+-        return true;
+-    }
+-
+-    int64_t codeSignBlockOffset = CalCodeSignBlockOffset(centralDirectoryOffset);
+-    ByteBuffer codeSignSubBlock;
+-    ByteBuffer permSignSubBlock;
+-
+-    SignContext signContext;
+-    signContext.signerConfig = signerConfig;
+-    signContext.outputFilePath = outputFilePath;
+-
+-    if (enableCodeSign) {
++    if (signParams.at(ParamConstants::PARAM_SIGN_CODE) == CodeSigning::ENABLE_SIGN_CODE_VALUE) {
+         SIGNATURE_TOOLS_LOGI("start code signing.");
+-        if (!BuildCodeSignSubBlock(suffixTmp, codeSignBlockOffset, zip, codeSignSubBlock, signContext)) {
+-            SIGNATURE_TOOLS_LOGE("BuildCodeSignSubBlock Fail.");
+-            return false;
+-        }
+-    }
+-
+-    if (enablePermSign) {
+-        SIGNATURE_TOOLS_LOGI("start permission signing.");
+-        int64_t permSignOffset = codeSignSubBlock.GetCapacity() + PROPERTY_BLOCK_HEADER_SIZE;
+-        if (!BuildPermSignSubBlock(permSignOffset, zip, permSignSubBlock, signContext)) {
+-            SIGNATURE_TOOLS_LOGE("BuildPermSignSubBlock Fail.");
+-            return false;
+-        }
+-    }
+-
+-    int64_t totalPropertySize = codeSignSubBlock.GetCapacity() + permSignSubBlock.GetCapacity();
+-    SIGNATURE_TOOLS_LOGD("propertyBlock: codeSignSize=%d, permSignSize=%d, totalSize=%lld",
+-        codeSignSubBlock.GetCapacity(), permSignSubBlock.GetCapacity(), (long long)totalPropertySize);
+-    if (totalPropertySize > 0) {
+-        ByteBuffer propertyBlock;
+-        BuildPropertyBlock(codeSignSubBlock, permSignSubBlock, propertyBlock);
+-        OptionalBlock tmp = {HapUtils::HAP_PROPERTY_BLOCK_ID, propertyBlock};
+-        optionalBlocks.insert(optionalBlocks.begin(), tmp);
+-    } else {
+-        SIGNATURE_TOOLS_LOGI("[AppendPropertyBlock] propertyBlock is empty, skip adding to optionalBlocks");
+-    }
+-    return true;
+-}
+-
+-std::pair<bool, bool> SignProvider::CheckSignEnabled()
+-{
+-    bool enableCodeSign =
+-        signParams.at(ParamConstants::PARAM_SIGN_CODE) == CodeSigning::ENABLE_SIGN_CODE_VALUE;
+-    // Permission signing is performed only when both code signing and permission signing are enabled.
+-    bool enablePermSign =
+-        enableCodeSign && signParams.at(ParamConstants::PARAM_PERM_MODE) == ParamConstants::ENABLE_PERM_MODE;
+-    return {enableCodeSign, enablePermSign};
+-}
+-
+-bool SignProvider::IsCodeSignAndPermSignSupportedFile(const std::string& suffixTmp)
+-{
+-    if (std::find(CodeSigning::SUPPORT_FILE_FORM.begin(), CodeSigning::SUPPORT_FILE_FORM.end(),
+-                  suffixTmp) == CodeSigning::SUPPORT_FILE_FORM.end()) {
+-        SIGNATURE_TOOLS_LOGI("no need to sign code for %s", suffixTmp.c_str());
+-        return false;
+-    }
+-    return true;
+-}
+-
+-int64_t SignProvider::CalCodeSignBlockOffset(int64_t centralDirectoryOffset)
+-{
+-    size_t blockCount = optionalBlocks.size() + PROPERTY_BLOCK_COUNT + ADDITIONAL_BLOCK_COUNT;
+-    int64_t blockSize = static_cast<int64_t>(PROPERTY_BLOCK_HEADER_SIZE) * static_cast<int64_t>(blockCount);
+-    return centralDirectoryOffset + blockSize;
+-}
+-
+-void SignProvider::BuildPropertyBlock(const ByteBuffer& codeSignSubBlock,
+-                                      const ByteBuffer& permSignSubBlock, ByteBuffer& propertyBlock)
+-{
+-    int64_t totalPropertySize = codeSignSubBlock.GetCapacity() + permSignSubBlock.GetCapacity();
+-    propertyBlock.SetCapacity(totalPropertySize);
+-
+-    if (codeSignSubBlock.GetCapacity() > 0) {
+-        propertyBlock.PutData(codeSignSubBlock.GetBufferPtr(), codeSignSubBlock.GetCapacity());
+-    }
+-    if (permSignSubBlock.GetCapacity() > 0) {
+-        propertyBlock.PutData(permSignSubBlock.GetBufferPtr(), permSignSubBlock.GetCapacity());
+-    }
+-}
+-
+-bool SignProvider::BuildCodeSignSubBlock(const std::string& suffix, int64_t codeSignOffset, ZipSigner& zip,
+-                                         ByteBuffer& subBlock, SignContext& signContext)
+-{
+-    CodeSigning codeSigning(signContext.signerConfig);
+-    if (!codeSigning.GetCodeSignBlock(signContext.outputFilePath, codeSignOffset, suffix,
+-        profileContent, zip, signContext.codeSignArray)) {
+-        SIGNATURE_TOOLS_LOGE("Codesigning GetCodeSignBlock Fail.");
+-        return false;
+-    }
+-    SIGNATURE_TOOLS_LOGI("generate codeSignArray finished.");
+-
+-    subBlock.SetCapacity(signContext.codeSignArray.size() + PROPERTY_BLOCK_HEADER_SIZE);
+-    subBlock.PutInt32(HapUtils::HAP_CODE_SIGN_BLOCK_ID);
+-    subBlock.PutInt32(signContext.codeSignArray.size());
+-    subBlock.PutInt32((int32_t)codeSignOffset);
+-    subBlock.PutData((const char*)signContext.codeSignArray.data(), signContext.codeSignArray.size());
+-    return true;
+-}
+-
+-bool SignProvider::HasModuleJson(ZipSigner& zip)
+-{
+-    for (const auto& entry : zip.GetZipEntries()) {
+-        std::string fileName = entry->GetZipEntryData()->GetZipEntryHeader()->GetFileName();
+-        if (fileName == "module.json") {
++        std::string suffixTmp = suffix;
++        std::transform(suffixTmp.begin(), suffixTmp.end(), suffixTmp.begin(), ::tolower);
++        if (std::find(CodeSigning::SUPPORT_FILE_FORM.begin(), CodeSigning::SUPPORT_FILE_FORM.end(),
++                      suffixTmp) == CodeSigning::SUPPORT_FILE_FORM.end()) {
++            SIGNATURE_TOOLS_LOGI("no need to sign code for %s", suffixTmp.c_str());
+             return true;
+         }
+-    }
+-    return false;
+-}
+-
+-bool SignProvider::GetModuleJsonContent(const std::string& hapFilePath, std::string& content)
+-{
+-    return GetFileContentFromHap(hapFilePath, "module.json", content);
+-}
+-
+-bool SignProvider::GetFileContentFromHap(const std::string& hapFilePath,
+-    const std::string& fileName,
+-    std::string& content)
+-{
+-    unzFile zFile = unzOpen(hapFilePath.c_str());
+-    if (zFile == NULL) {
+-        SIGNATURE_TOOLS_LOGE("open hap file: %s failed.", hapFilePath.c_str());
+-        return false;
+-    }
+-
+-    if (unzLocateFile(zFile, fileName.c_str(), 0) != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGI("locate %s failed.", fileName.c_str());
+-        unzClose(zFile);
+-        return false;
+-    }
+-
+-    unz_file_info zFileInfo;
+-    if (unzGetCurrentFileInfo(zFile, &zFileInfo, NULL, 0, NULL, 0, NULL, 0) != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGE("get %s info failed.", fileName.c_str());
+-        unzClose(zFile);
+-        return false;
+-    }
+-
+-    if (unzOpenCurrentFile(zFile) != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGE("open %s failed.", fileName.c_str());
+-        unzClose(zFile);
+-        return false;
+-    }
+-
+-    char buffer[4096] = {0};
+-    int readSize = 0;
+-    long fileLength = zFileInfo.uncompressed_size;
+-    std::stringbuf sb;
+-    do {
+-        readSize = unzReadCurrentFile(zFile, buffer, sizeof(buffer));
+-        if (readSize > 0) {
+-            sb.sputn(buffer, readSize);
+-            fileLength -= readSize;
+-        } else if (readSize < 0) {
+-            SIGNATURE_TOOLS_LOGE("read %s from zip failed, error code: %d", fileName.c_str(), readSize);
+-            unzCloseCurrentFile(zFile);
+-            unzClose(zFile);
+-            return false;
+-        }
+-    } while (fileLength > 0 && readSize > 0);
+-
+-    if (fileLength != 0) {
+-        SIGNATURE_TOOLS_LOGE("read %s from zip failed, remaining length: %ld", fileName.c_str(), fileLength);
+-        unzCloseCurrentFile(zFile);
+-        unzClose(zFile);
+-        return false;
+-    }
+-
+-    content = sb.str();
+-    unzCloseCurrentFile(zFile);
+-    unzClose(zFile);
+-    return true;
+-}
+-
+-bool SignProvider::ComputeDigest(const std::string& content, std::vector<int8_t>& digest, int32_t signAlgId)
+-{
+-    if (content.empty()) {
+-        SIGNATURE_TOOLS_LOGE("content is empty.");
+-        return false;
+-    }
+-    return DoComputeDigest(content.c_str(), content.size(), digest, signAlgId);
+-}
+-
+-bool SignProvider::ComputeDigest(const std::vector<int8_t>& data, std::vector<int8_t>& digest, int32_t signAlgId)
+-{
+-    if (data.empty()) {
+-        SIGNATURE_TOOLS_LOGE("data is empty.");
+-        return false;
+-    }
+-    return DoComputeDigest(data.data(), data.size(), digest, signAlgId);
+-}
+-
+-bool SignProvider::DoComputeDigest(const void* data, size_t len, std::vector<int8_t>& digest, int32_t signAlgId)
+-{
+-    const EVP_MD* hash = (signAlgId == ALGORITHM_SHA256_WITH_ECDSA) ? EVP_sha256() : EVP_sha384();
+-    int32_t digestLen = (signAlgId == ALGORITHM_SHA256_WITH_ECDSA) ? SHA256_DIGEST_LENGTH : SHA384_DIGEST_LENGTH;
+-    unsigned char hashResult[EVP_MAX_MD_SIZE];
+-    unsigned int hashLen = 0;
+-    if (EVP_Digest(data, len, hashResult, &hashLen, hash, nullptr) != 1) {
+-        return false;
+-    }
+-
+-    if (hashLen != static_cast<unsigned int>(digestLen)) {
+-        SIGNATURE_TOOLS_LOGE("hashLen(%u) != digestLen(%d), hash algorithm mismatch or unexpected output length",
+-            hashLen, digestLen);
+-        return false;
+-    }
+-
+-    digest.assign(reinterpret_cast<int8_t*>(hashResult), reinterpret_cast<int8_t*>(hashResult) + hashLen);
+-    return true;
+-}
+-
+-bool SignProvider::GetShareFilesFromModuleJson(const std::string& moduleJsonContent,
+-    std::string& shareFile)
+-{
+-    cJSON* root = cJSON_ParseWithOpts(moduleJsonContent.c_str(), nullptr, 1);
+-    if (root == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("parse module.json failed.");
+-        return false;
+-    }
+-
+-    cJSON* moduleObj = cJSON_GetObjectItem(root, "module");
+-    if (moduleObj == nullptr || !cJSON_IsObject(moduleObj)) {
+-        cJSON_Delete(root);
+-        return false;
+-    }
+-
+-    cJSON* shareFilesObj = cJSON_GetObjectItem(moduleObj, "shareFiles");
+-    if (shareFilesObj == nullptr || !cJSON_IsString(shareFilesObj)) {
+-        cJSON_Delete(root);
+-        return false;
+-    }
+-
+-    shareFile = shareFilesObj->valuestring;
+-    cJSON_Delete(root);
+-    if (shareFile.empty()) {
+-        return false;
+-    }
+-    return true;
+-}
+-
+-bool SignProvider::BuildPermSignSubBlock(int64_t permSignOffset, ZipSigner& zip, ByteBuffer& subBlock,
+-                                         SignContext& signContext)
+-{
+-    if (!HasModuleJson(zip)) {
+-        SIGNATURE_TOOLS_LOGI("no module.json found, skip permission signing.");
+-        return true;
+-    }
+-
+-    int32_t signAlgId;
+-    std::string signAlg;
+-    if (!GetSignAlgorithmInfo(signContext.signerConfig, signAlgId, signAlg)) {
+-        return false;
+-    }
+-
+-    std::string moduleJsonContent;
+-    if (!GetModuleJsonContent(signContext.outputFilePath, moduleJsonContent)) {
+-        SIGNATURE_TOOLS_LOGE("get module.json content failed.");
+-        return false;
+-    }
+-
+-    std::vector<std::pair<int, std::vector<int8_t>>> digestItems;
+-    if (!ComputePermissionDigests(signContext, moduleJsonContent, digestItems, signAlgId, zip)) {
+-        return false;
+-    }
+-
+-    int32_t digestSize = (signAlgId == ALGORITHM_SHA256_WITH_ECDSA) ? SHA256_DIGEST_LENGTH : SHA384_DIGEST_LENGTH;
+-
+-    PermSignData signData = {signAlgId, signAlg, digestSize, digestItems, ""};
+-    std::string unsignedData = BuildPermUnsignedData(signData);
+-    if (unsignedData.empty()) {
+-        SIGNATURE_TOOLS_LOGE("build permission sign data to sign failed.");
+-        return false;
+-    }
+-
+-    std::shared_ptr<Signer> signer = signContext.signerConfig->GetSigner();
+-    if (signer == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("get signer failed.");
+-        return false;
+-    }
+-
+-    std::string signature = signer->GetSignature(unsignedData, signAlg);
+-    if (signature.empty()) {
+-        SIGNATURE_TOOLS_LOGE("generate permission signature failed.");
+-        return false;
+-    }
+-
+-    signData.signature = signature;
+-    return BuildPermSignBlock(permSignOffset, unsignedData, signature, subBlock);
+-}
+-
+-bool SignProvider::ComputePermissionDigests(const SignContext& signContext,
+-                                            const std::string& moduleJsonContent,
+-                                            std::vector<std::pair<int, std::vector<int8_t>>>& digestItems,
+-                                            int32_t signAlgId,
+-                                            ZipSigner& zip)
+-{
+-    std::vector<int8_t> provisionDigest;
+-    if (!ComputeDigest(profileContent, provisionDigest, signAlgId)) {
+-        SIGNATURE_TOOLS_LOGE("compute provision digest failed.");
+-        return false;
+-    }
+-    digestItems.push_back({HapUtils::PERMISSION_SIGN_DIGEST_TYPE_PROVISION, provisionDigest});
+-
+-    std::vector<int8_t> moduleJsonDigest;
+-    if (!ComputeDigest(moduleJsonContent, moduleJsonDigest, signAlgId)) {
+-        SIGNATURE_TOOLS_LOGE("compute module.json digest failed.");
+-        return false;
+-    }
+-    digestItems.push_back({HapUtils::PERMISSION_SIGN_DIGEST_TYPE_MODULE_JSON, moduleJsonDigest});
+-
+-    if (!signContext.codeSignArray.empty()) {
+-        std::vector<int8_t> codeSignDigest;
+-        if (!ComputeDigest(signContext.codeSignArray, codeSignDigest, signAlgId)) {
+-            SIGNATURE_TOOLS_LOGE("compute code sign block digest failed.");
+-            return false;
+-        }
+-        digestItems.push_back({HapUtils::PERMISSION_SIGN_DIGEST_TYPE_CODE_SIGN_BLOCK, codeSignDigest});
+-    }
+-
+-    std::string shareFile;
+-    if (GetShareFilesFromModuleJson(moduleJsonContent, shareFile)) {
+-        ProcessShareFileDigests(signContext.outputFilePath, zip, shareFile, signAlgId, digestItems);
+-    }
+-    return true;
+-}
+-
+-std::string SignProvider::FindMatchingFileInZip(ZipSigner& zip, const std::string& basePath)
+-{
+-    std::vector<ZipEntry*>& entries = zip.GetZipEntries();
+-    for (auto& entry : entries) {
+-        ZipEntryHeader* header = entry->GetZipEntryData()->GetZipEntryHeader();
+-        std::string fileName = header->GetFileName();
+-        if (fileName == basePath) {
+-            return fileName;
+-        }
+-        size_t dotPos = fileName.rfind('.');
+-        if (dotPos != std::string::npos && (basePath + fileName.substr(dotPos)) == fileName) {
+-            return fileName;
+-        }
+-    }
+-    return "";
+-}
+-
+-void SignProvider::ProcessShareFileDigests(const std::string& outputFilePath, ZipSigner& zip,
+-    const std::string& shareFile, int32_t signAlgId,
+-    std::vector<std::pair<int, std::vector<int8_t>>>& digestItems)
+-{
+-    if (shareFile.find(PROFILE_PREFIX) != 0) {
+-        SIGNATURE_TOOLS_LOGD("shareFile does not start with %s, skip", PROFILE_PREFIX.c_str());
+-        return;
+-    }
+-    std::string shareFileName = shareFile.substr(PROFILE_PREFIX.size());
+-    std::string basePath = "resources/base/profile/" + shareFileName;
+-    std::string actualPath = FindMatchingFileInZip(zip, basePath);
+-    if (actualPath.empty()) {
+-        SIGNATURE_TOOLS_LOGW("can not find shareFiles, path: %s", basePath.c_str());
+-        return;
+-    }
+-    std::string shareFileContent;
+-    if (!GetFileContentFromHap(outputFilePath, actualPath, shareFileContent)) {
+-        SIGNATURE_TOOLS_LOGW("read shareFiles failed, path: %s", actualPath.c_str());
+-        return;
+-    }
+-    std::vector<int8_t> shareFileDigest;
+-    if (!ComputeDigest(shareFileContent, shareFileDigest, signAlgId)) {
+-        SIGNATURE_TOOLS_LOGW("compute %s digest failed.", actualPath.c_str());
+-        return;
+-    }
+-    digestItems.push_back({HapUtils::PERMISSION_SIGN_DIGEST_TYPE_SHARED_FILE, shareFileDigest});
+-}
+-
+-bool SignProvider::GetSignAlgorithmInfo(SignerConfig* signerConfig, int32_t& signAlgId, std::string& signAlg)
+-{
+-    std::vector<SignatureAlgorithmHelper> sigs = signerConfig->GetSignatureAlgorithms();
+-    if (sigs.size() != 1) {
+-        SIGNATURE_TOOLS_LOGE("get signature algorithm failed.");
+-        return false;
+-    }
+-    signAlgId = static_cast<int32_t>(sigs[0].m_id);
+-    if (signAlgId == static_cast<int32_t>(SignatureAlgorithmId::ECDSA_WITH_SHA256)) {
+-        signAlg = SIGN_ALG_SHA256;
+-    } else if (signAlgId == static_cast<int32_t>(SignatureAlgorithmId::ECDSA_WITH_SHA384)) {
+-        signAlg = SIGN_ALG_SHA384;
+-    } else {
+-        SIGNATURE_TOOLS_LOGE("unsupported sign algorithm id: 0x%08x", signAlgId);
+-        return false;
+-    }
+-    return true;
+-}
+-
+-std::string SignProvider::BuildPermUnsignedData(const PermSignData& signData)
+-{
+-    const std::vector<int8_t>& magic = HapUtils::GetPermissionSignMagic();
+-    int digestItemsCount = signData.digestItems.size();
+-    if (digestItemsCount > HapUtils::MAX_PERMISSION_SIGN_DIGEST_COUNT) {
+-        SIGNATURE_TOOLS_LOGE("digestItemsCount(%d) exceeds max(%d)", digestItemsCount,
+-            HapUtils::MAX_PERMISSION_SIGN_DIGEST_COUNT);
+-        return "";
+-    }
+-    int digestLen = digestItemsCount * (4 + signData.digestSize);
+-
+-    std::string signDataBytes;
+-    signDataBytes.append(reinterpret_cast<const char*>(magic.data()), magic.size());
+-    signDataBytes.append(reinterpret_cast<const char*>(&signData.signAlgId), sizeof(signData.signAlgId));
+-    signDataBytes.append(reinterpret_cast<const char*>(&digestLen), sizeof(digestLen));
+-    int16_t num = static_cast<int16_t>(digestItemsCount);
+-    signDataBytes.append(reinterpret_cast<const char*>(&num), sizeof(num));
+-    for (const auto& item : signData.digestItems) {
+-        signDataBytes.append(reinterpret_cast<const char*>(&item.first), sizeof(item.first));
+-        signDataBytes.append(reinterpret_cast<const char*>(item.second.data()), signData.digestSize);
+-    }
+-    return signDataBytes;
+-}
+-
+-bool SignProvider::BuildPermSignBlock(int64_t permSignOffset, const std::string& unsignedData,
+-    const std::string& signature, ByteBuffer& subBlock)
+-{
+-    int sigLen = signature.size();
+-    int permSignDataLen = unsignedData.size() + 4 + sigLen;
+-    int totalSize = PROPERTY_BLOCK_HEADER_SIZE + permSignDataLen;
+-
+-    subBlock.SetCapacity(totalSize);
+-    subBlock.PutInt32(HapUtils::PERMISSION_SIGN_BLOCK_ID);
+-    subBlock.PutInt32(permSignDataLen);
+-    subBlock.PutInt32((int32_t)permSignOffset);
+-
+-    subBlock.PutData(unsignedData.data(), unsignedData.size());
+-    subBlock.PutInt32(sigLen);
+-    subBlock.PutData((const char*)signature.data(), sigLen);
+-    return true;
+-}
+-
+-bool SignProvider::AppendReCodeSignBlock(SignerConfig* signerConfig, std::string outputFilePath,
+-    const std::string& suffix, int64_t centralDirectoryOffset, ZipSigner& zip)
+-{
+-    SIGNATURE_TOOLS_LOGI("start re code signing.");
+-    std::string suffixTmp = suffix;
+-    std::transform(suffixTmp.begin(), suffixTmp.end(), suffixTmp.begin(), ::tolower);
+-
+-    bool enablePermSign =
+-        signParams.at(ParamConstants::PARAM_PERM_MODE) == ParamConstants::ENABLE_PERM_MODE;
+-    int64_t codeSignOffset = ComputeCodeSignOffset(centralDirectoryOffset);
+-
+-    SignContext signContext;
+-    signContext.signerConfig = signerConfig;
+-    signContext.outputFilePath = outputFilePath;
+-
+-    CodeSigning codeSigning(signContext.signerConfig);
+-    if (!codeSigning.GetCodeSignBlock(signContext.outputFilePath, codeSignOffset, suffixTmp,
+-        profileContent, zip, signContext.codeSignArray)) {
+-        SIGNATURE_TOOLS_LOGE("Codesigning getCodeSignBlock Fail.");
+-        return false;
+-    }
+-    SIGNATURE_TOOLS_LOGI("generate codeSignArray finished.");
+-
+-    auto codeSignResult = std::make_unique<ByteBuffer>(signContext.codeSignArray.size() + PROPERTY_BLOCK_HEADER_SIZE);
+-    codeSignResult->PutInt32(HapUtils::HAP_CODE_SIGN_BLOCK_ID);
+-    codeSignResult->PutInt32(signContext.codeSignArray.size());
+-    codeSignResult->PutInt32((int32_t)codeSignOffset);
+-    codeSignResult->PutData(signContext.codeSignArray.data(), signContext.codeSignArray.size());
+-
+-    std::unique_ptr<ByteBuffer> permSignResult;
+-    if (enablePermSign) {
+-        SIGNATURE_TOOLS_LOGI("start re permission signing.");
+-        int64_t permSignOffset = codeSignResult->GetCapacity() + PROPERTY_BLOCK_HEADER_SIZE;
+-        ByteBuffer permSignSubBlock;
+-        if (!BuildPermSignSubBlock(permSignOffset, zip, permSignSubBlock, signContext)) {
+-            SIGNATURE_TOOLS_LOGE("BuildPermSignSubBlock for re-sign Fail.");
++        // 4 means hap format occupy 4 byte storage location,2 means optional blocks reserve 2 storage location
++        int64_t codeSignOffset = centralDirectoryOffset + ((4 + 4 + 4) * (optionalBlocks.size() + 2 + 1));
++        // create CodeSigning Object
++        CodeSigning codeSigning(signerConfig);
++        std::vector<int8_t> codeSignArray;
++        if (!codeSigning.GetCodeSignBlock(outputFilePath, codeSignOffset, suffixTmp, profileContent, zip,
++                                          codeSignArray)) {
++            SIGNATURE_TOOLS_LOGE("Codesigning getCodeSignBlock Fail.");
+             return false;
+         }
+-        if (permSignSubBlock.GetCapacity() > 0) {
+-            permSignResult = std::make_unique<ByteBuffer>(permSignSubBlock.GetCapacity());
+-            permSignResult->PutData(permSignSubBlock.GetBufferPtr(), permSignSubBlock.GetCapacity());
+-        }
+-    }
++        SIGNATURE_TOOLS_LOGI("generate codeSignArray finished.");
++        std::unique_ptr<ByteBuffer> result =
++            std::make_unique<ByteBuffer>(codeSignArray.size()
++                                         + (FOUR_BYTE + FOUR_BYTE + FOUR_BYTE));
++        result->PutInt32(HapUtils::HAP_CODE_SIGN_BLOCK_ID);
++        result->PutInt32(codeSignArray.size()); // length
++        result->PutInt32((int32_t)codeSignOffset); // offset
++        result->PutData(codeSignArray.data(), codeSignArray.size());
+ 
+-    int64_t totalSize = codeSignResult->GetCapacity() + (permSignResult ? permSignResult->GetCapacity() : 0);
+-    auto result = std::make_unique<ByteBuffer>(totalSize);
+-    result->PutData(codeSignResult->GetBufferPtr(), codeSignResult->GetCapacity());
+-    if (permSignResult) {
+-        result->PutData(permSignResult->GetBufferPtr(), permSignResult->GetCapacity());
++        OptionalBlock tmp = {HapUtils::HAP_PROPERTY_BLOCK_ID, *result};
++        optionalBlocks.insert(optionalBlocks.begin(), tmp);
+     }
+-
+-    OptionalBlock tmp = {HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID, *result};
+-    optionalBlocks.push_back(tmp);
+     return true;
+ }
+ 
+-int64_t SignProvider::ComputeCodeSignOffset(int64_t centralDirectoryOffset)
+-{
+-    int64_t optionalBlockSize = std::accumulate(optionalBlocks.begin(), optionalBlocks.end(), 0,
+-        [](int64_t sum, const auto& elem) {
+-            return sum + elem.optionalBlockValue.GetCapacity();
+-        });
+-    return centralDirectoryOffset + optionalBlockSize +
+-        PROPERTY_BLOCK_HEADER_SIZE * (optionalBlocks.size() + PROPERTY_BLOCK_COUNT + ADDITIONAL_BLOCK_COUNT);
+-}
+-
+-bool SignProvider::CreateSignerConfigs(STACK_OF(X509)* certificates,
+-    const std::optional<X509_CRL*>& crl, Options* options, SignerConfig& inOut)
++bool SignProvider::CreateSignerConfigs(STACK_OF(X509)* certificates, const std::optional<X509_CRL*>& crl,
++                                       Options* options, SignerConfig& inOut)
+ {
+     inOut.FillParameters(signParams);
+     inOut.SetCertificates(certificates);
+@@ -1188,7 +601,6 @@
+     paramFileds.emplace_back(ParamConstants::PARAM_LOCAL_PUBLIC_CERT);
+     paramFileds.emplace_back(ParamConstants::PARAM_BASIC_COMPATIBLE_VERSION);
+     paramFileds.emplace_back(ParamConstants::PARAM_SIGN_CODE);
+-    paramFileds.emplace_back(ParamConstants::PARAM_PERM_MODE);
+     paramFileds.emplace_back(ParamConstants::PARAM_IN_FORM);
+ 
+     std::unordered_set<std::string> paramSet = Params::InitParamField(paramFileds);
+@@ -1206,10 +618,6 @@
+         SIGNATURE_TOOLS_LOGE("signCode Parameter check error, signCode must is 0 or 1");
+         return false;
+     }
+-    if (!CheckPermMode()) {
+-        SIGNATURE_TOOLS_LOGE("permSign Parameter check error, permSign must is 0 or 1");
+-        return false;
+-    }
+     if (!CheckSignatureAlg()) {
+         SIGNATURE_TOOLS_LOGE("signAlg Parameter is not support");
+         return false;
+@@ -1233,21 +641,6 @@
+     return true;
+ }
+ 
+-bool SignProvider::CheckPermMode()
+-{
+-    if (signParams.find(ParamConstants::PARAM_PERM_MODE) == signParams.end()) {
+-        signParams.insert(std::make_pair(ParamConstants::PARAM_PERM_MODE, ParamConstants::ENABLE_PERM_MODE));
+-        return true;
+-    }
+-    std::string permMode = signParams[ParamConstants::PARAM_PERM_MODE];
+-    if ((permMode != ParamConstants::ENABLE_PERM_MODE) && (permMode != ParamConstants::DISABLE_PERM_MODE)) {
+-        PrintErrorNumberMsg("COMMAND_PARAM_ERROR", COMMAND_PARAM_ERROR,
+-                            "permSign Parameter must 0 or 1, you put is " + permMode);
+-        return false;
+-    }
+-    return true;
+-}
+-
+ bool SignProvider::CheckSignatureAlg()
+ {
+     std::string signAlg = signParams[ParamConstants::PARAM_BASIC_SIGANTURE_ALG];
+@@ -1287,7 +680,7 @@
+     }
+     const std::string& compatibleApiVersionVal = it->second;
+     int compatibleApiVersion;
+-    if (!StringUtils::CheckStringToInt(compatibleApiVersionVal, compatibleApiVersion)) {
++    if (!StringUtils::CheckStringToint(compatibleApiVersionVal, compatibleApiVersion)) {
+         PrintErrorNumberMsg("COMMAND_PARAM_ERROR", COMMAND_PARAM_ERROR,
+                             "compatibleVersion Parameter is must integer");
+         return false;
+--- developtools_hapsigner/hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-06-23 01:04:41.623196874 +0800
++++ binary_sign_tool/hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-06-23 01:10:12.199196561 +0800
+@@ -1,5 +1,5 @@
+ ﻿/*
+- * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
++ * Copyright (c) 2024-2024 Huawei Device Co., Ltd.
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+@@ -17,22 +17,18 @@
+ #include <algorithm>
+ #include <stdexcept>
+ 
+-#include "cJSON.h"
+-#include "contrib/minizip/unzip.h"
+ #include "profile_verify.h"
+ #include "hap_utils.h"
+ 
+ namespace OHOS {
+ namespace SignatureTools {
+-
++    
+ const std::vector<int8_t> HapUtils::HAP_SIGNING_BLOCK_MAGIC_V2 =
+     std::vector<int8_t>{ 0x48, 0x41, 0x50, 0x20, 0x53, 0x69, 0x67, 0x20, 0x42,
+     0x6c, 0x6f, 0x63, 0x6b, 0x20, 0x34, 0x32 };
+ const std::vector<int8_t> HapUtils::HAP_SIGNING_BLOCK_MAGIC_V3 =
+     std::vector<int8_t>{ 0x3c, 0x68, 0x61, 0x70, 0x20, 0x73, 0x69, 0x67, 0x6e,
+     0x20, 0x62, 0x6c, 0x6f, 0x63, 0x6b, 0x3e };
+-const std::vector<int8_t> HapUtils::PERMISSION_SIGN_MAGIC =
+-    std::vector<int8_t>{ 0x7d, 0x6a, 0x03, 0x93, 0x0f, 0x45, 0xe2, 0x28 };
+ const std::string HapUtils::HEX_CHAR_ARRAY = "0123456789ABCDEF";
+ const std::string HapUtils::HAP_DEBUG_OWNER_ID = "DEBUG_LIB_ID";
+ std::set<int> HapUtils::HAP_SIGNATURE_OPTIONAL_BLOCK_IDS;
+@@ -93,16 +89,6 @@
+     return HAP_SIGNING_BLOCK_MAGIC_V2;
+ }
+ 
+-std::vector<int8_t> HapUtils::GetHapSigningBlockMagicV3()
+-{
+-    return HAP_SIGNING_BLOCK_MAGIC_V3;
+-}
+-
+-const std::vector<int8_t>& HapUtils::GetPermissionSignMagic()
+-{
+-    return PERMISSION_SIGN_MAGIC;
+-}
+-
+ int HapUtils::GetHapSigningBlockVersion(int compatibleVersion)
+ {
+     if (compatibleVersion >= MIN_COMPATIBLE_VERSION_FOR_SCHEMA_V3) {
+@@ -123,84 +109,5 @@
+     return true;
+ }
+ 
+-std::vector<std::string> HapUtils::GetSkillNamesFromJson(const std::string& moduleJson)
+-{
+-    std::vector<std::string> skillNames;
+-    if (moduleJson.empty()) {
+-        return skillNames;
+-    }
+-    cJSON* root = cJSON_ParseWithOpts(moduleJson.c_str(), nullptr, 1);
+-    if (root == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("Failed to parse module.json");
+-        return skillNames;
+-    }
+-    cJSON* moduleObj = cJSON_GetObjectItemCaseSensitive(root, "module");
+-    if (moduleObj == nullptr || !cJSON_IsObject(moduleObj)) {
+-        SIGNATURE_TOOLS_LOGE("module.json has no module object");
+-        cJSON_Delete(root);
+-        return skillNames;
+-    }
+-    cJSON* skillsArray = cJSON_GetObjectItemCaseSensitive(moduleObj, "skillProfiles");
+-    if (skillsArray == nullptr || !cJSON_IsArray(skillsArray)) {
+-        SIGNATURE_TOOLS_LOGI("module.json has no skillProfiles key or skillProfiles value is not an array");
+-        cJSON_Delete(root);
+-        return skillNames;
+-    }
+-    cJSON* skillItem = nullptr;
+-    cJSON_ArrayForEach(skillItem, skillsArray) {
+-        if (!cJSON_IsObject(skillItem)) {
+-            continue;
+-        }
+-        cJSON* nameObj = cJSON_GetObjectItemCaseSensitive(skillItem, "name");
+-        if (nameObj != nullptr && cJSON_IsString(nameObj) && nameObj->valuestring != nullptr) {
+-            std::string name(nameObj->valuestring);
+-            if (!name.empty()) {
+-                skillNames.push_back(name);
+-            }
+-        }
+-    }
+-    cJSON_Delete(root);
+-    return skillNames;
+-}
+-
+-bool HapUtils::GetModuleContentFromHap(const std::string& hapPath, std::string& moduleContent)
+-{
+-    moduleContent.clear();
+-    unzFile zFile = unzOpen(hapPath.c_str());
+-    if (zFile == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("Failed to open HAP file: %s", hapPath.c_str());
+-        return false;
+-    }
+-    if (unzLocateFile(zFile, "module.json", 0) != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGI("module.json not found in HAP");
+-        unzClose(zFile);
+-        return false;
+-    }
+-    char fileNameBuffer[512];
+-    unz_file_info zFileInfo;
+-    if (unzGetCurrentFileInfo(zFile, &zFileInfo, fileNameBuffer, sizeof(fileNameBuffer), nullptr, 0, nullptr, 0)
+-        != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGE("Failed to get file info for module.json");
+-        unzClose(zFile);
+-        return false;
+-    }
+-    if (unzOpenCurrentFile(zFile) != UNZ_OK) {
+-        SIGNATURE_TOOLS_LOGE("Failed to open module.json in HAP");
+-        unzClose(zFile);
+-        return false;
+-    }
+-    std::vector<char> buffer(zFileInfo.uncompressed_size + 1);
+-    int readSize = unzReadCurrentFile(zFile, buffer.data(), static_cast<unsigned>(zFileInfo.uncompressed_size));
+-    unzCloseCurrentFile(zFile);
+-    unzClose(zFile);
+-    if (readSize <= 0) {
+-        SIGNATURE_TOOLS_LOGE("Failed to read module.json from HAP");
+-        return false;
+-    }
+-    buffer[readSize] = '\0';
+-    moduleContent = std::string(buffer.data(), readSize);
+-    return true;
+-}
+-
+ } // namespace SignatureTools
+-} // namespace OHOS
++} // namespace OHOS
+\ No newline at end of file
+--- developtools_hapsigner/hapsigntool_cpp/hap/verify/src/verify_hap.cpp	2026-06-23 01:04:41.627196405 +0800
++++ binary_sign_tool/hapsigntool_cpp/hap/verify/src/verify_hap.cpp	2026-06-23 01:10:12.203196874 +0800
+@@ -18,7 +18,6 @@
+ #include <unordered_map>
+ #include <vector>
+ #include <algorithm>
+-#include <numeric>
+ 
+ #include "securec.h"
+ #include "hap_signer_block_utils.h"
+@@ -31,17 +30,13 @@
+ #include "verify_code_signature.h"
+ #include "param_constants.h"
+ #include "file_utils.h"
+-#include "cJSON.h"
+-#include "digest_common.h"
++#include "nlohmann/json.hpp"
+ #include "verify_hap.h"
+-#include "verify_hap_openssl_utils.h"
+-#include "pkcs7_context.h"
+-#include "profile_verify.h"
+-#include "signature_algorithm_helper.h"
+ 
++using namespace nlohmann;
+ namespace OHOS {
+ namespace SignatureTools {
+-
++const int32_t VerifyHap::HEX_PRINT_LENGTH = 3;
+ const int32_t VerifyHap::DIGEST_BLOCK_LEN_OFFSET = 8;
+ const int32_t VerifyHap::DIGEST_ALGORITHM_OFFSET = 12;
+ const int32_t VerifyHap::DIGEST_LEN_OFFSET = 16;
+@@ -51,9 +46,6 @@
+ const std::string VerifyHap::HSP_APP_PATTERN = "[^]*.hsp$";
+ const std::string VerifyHap::APP_APP_PATTERN = "[^]*.app$";
+ static constexpr int ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH = 12;
+-static constexpr int PERMISSION_SIGN_DIGEST_COUNT_OFFSET = 28;
+-static constexpr int PERMISSION_SIGN_DIGEST_TYPE_SIZE = 4;
+-static constexpr int PERMISSION_SIGN_MAGIC_LENGTH = 8;
+ 
+ VerifyHap::VerifyHap() : isPrintCert(true)
+ {
+@@ -107,40 +99,6 @@
+     }
+     return true;
+ }
+-
+-bool VerifyHap::outputReSignOptionalBlocks(const std::string& outputHapSignFile,
+-                                           const std::string& outputCodeResignFile,
+-                                           const std::vector<OptionalBlock>& optionBlocks)
+-{
+-    for (auto& optionBlock : optionBlocks) {
+-        if (optionBlock.optionalType == HapUtils::HAP_PROFILE_BLOCK_ID) {
+-            if (!writeOptionalBytesToFile(optionBlock, ParamConstants::PARAM_VERIFY_PROFILE_FILE)) {
+-                return false;
+-            }
+-        } else if (optionBlock.optionalType == HapUtils::HAP_PROPERTY_BLOCK_ID) {
+-            if (!writeOptionalBytesToFile(optionBlock, ParamConstants::PARAM_VERIFY_PROPERTY_FILE)) {
+-                return false;
+-            }
+-        } else if (optionBlock.optionalType == HapUtils::HAP_PROOF_OF_ROTATION_BLOCK_ID) {
+-            if (!writeOptionalBytesToFile(optionBlock, ParamConstants::PARAM_VERIFY_PROOF_FILE)) {
+-                return false;
+-            }
+-        } else if (optionBlock.optionalType == HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID) {
+-            if (!writeOptionalBytesToFile(optionBlock, outputHapSignFile)) {
+-                return false;
+-            }
+-        } else if (optionBlock.optionalType == HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID) {
+-            if (!writeOptionalBytesToFile(optionBlock, outputCodeResignFile)) {
+-                return false;
+-            }
+-        } else {
+-            SIGNATURE_TOOLS_LOGE("Unsupported Block Id: %d", optionBlock.optionalType);
+-            return false;
+-        }
+-    }
+-    return true;
+-}
+-
+ bool VerifyHap::writeOptionalBytesToFile(const OptionalBlock& optionalBlock, const std::string& path)
+ {
+     if (path.empty()) {
+@@ -224,26 +182,6 @@
+     return resultCode;
+ }
+ 
+-int32_t VerifyHap::VerifyBeforeResign(const std::string& filePath, Options* options)
+-{
+-    SIGNATURE_TOOLS_LOGD("Start Verify");
+-    std::string standardFilePath;
+-    if (!CheckFilePath(filePath, standardFilePath)) {
+-        SIGNATURE_TOOLS_LOGE("Check file path%s failed", filePath.c_str());
+-        return IO_ERROR;
+-    }
+-    RandomAccessFile hapFile;
+-    if (!hapFile.Init(standardFilePath)) {
+-        SIGNATURE_TOOLS_LOGE("%s init failed", standardFilePath.c_str());
+-        return ZIP_ERROR;
+-    }
+-    int32_t resultCode = VerifyBeforeResign(hapFile, options, filePath);
+-    if (resultCode != RET_OK) {
+-        PrintErrorNumberMsg("VERIFY_ERROR", VERIFY_ERROR, standardFilePath + " verify failed");
+-    }
+-    return resultCode;
+-}
+-
+ bool VerifyHap::CheckFilePath(const std::string& filePath, std::string& standardFilePath)
+ {
+     char path[PATH_MAX] = { 0x00 };
+@@ -268,304 +206,6 @@
+     return true;
+ }
+ 
+-bool VerifyHap::IsVerifyResign(const SignatureInfo& hapSignInfo)
+-{
+-    for (const OptionalBlock& optionalBlock : hapSignInfo.optionBlocks) {
+-        if (optionalBlock.optionalType == HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID) {
+-            return true;
+-        }
+-    }
+-    return false;
+-}
+-
+-bool VerifyHap::IsEnterpriseProfileDistributionType(const SignatureInfo& hapSignInfo)
+-{
+-    const ByteBuffer* profileBlock = nullptr;
+-    for (const auto& block : hapSignInfo.optionBlocks) {
+-        if (block.optionalType == HapUtils::HAP_PROFILE_BLOCK_ID) {
+-            profileBlock = &block.optionalBlockValue;
+-            break;
+-        }
+-    }
+-    if (!profileBlock) {
+-        SIGNATURE_TOOLS_LOGE("[VerifyEnterpriseProfileType] No profile block found");
+-        return false;
+-    }
+-
+-    std::string profileContent(profileBlock->GetBufferPtr(), profileBlock->GetCapacity());
+-    std::string profileContentclean;
+-    GetProfileContent(profileContent, profileContentclean);
+-
+-    ProfileInfo info;
+-    if (!ParseProfile(profileContentclean, info)) {
+-        SIGNATURE_TOOLS_LOGE("[VerifyEnterpriseProfileType] Failed to parse profile");
+-        return false;
+-    }
+-
+-    bool isValidEnterpriseType = (info.distributionType == AppDistType::ENTERPRISE_NORMAL ||
+-                                  info.distributionType == AppDistType::ENTERPRISE_MDM ||
+-                                  info.distributionType == AppDistType::ENTERPRISE);
+-
+-    if (!isValidEnterpriseType) {
+-        SIGNATURE_TOOLS_LOGE("[VerifyEnterpriseProfileType] Invalid enterprise distribution type");
+-        return false;
+-    }
+-
+-    return true;
+-}
+-
+-X509* VerifyHap::ExtractCertificateFromProfile(const SignatureInfo& hapSignInfo)
+-{
+-    const ByteBuffer* profileBlock = nullptr;
+-    for (const auto& block : hapSignInfo.optionBlocks) {
+-        if (block.optionalType == HapUtils::HAP_PROFILE_BLOCK_ID) {
+-            profileBlock = &block.optionalBlockValue;
+-            break;
+-        }
+-    }
+-    if (!profileBlock) {
+-        return nullptr;
+-    }
+-
+-    std::string profileContent(profileBlock->GetBufferPtr(), profileBlock->GetCapacity());
+-    std::string cleanContent;
+-
+-    int32_t result = GetProfileContent(profileContent, cleanContent);
+-    if (result != 0) {
+-        return nullptr;
+-    }
+-
+-    ProfileInfo info;
+-    if (!ParseProfile(cleanContent, info)) {
+-        return nullptr;
+-    }
+-
+-    if (info.type == ProvisionType::RELEASE) {
+-        BIO* bio = BIO_new(BIO_s_mem());
+-        BIO_write(bio, info.bundleInfo.distributionCertificate.c_str(),
+-                  static_cast<int>(info.bundleInfo.distributionCertificate.length()));
+-        X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+-        BIO_free(bio);
+-        return cert;
+-    } else if (info.type == ProvisionType::DEBUG) {
+-        BIO* bio = BIO_new(BIO_s_mem());
+-        BIO_write(bio, info.bundleInfo.developmentCertificate.c_str(),
+-                  static_cast<int>(info.bundleInfo.developmentCertificate.length()));
+-        X509* cert = PEM_read_bio_X509(bio, nullptr, nullptr, nullptr);
+-        BIO_free(bio);
+-        return cert;
+-    }
+-
+-    return nullptr;
+-}
+-
+-bool VerifyHap::CheckInputCertMatchWithCertchain(X509* inputCert, const SignatureInfo& hapSignInfo)
+-{
+-    const ByteBuffer* signatureBlock = nullptr;
+-    for (const auto& block : hapSignInfo.optionBlocks) {
+-        if (block.optionalType == HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID) {
+-            signatureBlock = &block.optionalBlockValue;
+-            break;
+-        }
+-    }
+-    if (!signatureBlock) {
+-        SIGNATURE_TOOLS_LOGE("Get signatureBlock failed");
+-        return false;
+-    }
+-
+-    if (signatureBlock->GetCapacity() == 0) {
+-        return false;
+-    }
+-
+-    Pkcs7Context pkcs7Context;
+-    if (!VerifyAppPkcs7(pkcs7Context, *signatureBlock)) {
+-        return false;
+-    }
+-
+-    if (CheckInputCertMatchWithProfile(inputCert, pkcs7Context.certChain[0][0])) {
+-        return true;
+-    }
+-
+-    return false;
+-}
+-
+-bool VerifyHap::VerifyCertificateConsistency(const SignatureInfo& hapSignInfo)
+-{
+-    X509* profileCert = ExtractCertificateFromProfile(hapSignInfo);
+-    bool result = CheckInputCertMatchWithCertchain(profileCert, hapSignInfo);
+-    X509_free(profileCert);
+-    return result;
+-}
+-
+-bool VerifyHap::CheckInputCertMatchWithProfile(X509* inputCert, X509* certInProfile)
+-{
+-    bool ret = true;
+-    if (inputCert == nullptr || certInProfile == nullptr) {
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "The certificate is empty");
+-        return false;
+-    }
+-    X509_NAME* subject1 = X509_get_subject_name(inputCert);
+-    X509_NAME* subject2 = X509_get_subject_name(certInProfile);
+-    if (X509_NAME_cmp(subject1, subject2) != 0) {
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "The subject does not match!");
+-        return false;
+-    }
+-    X509_NAME* issuer1 = X509_get_issuer_name(inputCert);
+-    X509_NAME* issuer2 = X509_get_issuer_name(certInProfile);
+-    if (X509_NAME_cmp(issuer1, issuer2) != 0) {
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "The issuer name does not match!");
+-        return false;
+-    }
+-    ASN1_INTEGER* serial1 = X509_get_serialNumber(inputCert);
+-    ASN1_INTEGER* serial2 = X509_get_serialNumber(certInProfile);
+-    if (ASN1_INTEGER_cmp(serial1, serial2) != 0) {
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "serial number does not match!");
+-        return false;
+-    }
+-    EVP_PKEY* pkey1 = X509_get_pubkey(inputCert);
+-    EVP_PKEY* pkey2 = X509_get_pubkey(certInProfile);
+-    if (pkey1 != nullptr && pkey2 != nullptr && EVP_PKEY_cmp(pkey1, pkey2) != 1) {
+-        EVP_PKEY_free(pkey1);
+-        EVP_PKEY_free(pkey2);
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "The public key does not match!");
+-        return false;
+-    }
+-    if (pkey1 == nullptr || pkey2 == nullptr) {
+-        PrintErrorNumberMsg("CERTIFICATE_ERROR", CERTIFICATE_ERROR,
+-                            "The public key is null!");
+-        ret = false;
+-    }
+-    if (pkey1 != nullptr) {
+-        EVP_PKEY_free(pkey1);
+-    }
+-    if (pkey2 != nullptr) {
+-        EVP_PKEY_free(pkey2);
+-    }
+-    return ret;
+-}
+-
+-bool VerifyHap::VerifyCRL(Pkcs7Context& pkcs7Context)
+-{
+-    STACK_OF(X509_CRL)* x509Crl = pkcs7Context.p7->d.sign->crl;
+-
+-    if (!VerifyCertOpensslUtils::VerifyCrl(pkcs7Context.certChain[0], x509Crl, pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Crl stack failed");
+-        return false;
+-    }
+-    return true;
+-}
+-
+-int32_t VerifyHap::VerifyResign(RandomAccessFile& hapFile, SignatureInfo& hapSignInfo,
+-                                Options* options, const std::string& filePath)
+-{
+-    if (VerifyOriginalPackageSignature(hapFile, hapSignInfo, options) != RET_OK) {
+-        SIGNATURE_TOOLS_LOGE("Verify Original Package Signature failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!VerifyCertificateConsistency(hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Certificate Consistency failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!IsEnterpriseProfileDistributionType(hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Enterprise Profile failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (CheckCodeSign(filePath, hapSignInfo.optionBlocks) == false) {
+-        SIGNATURE_TOOLS_LOGE("check code sign failed\n");
+-        return VERIFY_ERROR;
+-    }
+-
+-    Pkcs7Context pkcs7Context;
+-    if (!VerifyAppPkcs7(pkcs7Context, hapSignInfo.hapSignatureBlock)) {
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!GetDigestAndAlgorithm(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Get digest failed");
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!VerifyCRL(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Verify CRL failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!HapSignerBlockUtils::VerifyHapIntegrity(pkcs7Context, hapFile, hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Integrity failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!CheckPermSign(filePath, hapSignInfo.optionBlocks, pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("verify perm sign failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!HapOutPutCertChain(pkcs7Context.certChain[0],
+-        options->GetString(Options::OUT_CERT_CHAIN))) {
+-        SIGNATURE_TOOLS_LOGE("out put cert chain failed");
+-        return IO_ERROR;
+-    }
+-
+-    if (!outputReSignOptionalBlocks(options->GetString(ParamConstants::PARAM_VERIFY_HAP_SIGN_FILE),
+-                                    options->GetString(ParamConstants::PARAM_VERIFY_CODE_RESIGN_FILE),
+-                                    hapSignInfo.optionBlocks)) {
+-        SIGNATURE_TOOLS_LOGE("output Optional Blocks failed");
+-        return IO_ERROR;
+-    }
+-    return RET_OK;
+-}
+-
+-int32_t VerifyHap::VerifyOriginalPackageSignature(RandomAccessFile& hapFile, SignatureInfo& hapSignInfo,
+-                                                  Options* options)
+-{
+-    const ByteBuffer* profileBlock = nullptr;
+-    for (const auto& block : hapSignInfo.optionBlocks) {
+-        if (block.optionalType == HapUtils::HAP_SIGNATURE_SCHEME_V1_BLOCK_ID) {
+-            profileBlock = &block.optionalBlockValue;
+-            break;
+-        }
+-    }
+-    if (!profileBlock) {
+-        SIGNATURE_TOOLS_LOGE("Get profileBlock failed");
+-        return PARSE_ERROR;
+-    }
+-
+-    Pkcs7Context pkcs7Context;
+-    if (!VerifyAppPkcs7(pkcs7Context, *profileBlock)) {
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!GetDigestAndAlgorithm(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Get digest failed");
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!VerifyCRL(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Verify CRL failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!HapSignerBlockUtils::VerifyOldHapIntegrity(pkcs7Context, hapFile, hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Integrity failed");
+-        return VERIFY_ERROR;
+-    }
+-    
+-    if (!HapOutPutCertChain(pkcs7Context.certChain[0],
+-        options->GetString(Options::OUT_CERT_CHAIN))) {
+-        SIGNATURE_TOOLS_LOGE("out put cert chain failed");
+-        return IO_ERROR;
+-    }
+-    return RET_OK;
+-}
+-
+ int32_t VerifyHap::Verify(RandomAccessFile& hapFile, Options* options, const std::string& filePath)
+ {
+     SignatureInfo hapSignInfo;
+@@ -573,11 +213,8 @@
+         return ZIP_ERROR;
+     }
+ 
+-    if (IsVerifyResign(hapSignInfo)) {
+-        return VerifyResign(hapFile, hapSignInfo, options, filePath);
+-    }
+     if (CheckCodeSign(filePath, hapSignInfo.optionBlocks) == false) {
+-        SIGNATURE_TOOLS_LOGE("check code sign failed\n");
++        SIGNATURE_TOOLS_LOGE("check coode sign failed\n");
+         return VERIFY_ERROR;
+     }
+ 
+@@ -591,21 +228,21 @@
+         return PARSE_ERROR;
+     }
+ 
+-    if (!VerifyCRL(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Verify CRL failed");
+-        return VERIFY_ERROR;
++    STACK_OF(X509_CRL)* x509Crl = nullptr;
++    if (!VerifyHapOpensslUtils::GetCrlStack(pkcs7Context.p7, x509Crl)) {
++        SIGNATURE_TOOLS_LOGE("Get Crl stack failed");
++        return PARSE_ERROR;
+     }
+ 
+-    if (!HapSignerBlockUtils::VerifyHapIntegrity(pkcs7Context, hapFile, hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Integrity failed");
++    if (!VerifyCertOpensslUtils::VerifyCrl(pkcs7Context.certChain[0], x509Crl, pkcs7Context)) {
++        SIGNATURE_TOOLS_LOGE("Verify Crl stack failed");
+         return VERIFY_ERROR;
+     }
+ 
+-    if (!CheckPermSign(filePath, hapSignInfo.optionBlocks, pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("verify perm sign failed");
++    if (!HapSignerBlockUtils::VerifyHapIntegrity(pkcs7Context, hapFile, hapSignInfo)) {
++        SIGNATURE_TOOLS_LOGE("Verify Integrity failed");
+         return VERIFY_ERROR;
+     }
+-
+     if (!HapOutPutCertChain(pkcs7Context.certChain[0],
+         options->GetString(Options::OUT_CERT_CHAIN))) {
+         SIGNATURE_TOOLS_LOGE("out put cert chain failed");
+@@ -622,384 +259,67 @@
+     return RET_OK;
+ }
+ 
+-int32_t VerifyHap::VerifyBeforeResign(RandomAccessFile& hapFile, Options* options, const std::string& filePath)
+-{
+-    SignatureInfo hapSignInfo;
+-    if (!HapSignerBlockUtils::FindHapSignature(hapFile, hapSignInfo)) {
+-        return ZIP_ERROR;
+-    }
+-
+-    if (CheckCodeSign(filePath, hapSignInfo.optionBlocks) == false) {
+-        SIGNATURE_TOOLS_LOGE("check code sign failed\n");
+-        return VERIFY_ERROR;
+-    }
+-
+-    Pkcs7Context pkcs7Context;
+-    if (!VerifyAppPkcs7(pkcs7Context, hapSignInfo.hapSignatureBlock)) {
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!GetDigestAndAlgorithm(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Get digest failed");
+-        return PARSE_ERROR;
+-    }
+-
+-    if (!VerifyCRL(pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("Verify CRL failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!HapSignerBlockUtils::VerifyHapIntegrity(pkcs7Context, hapFile, hapSignInfo)) {
+-        SIGNATURE_TOOLS_LOGE("Verify Integrity failed");
+-        return VERIFY_ERROR;
+-    }
+-
+-    if (!CheckPermSign(filePath, hapSignInfo.optionBlocks, pkcs7Context)) {
+-        SIGNATURE_TOOLS_LOGE("verify perm sign failed");
+-        return VERIFY_ERROR;
+-    }
+-    return RET_OK;
+-}
+-
+-bool VerifyHap::CheckFileNameAndBlockArray(const std::string& hapFilePath,
+-                                           const ByteBuffer& propertyBlockArray)const
+-{
+-    std::vector<std::string> fileNameArray = StringUtils::SplitString(hapFilePath, '.');
+-    if (fileNameArray.size() < ParamConstants::FILE_NAME_MIN_LENGTH) {
+-        PrintErrorNumberMsg("VERIFY_ERROR", VERIFY_ERROR, "ZIP64 format not supported.");
+-        return false;
+-    }
+-
+-    if (propertyBlockArray.GetCapacity() < ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH) {
+-        return false;
+-    }
+-    return true;
+-}
+-
+ bool VerifyHap::CheckCodeSign(const std::string& hapFilePath,
+                               const std::vector<OptionalBlock>& optionalBlocks)const
+ {
+-    std::unordered_map<int, ByteBuffer> blockMap;
+-    ByteBuffer propertyBlockArray;
+-    bool codeReSignFlag = false;
+-    bool codeSignFlag = false;
+-    BuildBlockInfo(optionalBlocks, blockMap, codeReSignFlag, codeSignFlag, propertyBlockArray);
+-    if (!codeReSignFlag && !codeSignFlag) {
+-        SIGNATURE_TOOLS_LOGI("can not find codesign block.");
+-        return true;
+-    }
+-    if (!CheckFileNameAndBlockArray(hapFilePath, propertyBlockArray)) {
+-        return false;
+-    }
+-
+-    std::vector<std::string> fileNameArray = StringUtils::SplitString(hapFilePath, '.');
+-    uint32_t blockType;
+-    uint32_t blockLength;
+-    uint32_t blockOffset;
+-    if (!GetBlockHeaderInfo(propertyBlockArray, 0, blockType, blockLength, blockOffset)) {
+-        return false;
+-    }
+-
+-    if (blockType != HapUtils::HAP_CODE_SIGN_BLOCK_ID) {
+-        PrintErrorNumberMsg("VERIFY_ERROR", VERIFY_ERROR, "code sign data not exist in hap " + hapFilePath);
+-        return false;
+-    }
+-    auto ite = blockMap.find(HapUtils::HAP_PROFILE_BLOCK_ID);
+-    if (ite == blockMap.end()) {
+-        return false;
+-    }
+-    ByteBuffer profileArray = ite->second;
+-    std::string profileArray_(profileArray.GetBufferPtr(), profileArray.GetCapacity());
+-    std::string profileContent;
+-    if (GetProfileContent(profileArray_, profileContent) < 0) {
+-        SIGNATURE_TOOLS_LOGE("get profile content failed, file: %s", hapFilePath.c_str());
+-        return false;
+-    }
+-    std::string suffix = fileNameArray[fileNameArray.size() - 1];
+-    bool isCodeSign = VerifyCodeSignature::VerifyHap(hapFilePath, blockOffset, blockLength,
+-                                                     suffix, profileContent);
+-    if (!isCodeSign) {
+-        SIGNATURE_TOOLS_LOGE("verify codesign failed, file: %s", hapFilePath.c_str());
+-        return false;
+-    }
+-    SIGNATURE_TOOLS_LOGI("verify codesign success.");
+-    return true;
+-}
+-
+-bool VerifyHap::GetBlockHeaderInfo(ByteBuffer& blockArray, int32_t pos,
+-                                   uint32_t& blockType, uint32_t& blockLength, uint32_t& blockOffset)
+-{
+-    if (pos + ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH > blockArray.GetCapacity()) {
+-        return false;
+-    }
+-    return blockArray.GetUInt32(pos, blockType) &&
+-           blockArray.GetUInt32(pos + OFFSET_FOUR, blockLength) &&
+-           blockArray.GetUInt32(pos + OFFSET_EIGHT, blockOffset);
+-}
+-
+-void VerifyHap::BuildBlockInfo(const std::vector<OptionalBlock>& optionalBlocks,
+-                               std::unordered_map<int, ByteBuffer>& blockMap,
+-                               bool& codeReSignFlag, bool& codeSignFlag, ByteBuffer& propertyBlockArray) const
+-{
++    std::unordered_map<int, ByteBuffer> map;
+     for (const OptionalBlock& block : optionalBlocks) {
+-        blockMap.emplace(block.optionalType, block.optionalBlockValue);
+-    }
+-    codeReSignFlag = blockMap.find(HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID) != blockMap.end() &&
+-        blockMap[HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID].GetCapacity() > 0;
+-    codeSignFlag = blockMap.find(HapUtils::HAP_PROPERTY_BLOCK_ID) != blockMap.end() &&
+-        blockMap[HapUtils::HAP_PROPERTY_BLOCK_ID].GetCapacity() > 0;
+-    if (!codeReSignFlag && !codeSignFlag) {
+-        return;
+-    }
+-    propertyBlockArray = blockMap[HapUtils::HAP_PROPERTY_BLOCK_ID];
+-    if (codeReSignFlag) {
+-        propertyBlockArray = blockMap[HapUtils::ENTERPRISE_CODE_RE_SIGN_BLOCK_ID];
+-    }
+-}
+-
+-bool VerifyHap::CheckPermSign(const std::string& hapFilePath, const std::vector<OptionalBlock>& optionBlocks,
+-                              Pkcs7Context& pkcs7Context)const
+-{
+-    ByteBuffer propertyBlockArray;
+-    std::unordered_map<int, ByteBuffer> blockMap;
+-    bool codeReSignFlag = false;
+-    bool codeSignFlag = false;
+-    BuildBlockInfo(optionBlocks, blockMap, codeReSignFlag, codeSignFlag, propertyBlockArray);
+-    if (!codeReSignFlag && !codeSignFlag) {
+-        SIGNATURE_TOOLS_LOGI("can not find codesign block.");
+-        return true;
+-    }
+-    propertyBlockArray.SetPosition(0);
+-
+-    int32_t pos = 0;
+-    uint32_t codeSignBlockLength = 0;
+-    uint32_t firstBlockType;
+-    uint32_t firstBlockLength;
+-    uint32_t firstBlockOffset;
+-    if (GetBlockHeaderInfo(propertyBlockArray, pos, firstBlockType, firstBlockLength, firstBlockOffset)) {
+-        codeSignBlockLength = firstBlockLength + ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH;
+-    }
+-    pos = codeSignBlockLength;
+-    if (pos >= propertyBlockArray.GetCapacity()) {
+-        SIGNATURE_TOOLS_LOGI("can not find perm sign block.");
+-        return true;
+-    }
+-
+-    uint32_t blockType;
+-    uint32_t blockLength;
+-    uint32_t blockOffset;
+-    if (!GetBlockHeaderInfo(propertyBlockArray, pos, blockType, blockLength, blockOffset)) {
+-        SIGNATURE_TOOLS_LOGE("read block header failed at pos %d", pos);
+-        return false;
+-    }
+-
+-    if (blockType != HapUtils::PERMISSION_SIGN_BLOCK_ID) {
+-        SIGNATURE_TOOLS_LOGI("can not find perm sign block.");
+-        return true;
+-    }
+-
+-    int32_t dataStartPos = pos;
+-    const char* srcBuf = propertyBlockArray.GetBufferPtr();
+-    if (srcBuf == nullptr ||
+-        dataStartPos + static_cast<int32_t>(blockLength) > propertyBlockArray.GetCapacity()) {
+-        SIGNATURE_TOOLS_LOGE("perm sign data out of range: start=%d, len=%u, capacity=%d",
+-            dataStartPos, blockLength, propertyBlockArray.GetCapacity());
+-        return false;
+-    }
+-    ByteBuffer permSignBlock;
+-    permSignBlock.SetCapacity(blockLength + ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH);
+-    permSignBlock.PutData(propertyBlockArray.GetBufferPtr() + dataStartPos,
+-        blockLength + ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH);
+-    permSignBlock.SetPosition(0);
+-    return VerifyPermSignBlock(permSignBlock, pkcs7Context);
+-}
+-
+-bool VerifyHap::VerifyPermSignBlock(ByteBuffer& permSignBlock, Pkcs7Context& profilePkcs7Context)const
+-{
+-    if (permSignBlock.GetCapacity() < ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH) {
+-        SIGNATURE_TOOLS_LOGE("perm sign block size too small.");
+-        return false;
++        map.emplace(block.optionalType, block.optionalBlockValue);
+     }
+-
+-    int32_t signAlgId;
+-    if (!GetSignAlgIdAndVerifyMagic(permSignBlock, signAlgId)) {
+-        return false;
+-    }
+-
+-    const EVP_MD* hash = nullptr;
+-    int32_t digestSize = 0;
+-    if (!GetHashAlgorithm(signAlgId, hash, digestSize)) {
+-        return false;
+-    }
+-
+-    int16_t num;
+-    permSignBlock.GetInt16(PERMISSION_SIGN_DIGEST_COUNT_OFFSET, num);
+-    if (num <= 0 || num > HapUtils::MAX_PERMISSION_SIGN_DIGEST_COUNT) {
+-        SIGNATURE_TOOLS_LOGE("invalid perm sign digest count: %d", num);
+-        return false;
+-    }
+-
+-    std::string signature;
+-    if (!ReadSignature(permSignBlock, num, digestSize, signature)) {
+-        return false;
+-    }
+-
+-    EVP_PKEY* pubKey = GetProfilePubKey(profilePkcs7Context);
+-    if (pubKey == nullptr) {
+-        return false;
+-    }
+-
+-    std::string dataToVerify;
+-    if (!BuildPermSignDataToVerify(permSignBlock, signAlgId, num, digestSize, dataToVerify)) {
+-        return false;
+-    }
+-
+-    if (!VerifyPermSignSignature(signature, dataToVerify, hash, pubKey)) {
+-        SIGNATURE_TOOLS_LOGE("verify perm sign signature failed.");
+-        return false;
+-    }
+-
+-    SIGNATURE_TOOLS_LOGI("verify perm sign block success.");
+-    return true;
+-}
+-
+-bool VerifyHap::GetSignAlgIdAndVerifyMagic(ByteBuffer& permSignBlock, int32_t& signAlgId)const
+-{
+-    const std::vector<int8_t>& magic = HapUtils::GetPermissionSignMagic();
+-    for (int i = 0; i < PERMISSION_SIGN_MAGIC_LENGTH; i++) {
+-        int8_t val;
+-        permSignBlock.GetInt8(PERMISSION_SIGN_MAGIC_OFFSET + i, val);
+-        if (val != magic[i]) {
+-            SIGNATURE_TOOLS_LOGE("perm sign block magic mismatch at pos %d: expected %02x, got %02x",
+-                PERMISSION_SIGN_MAGIC_OFFSET + i, (uint8_t)magic[i], (uint8_t)val);
++    bool codeSignFlag = map.find(HapUtils::HAP_PROPERTY_BLOCK_ID) != map.end() &&
++        map[HapUtils::HAP_PROPERTY_BLOCK_ID].GetCapacity() > 0;
++    if (codeSignFlag) {
++        ByteBuffer propertyBlockArray = map[HapUtils::HAP_PROPERTY_BLOCK_ID];
++        std::vector<std::string> fileNameArray = StringUtils::SplitString(hapFilePath, '.');
++        if (fileNameArray.size() < ParamConstants::FILE_NAME_MIN_LENGTH) {
++            PrintErrorNumberMsg("VERIFY_ERROR", VERIFY_ERROR, "ZIP64 format not supported.");
+             return false;
+         }
+-    }
+-    permSignBlock.GetInt32(PERMISSION_SIGN_SIGN_ALG_ID_OFFSET, signAlgId);
+-    return true;
+-}
+-
+-bool VerifyHap::GetHashAlgorithm(int32_t signAlgId, const EVP_MD*& hash, int32_t& digestSize)const
+-{
+-    if (signAlgId == ALGORITHM_SHA256_WITH_ECDSA) {
+-        hash = EVP_sha256();
+-        digestSize = SHA256_DIGEST_LENGTH;
+-    } else if (signAlgId == ALGORITHM_SHA384_WITH_ECDSA) {
+-        hash = EVP_sha384();
+-        digestSize = SHA384_DIGEST_LENGTH;
+-    } else {
+-        SIGNATURE_TOOLS_LOGE("unsupported sign algorithm id: 0x%08x", signAlgId);
+-        return false;
+-    }
+-    return true;
+-}
+ 
+-bool VerifyHap::BuildPermSignDataToVerify(ByteBuffer& permSignBlock, int32_t signAlgId, int16_t num,
+-                                          int32_t digestSize, std::string& dataToVerify)const
+-{
+-    const std::vector<int8_t>& magic = HapUtils::GetPermissionSignMagic();
+-    int32_t digestDataLen = num * (PERMISSION_SIGN_DIGEST_TYPE_SIZE + digestSize);
++        if (propertyBlockArray.GetCapacity() < ZIP_HEAD_OF_SUBSIGNING_BLOCK_LENGTH)
++            return false;
++        uint32_t blockType;
++        propertyBlockArray.GetUInt32(OFFSET_ZERO, blockType);
++        uint32_t blockLength;
++        propertyBlockArray.GetUInt32(OFFSET_FOUR, blockLength);
++        uint32_t blockOffset;
++        propertyBlockArray.GetUInt32(OFFSET_EIGHT, blockOffset);
+ 
+-    dataToVerify.append(reinterpret_cast<const char*>(magic.data()), magic.size());
+-    dataToVerify.append(reinterpret_cast<const char*>(&signAlgId), sizeof(signAlgId));
+-    dataToVerify.append(reinterpret_cast<const char*>(&digestDataLen), sizeof(digestDataLen));
+-    int16_t numValue = num;
+-    dataToVerify.append(reinterpret_cast<const char*>(&numValue), sizeof(numValue));
+-
+-    int32_t digestPos = PERMISSION_SIGN_DIGEST_DATA_OFFSET;
+-    for (int i = 0; i < num; i++) {
+-        int32_t digestType;
+-        permSignBlock.GetInt32(digestPos, digestType);
+-        dataToVerify.append(reinterpret_cast<const char*>(&digestType), sizeof(digestType));
+-        digestPos += PERMISSION_SIGN_DIGEST_TYPE_SIZE;
+-        for (int j = 0; j < digestSize; j++) {
+-            uint8_t val;
+-            permSignBlock.GetUInt8(digestPos + j, val);
+-            dataToVerify.push_back((char)val);
++        if (blockType != HapUtils::HAP_CODE_SIGN_BLOCK_ID) {
++            PrintErrorNumberMsg("VERIFY_ERROR", VERIFY_ERROR, "code sign data not exist in hap " + hapFilePath);
++            return false;
+         }
+-        digestPos += digestSize;
+-    }
+-    return true;
+-}
+-
+-bool VerifyHap::ReadSignature(ByteBuffer& permSignBlock, int16_t num,
+-                              int32_t digestSize, std::string& signature)const
+-{
+-    int32_t sigPos = PERMISSION_SIGN_DIGEST_DATA_OFFSET + num * (4 + digestSize);
+-    int32_t sigLen;
+-    permSignBlock.GetInt32(sigPos, sigLen);
+-    int32_t sigOffset = sigPos + 4;
+-    for (int i = 0; i < sigLen; i++) {
+-        uint8_t val;
+-        permSignBlock.GetUInt8(sigOffset + i, val);
+-        signature.push_back((char)val);
+-    }
+-    return true;
+-}
+-
+-EVP_PKEY* VerifyHap::GetProfilePubKey(Pkcs7Context& profilePkcs7Context)const
+-{
+-    if (profilePkcs7Context.certChain.empty() || profilePkcs7Context.certChain[0].empty()) {
+-        SIGNATURE_TOOLS_LOGE("profile cert chain is empty");
+-        return nullptr;
+-    }
+-    X509* pubKeyCert = profilePkcs7Context.certChain[0][0];
+-    if (pubKeyCert == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("profile pub key cert is null");
+-        return nullptr;
+-    }
+-    EVP_PKEY* pubKey = X509_get0_pubkey(pubKeyCert);
+-    if (pubKey == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("get profile pub key failed");
+-        return nullptr;
+-    }
+-    return pubKey;
+-}
+-
+-bool VerifyHap::VerifyPermSignSignature(const std::string& signature, const std::string& storedDigests,
+-                                        const EVP_MD* hash, EVP_PKEY* pubKey)const
+-{
+-    if (signature.empty()) {
+-        SIGNATURE_TOOLS_LOGE("permission sign signature is empty");
+-        return false;
+-    }
+-    if (pubKey == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("pubKey is null");
+-        return false;
+-    }
+-
+-    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+-    if (ctx == nullptr) {
+-        SIGNATURE_TOOLS_LOGE("create EVP_MD_CTX failed");
+-        return false;
+-    }
+-    const unsigned char* pSigData = reinterpret_cast<const unsigned char*>(signature.data());
+-    bool ret = false;
+-    if (EVP_DigestVerifyInit(ctx, nullptr, hash, nullptr, pubKey) == 1 &&
+-        EVP_DigestVerifyUpdate(ctx, storedDigests.data(), storedDigests.size()) == 1 &&
+-        EVP_DigestVerifyFinal(ctx, pSigData, signature.size()) == 1) {
+-        ret = true;
+-    }
+-    EVP_MD_CTX_free(ctx);
+-    if (!ret) {
+-        SIGNATURE_TOOLS_LOGE("verify signature failed");
+-        return false;
++        auto ite = map.find(HapUtils::HAP_PROFILE_BLOCK_ID);
++        if (ite == map.end())
++            return false;
++        ByteBuffer profileArray = ite->second;
++        std::string profileArray_(profileArray.GetBufferPtr(), profileArray.GetCapacity());
++        std::string profileContent;
++        if (GetProfileContent(profileArray_, profileContent) < 0) {
++            SIGNATURE_TOOLS_LOGE("get profile content failed, file: %s", hapFilePath.c_str());
++            return false;
++        }
++        std::string suffix = fileNameArray[fileNameArray.size() - 1];
++        bool isCodeSign = VerifyCodeSignature::VerifyHap(hapFilePath, blockOffset, blockLength,
++                                                         suffix, profileContent);
++        if (!isCodeSign) {
++            SIGNATURE_TOOLS_LOGE("verify codesign failed, file: %s", hapFilePath.c_str());
++            return false;
++        }
++        SIGNATURE_TOOLS_LOGI("verify codesign success.");
++        return true;
+     }
+-    SIGNATURE_TOOLS_LOGI("signature verified successfully.");
++    SIGNATURE_TOOLS_LOGI("can not find codesign block.");
+     return true;
+ }
+ 
+ int VerifyHap::GetProfileContent(const std::string profile, std::string& ret)
+ {
+-    cJSON* obj = cJSON_ParseWithOpts(profile.c_str(), nullptr, 1);
+-    if (obj != nullptr && (cJSON_IsObject(obj) || cJSON_IsArray(obj))) {
++    json obj = json::parse(profile, nullptr, false);
++    if (!obj.is_discarded() && obj.is_structured()) {
+         ret = profile;
+-        cJSON_Delete(obj);
+         return 0;
+     }
+-    if (obj != nullptr) {
+-        cJSON_Delete(obj);
+-    }
+     PKCS7Data p7Data;
+     if (p7Data.Parse(profile) < 0) {
+         ret = profile;
+--- developtools_hapsigner/hapsigntool_cpp/profile/src/profile_verify.cpp	2026-06-23 01:04:41.627196405 +0800
++++ binary_sign_tool/hapsigntool_cpp/profile/src/profile_verify.cpp	2026-06-23 01:10:12.203196874 +0800
+@@ -14,14 +14,14 @@
+  */
+ 
+ #include <algorithm>
+-#include <map>
+ 
+-#include "cJSON.h"
++#include "nlohmann/json.hpp"
+ #include "signature_tools_log.h"
+ #include "signature_tools_errno.h"
+ #include "profile_verify.h"
+ 
+ using namespace std;
++using namespace nlohmann;
+ 
+ namespace {
+ const string KEY_VERSION_CODE = "version-code";
+@@ -67,44 +67,39 @@
+ const string KEY_APP_IDENTIFIER = "app-identifier";
+ const string GENERIC_BUNDLE_NAME = ".*";
+ 
+-inline void GetStringIfExist(const cJSON* obj, const string& key, string& out)
++inline void GetStringIfExist(const json& obj, const string& key, string& out)
+ {
+-    cJSON* item = cJSON_GetObjectItemCaseSensitive(obj, key.c_str());
+-    if (item != nullptr && cJSON_IsString(item)) {
+-        out = item->valuestring;
++    if (obj.find(key.c_str()) != obj.end() && obj[key.c_str()].is_string()) {
++        obj[key.c_str()].get_to(out);
+     }
+ }
+-
+-inline void GetInt32IfExist(const cJSON* obj, const string& key, int32_t& out)
++inline void GetInt32IfExist(const json& obj, const string& key, int32_t& out)
+ {
+-    cJSON* item = cJSON_GetObjectItemCaseSensitive(obj, key.c_str());
+-    if (item != nullptr && cJSON_IsNumber(item)) {
+-        out = static_cast<int32_t>(item->valueint);
++    if (obj.find(key.c_str()) != obj.end() && obj[key.c_str()].is_number_integer()) {
++        obj[key.c_str()].get_to(out);
+     }
+ }
+-
+-inline void GetInt64IfExist(const cJSON* obj, const string& key, int64_t& out)
++inline void GetInt64IfExist(const json& obj, const string& key, int64_t& out)
+ {
+-    cJSON* item = cJSON_GetObjectItemCaseSensitive(obj, key.c_str());
+-    if (item != nullptr && cJSON_IsNumber(item)) {
+-        out = static_cast<int64_t>(item->valueint);
++    if (obj.find(key.c_str()) != obj.end() && obj[key.c_str()].is_number_integer()) {
++        obj[key.c_str()].get_to(out);
+     }
+ }
+-
+-inline void GetStringArrayIfExist(const cJSON* obj, const string& key, vector<string>& out)
++inline void GetStringArrayIfExist(const json& obj, const string& key, vector<string>& out)
+ {
+-    cJSON* item = cJSON_GetObjectItemCaseSensitive(obj, key.c_str());
+-    if (item != nullptr && cJSON_IsArray(item)) {
+-        cJSON* arrayItem = nullptr;
+-        cJSON_ArrayForEach(arrayItem, item) {
+-            if (cJSON_IsString(arrayItem)) {
+-                out.push_back(arrayItem->valuestring);
++    if (obj.find(key.c_str()) != obj.end() && obj[key.c_str()].is_array()) {
++        for (auto& item : obj[key.c_str()]) {
++            if (item.is_string()) {
++                out.push_back(item.get<string>());
+             }
+         }
+     }
+ }
++inline bool IsObjectExist(const json& obj, const string& key)
++{
++    return obj.find(key.c_str()) != obj.end() && obj[key.c_str()].is_object();
++}
+ } // namespace
+-
+ namespace OHOS {
+ namespace SignatureTools {
+ const std::map<std::string, int32_t> distTypeMap = {
+@@ -116,7 +111,7 @@
+     {VALUE_DIST_TYPE_CROWDTESTING, AppDistType::CROWDTESTING}
+ };
+ 
+-void ParseType(const cJSON* obj, ProfileInfo& out)
++void ParseType(const json& obj, ProfileInfo& out)
+ {
+     string type;
+     GetStringIfExist(obj, KEY_TYPE, type);
+@@ -127,8 +122,7 @@
+         out.type = DEBUG;
+     else out.type = NONE_PROVISION_TYPE;
+ }
+-
+-void ParseAppDistType(const cJSON* obj, ProfileInfo& out)
++void ParseAppDistType(const json& obj, ProfileInfo& out)
+ {
+     string distType;
+     GetStringIfExist(obj, KEY_APP_DIST_TYPE, distType);
+@@ -139,84 +133,69 @@
+     }
+     out.distributionType = AppDistType::NONE_TYPE;
+ }
+-
+-void ParseBundleInfo(const cJSON* obj, ProfileInfo& out)
++void ParseBundleInfo(const json& obj, ProfileInfo& out)
+ {
+-    const cJSON* bundleInfo = cJSON_GetObjectItemCaseSensitive(obj, KEY_BUNDLE_INFO.c_str());
+-    if (bundleInfo == nullptr || !cJSON_IsObject(bundleInfo)) {
+-        return;
++    if (IsObjectExist(obj, KEY_BUNDLE_INFO)) {
++        const auto& bundleInfo = obj[KEY_BUNDLE_INFO];
++        GetStringIfExist(bundleInfo, KEY_DEVELOPER_ID, out.bundleInfo.developerId);
++        GetStringIfExist(bundleInfo, KEY_DEVELOPMENT_CERTIFICATE,
++                         out.bundleInfo.developmentCertificate);
++        GetStringIfExist(bundleInfo, KEY_DISTRIBUTION_CERTIFICATE,
++                         out.bundleInfo.distributionCertificate);
++        GetStringIfExist(bundleInfo, KEY_BUNDLE_NAME, out.bundleInfo.bundleName);
++        GetStringIfExist(bundleInfo, KEY_APL, out.bundleInfo.apl);
++        GetStringIfExist(bundleInfo, KEY_APP_FEATURE, out.bundleInfo.appFeature);
++        GetStringIfExist(bundleInfo, KEY_APP_IDENTIFIER, out.bundleInfo.appIdentifier);
++        GetStringArrayIfExist(bundleInfo, KEY_DATA_GROUP_IDS, out.bundleInfo.dataGroupIds);
+     }
+-    GetStringIfExist(bundleInfo, KEY_DEVELOPER_ID, out.bundleInfo.developerId);
+-    GetStringIfExist(bundleInfo, KEY_DEVELOPMENT_CERTIFICATE,
+-                     out.bundleInfo.developmentCertificate);
+-    GetStringIfExist(bundleInfo, KEY_DISTRIBUTION_CERTIFICATE,
+-                     out.bundleInfo.distributionCertificate);
+-    GetStringIfExist(bundleInfo, KEY_BUNDLE_NAME, out.bundleInfo.bundleName);
+-    GetStringIfExist(bundleInfo, KEY_APL, out.bundleInfo.apl);
+-    GetStringIfExist(bundleInfo, KEY_APP_FEATURE, out.bundleInfo.appFeature);
+-    GetStringIfExist(bundleInfo, KEY_APP_IDENTIFIER, out.bundleInfo.appIdentifier);
+-    GetStringArrayIfExist(bundleInfo, KEY_DATA_GROUP_IDS, out.bundleInfo.dataGroupIds);
+ }
+-
+-void ParseAcls(const cJSON* obj, ProfileInfo& out)
++void ParseAcls(const json& obj, ProfileInfo& out)
+ {
+-    const cJSON* acls = cJSON_GetObjectItemCaseSensitive(obj, KEY_ACLS.c_str());
+-    if (acls == nullptr || !cJSON_IsObject(acls)) {
+-        return;
++    if (IsObjectExist(obj, KEY_ACLS)) {
++        const auto& acls = obj[KEY_ACLS];
++        GetStringArrayIfExist(acls, KEY_ALLOWED_ACLS, out.acls.allowedAcls);
+     }
+-    GetStringArrayIfExist(acls, KEY_ALLOWED_ACLS, out.acls.allowedAcls);
+ }
+-
+-void ParsePermissions(const cJSON* obj, ProfileInfo& out)
++void ParsePermissions(const json& obj, ProfileInfo& out)
+ {
+-    const cJSON* permissions = cJSON_GetObjectItemCaseSensitive(obj, KEY_PERMISSIONS.c_str());
+-    if (permissions == nullptr || !cJSON_IsObject(permissions)) {
+-        return;
++    if (IsObjectExist(obj, KEY_PERMISSIONS)) {
++        const auto& permissions = obj[KEY_PERMISSIONS];
++        GetStringArrayIfExist(permissions, KEY_RESTRICTED_PERMISSIONS,
++                              out.permissions.restrictedPermissions);
++        GetStringArrayIfExist(permissions, KEY_RESTRICTED_CAPABILITIES,
++                              out.permissions.restrictedCapabilities);
+     }
+-    GetStringArrayIfExist(permissions, KEY_RESTRICTED_PERMISSIONS,
+-                          out.permissions.restrictedPermissions);
+-    GetStringArrayIfExist(permissions, KEY_RESTRICTED_CAPABILITIES,
+-                          out.permissions.restrictedCapabilities);
+ }
+-
+-void ParseDebugInfo(const cJSON* obj, ProfileInfo& out)
++void ParseDebugInfo(const json& obj, ProfileInfo& out)
+ {
+-    const cJSON* debugInfo = cJSON_GetObjectItemCaseSensitive(obj, KEY_DEBUG_INFO.c_str());
+-    if (debugInfo == nullptr || !cJSON_IsObject(debugInfo)) {
+-        return;
++    if (IsObjectExist(obj, KEY_DEBUG_INFO)) {
++        GetStringIfExist(obj[KEY_DEBUG_INFO], KEY_DEVICE_ID_TYPE, out.debugInfo.deviceIdType);
++        GetStringArrayIfExist(obj[KEY_DEBUG_INFO], KEY_DEVICE_IDS, out.debugInfo.deviceIds);
+     }
+-    GetStringIfExist(debugInfo, KEY_DEVICE_ID_TYPE, out.debugInfo.deviceIdType);
+-    GetStringArrayIfExist(debugInfo, KEY_DEVICE_IDS, out.debugInfo.deviceIds);
+ }
+-
+-void ParseValidity(const cJSON* obj, Validity& out)
++void ParseValidity(const json& obj, Validity& out)
+ {
+-    const cJSON* validity = cJSON_GetObjectItemCaseSensitive(obj, VALUE_VALIDITY.c_str());
+-    if (validity == nullptr || !cJSON_IsObject(validity)) {
+-        return;
++    if (IsObjectExist(obj, VALUE_VALIDITY)) {
++        GetInt64IfExist(obj[VALUE_VALIDITY], VALUE_NOT_BEFORE, out.notBefore);
++        GetInt64IfExist(obj[VALUE_VALIDITY], VALUE_NOT_AFTER, out.notAfter);
+     }
+-    GetInt64IfExist(validity, VALUE_NOT_BEFORE, out.notBefore);
+-    GetInt64IfExist(validity, VALUE_NOT_AFTER, out.notAfter);
+ }
+-
+-void ParseMetadata(const cJSON* obj, ProfileInfo& out)
++void ParseMetadata(const json& obj, ProfileInfo& out)
+ {
+-    const cJSON* baseAppInfo = cJSON_GetObjectItemCaseSensitive(obj, KEY_BASEAPP_INFO.c_str());
+-    if (baseAppInfo == nullptr || !cJSON_IsObject(baseAppInfo)) {
+-        return;
++    if (IsObjectExist(obj, KEY_BASEAPP_INFO)) {
++        const auto& baseAppInfo = obj[KEY_BASEAPP_INFO];
++        Metadata metadata;
++        metadata.name = KEY_PACKAGE_NAME;
++        GetStringIfExist(baseAppInfo, KEY_PACKAGE_NAME, metadata.value);
++        out.metadatas.emplace_back(metadata);
++        metadata.name = KEY_PACKAGE_CERT;
++        GetStringIfExist(baseAppInfo, KEY_PACKAGE_CERT, metadata.value);
++        out.metadatas.emplace_back(metadata);
+     }
+-    Metadata metadata;
+-    metadata.name = KEY_PACKAGE_NAME;
+-    GetStringIfExist(baseAppInfo, KEY_PACKAGE_NAME, metadata.value);
+-    out.metadatas.emplace_back(metadata);
+-    metadata.name = KEY_PACKAGE_CERT;
+-    GetStringIfExist(baseAppInfo, KEY_PACKAGE_CERT, metadata.value);
+-    out.metadatas.emplace_back(metadata);
+ }
+-
+-void from_json(const cJSON* obj, ProfileInfo& out)
++void from_json(const json& obj, ProfileInfo& out)
+ {
+-    if (obj == nullptr || !cJSON_IsObject(obj)) {
++    if (!obj.is_object()) {
+         return;
+     }
+     GetInt32IfExist(obj, KEY_VERSION_CODE, out.versionCode);
+@@ -244,6 +223,15 @@
+     return PROVISION_OK;
+ }
+ 
++AppProvisionVerifyResult ReturnIfIntIsNonPositive(int num, const std::string& errMsg)
++{
++    if (num <= 0) {
++        PrintErrorNumberMsg("PROVISION_INVALID_ERROR", PROVISION_INVALID_ERROR, errMsg);
++        return PROVISION_INVALID;
++    }
++    return PROVISION_OK;
++}
++
+ static AppProvisionVerifyResult CheckProfileValidType(const ProfileInfo& info)
+ {
+     if (info.type == ProvisionType::DEBUG) {
+@@ -252,6 +240,10 @@
+             return PROVISION_INVALID;
+         }
+     } else if (info.type == ProvisionType::RELEASE) {
++        if (ReturnIfIntIsNonPositive(info.distributionType,
++                                     "Tag app-distribution-type is empty.") != PROVISION_OK) {
++            return PROVISION_INVALID;
++        }
+         if (ReturnIfStringIsEmpty(info.bundleInfo.distributionCertificate,
+                                   "Tag distribution-certificate is empty.") != PROVISION_OK) {
+             return PROVISION_INVALID;
+@@ -286,23 +278,15 @@
+     SIGNATURE_TOOLS_LOGD("Leave HarmonyAppProvision Verify");
+     return PROVISION_OK;
+ }
+-
+ AppProvisionVerifyResult ParseProfile(const std::string& appProvision, ProfileInfo& info)
+ {
+-    cJSON* obj = cJSON_ParseWithOpts(appProvision.c_str(), nullptr, 1);
+-    if (obj == nullptr) {
+-        std::string errStr = "JSON is invalid or empty, parse provision failed, json: " + appProvision;
+-        PrintErrorNumberMsg("PROVISION_INVALID_ERROR", PROVISION_INVALID_ERROR, errStr.c_str());
+-        return PROVISION_INVALID;
+-    }
+-    if (!(cJSON_IsObject(obj) || cJSON_IsArray(obj))) {
+-        std::string errStr = "invalid json object type, must be object or array, json: " + appProvision;
++    json obj = json::parse(appProvision, nullptr, false);
++    if (obj.is_discarded() || (!obj.is_structured())) {
++        std::string errStr = "invalid json object, parse provision failed, json: " + appProvision;
+         PrintErrorNumberMsg("PROVISION_INVALID_ERROR", PROVISION_INVALID_ERROR, errStr.c_str());
+-        cJSON_Delete(obj);
+         return PROVISION_INVALID;
+     }
+-    from_json(obj, info);
+-    cJSON_Delete(obj);
++    obj.get_to(info);
+     return PROVISION_OK;
+ }
+ } // namespace SignatureTools
