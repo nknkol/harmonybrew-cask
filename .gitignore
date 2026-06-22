@@ -1,0 +1,5 @@
+# Bottle artifacts (generated locally)
+artifacts/
+
+# macOS
+.DS_Store

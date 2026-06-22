@@ -1,0 +1,197 @@
+name: Build bottle
+
+on:
+  workflow_dispatch:
+    inputs:
+      formula:
+        description: Formula name (e.g. binary-sign-tool)
+        required: true
+        type: string
+      software:
+        description: Artifact directory name (default: same as formula)
+        required: false
+        type: string
+        default: ""
+      sign_binaries:
+        description: Sign ELF binaries before bottling
+        required: false
+        type: boolean
+        default: true
+      extra_packages:
+        description: Space-separated extra formula to pre-install
+        required: false
+        type: string
+        default: ""
+      run_tests:
+        description: Run brew test after install
+        required: false
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "bottle/**"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build bottle
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Resolve inputs ──────────────────────────────────────────
+      - name: Resolve inputs
+        id: inputs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            # Tag format: bottle/<formula>/<version>  or  bottle/<software>/<formula>/<version>
+            IFS=/ read -r prefix arg1 arg2 arg3 extra <<< "$REF_NAME" || true
+            if [ "$prefix" != "bottle" ]; then
+              echo "Tag must match: bottle/<formula>/<version> or bottle/<software>/<formula>/<version>" >&2
+              exit 1
+            fi
+            if [ -n "${arg3:-}" ] && [ -z "${extra:-}" ]; then
+              software="$arg1"
+              formula="$arg2"
+            elif [ -n "${arg2:-}" ] && [ -z "${extra:-}" ]; then
+              software=""
+              formula="$arg1"
+            else
+              echo "Tag must match: bottle/<formula>/<version> or bottle/<software>/<formula>/<version>" >&2
+              exit 1
+            fi
+            sign_binaries="true"
+            extra_packages=""
+            run_tests="true"
+          else
+            software="${{ github.event.inputs.software }}"
+            formula="${{ github.event.inputs.formula }}"
+            sign_binaries="${{ github.event.inputs.sign_binaries }}"
+            extra_packages="${{ github.event.inputs.extra_packages }}"
+            run_tests="${{ github.event.inputs.run_tests }}"
+          fi
+
+          [ -n "${software:-}" ] || software="$formula"
+
+          echo "software=$software"             >> "$GITHUB_OUTPUT"
+          echo "formula=$formula"                >> "$GITHUB_OUTPUT"
+          echo "sign_binaries=$sign_binaries"    >> "$GITHUB_OUTPUT"
+          echo "extra_packages=$extra_packages"  >> "$GITHUB_OUTPUT"
+          echo "run_tests=$run_tests"            >> "$GITHUB_OUTPUT"
+
+      # ── Build in DockerHarmony ────────────────────────────────────
+      - name: Build bottle in DockerHarmony
+        env:
+          SOFTWARE: ${{ steps.inputs.outputs.software }}
+          FORMULA: ${{ steps.inputs.outputs.formula }}
+          SIGN_BINARIES: ${{ steps.inputs.outputs.sign_binaries }}
+          EXTRA_PACKAGES: ${{ steps.inputs.outputs.extra_packages }}
+          RUN_TESTS: ${{ steps.inputs.outputs.run_tests }}
+        run: |
+          set -euo pipefail
+
+          sign_num=0;  [ "$SIGN_BINARIES" = "true" ] && sign_num=1
+          tests_num=0; [ "$RUN_TESTS" = "true" ] && tests_num=1
+
+          chmod +x scripts/build-bottle.sh scripts/sign-elf.sh
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            -e SOFTWARE \
+            -e FORMULA \
+            -e SIGN_BINARIES="$sign_num" \
+            -e EXTRA_PACKAGES \
+            -e RUN_FORMULA_TESTS="$tests_num" \
+            ghcr.io/hqzing/dockerharmony:latest \
+            /bin/sh -lc '
+              set -eu
+              sh ci-runner/build.sh
+              export PATH="/storage/Users/currentUser/.harmonybrew/bin:/storage/Users/currentUser/.harmonybrew/sbin:$PATH"
+              sh scripts/build-bottle.sh
+            '
+
+      # ── Verify formula was updated ────────────────────────────────
+      - name: Verify formula was updated
+        env:
+          FORMULA: ${{ steps.inputs.outputs.formula }}
+        run: |
+          if ! git diff --name-only | grep -q "Formula/$FORMULA.rb"; then
+            echo "WARNING: Formula file was not modified by bottle merge"
+          else
+            echo "Formula $FORMULA updated with bottle block:"
+            git diff "Formula/$FORMULA.rb"
+          fi
+
+      # ── Upload to GitHub Release ──────────────────────────────────
+      - name: Upload bottle to GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOFTWARE: ${{ steps.inputs.outputs.software }}
+          FORMULA: ${{ steps.inputs.outputs.formula }}
+        run: |
+          set -euo pipefail
+
+          version="$(
+            python3 -c "
+          import json
+          data = json.load(open('artifacts/${SOFTWARE}/formula-info.json'))
+          print(data['formulae'][0]['versions']['stable'])
+          "
+          )"
+          release_tag="bottles/${FORMULA}/${version}"
+
+          mapfile -t assets < <(
+            find "artifacts/$SOFTWARE" -maxdepth 1 -type f \
+              \( -name '*.tar.gz' -o -name '*.json' \) ! -name 'formula-info.json' \
+              | sort
+          )
+
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets found" >&2
+            exit 1
+          fi
+
+          echo "Release tag: $release_tag"
+          echo "Assets: ${assets[*]}"
+
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" "${assets[@]}" --clobber
+          else
+            gh release create "$release_tag" "${assets[@]}" \
+              --title "${FORMULA} bottle ${version}" \
+              --notes "Bottle generated by workflow run $GITHUB_RUN_ID."
+          fi
+
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      # ── Commit and push formula update ────────────────────────────
+      - name: Commit and push formula update
+        env:
+          FORMULA: ${{ steps.inputs.outputs.formula }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if ! git diff --quiet Formula/; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            git add Formula/
+            git commit -m "bottle: ${FORMULA} (${RELEASE_TAG})"
+            git push origin HEAD:main
+            echo "Pushed formula update to main"
+          else
+            echo "No formula changes to commit"
+          fi
