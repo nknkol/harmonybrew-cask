@@ -1,4 +1,4 @@
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/.gitignore b/.gitignore
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/.gitignore b/.gitignore
 --- a/.gitignore	2026-06-23 01:04:41.375196718 +0800
 +++ b/.gitignore	2026-06-23 01:10:11.991198124 +0800
 @@ -5,5 +5,8 @@
@@ -11,7 +11,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
 +codex*
 +third_party/
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/BUILD.gn b/BUILD.gn
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/BUILD.gn b/BUILD.gn
 --- a/BUILD.gn	2026-06-23 01:04:41.379196874 +0800
 +++ b/BUILD.gn	2026-06-23 01:10:11.995198280 +0800
 @@ -23,7 +23,6 @@
@@ -22,7 +22,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      ]
    } else {
      sources = "dist/hap-sign-tool.jar"
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/BUILD.gn b/binary_sign_tool/BUILD.gn
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/BUILD.gn b/binary_sign_tool/BUILD.gn
 --- a/binary_sign_tool/BUILD.gn	2026-06-23 01:04:41.383197655 +0800
 +++ b/binary_sign_tool/BUILD.gn	2026-06-23 01:10:12.003199061 +0800
 @@ -78,7 +78,7 @@
@@ -34,7 +34,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      "openssl:libcrypto_static",
      "openssl:libssl_static",
    ]
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/api/include/sign_tool_service_impl.h b/binary_sign_tool/api/include/sign_tool_service_impl.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/api/include/sign_tool_service_impl.h b/binary_sign_tool/api/include/sign_tool_service_impl.h
 --- a/binary_sign_tool/api/include/sign_tool_service_impl.h	2026-06-23 01:04:41.383197655 +0800
 +++ b/binary_sign_tool/api/include/sign_tool_service_impl.h	2026-06-23 01:10:12.003199061 +0800
 @@ -1,4 +1,4 @@
@@ -51,7 +51,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      SignToolServiceImpl() = default;
      virtual ~SignToolServiceImpl() = default;
      bool Sign(Options* options)override;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/api/src/sign_tool_service_impl.cpp b/binary_sign_tool/api/src/sign_tool_service_impl.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/api/src/sign_tool_service_impl.cpp b/binary_sign_tool/api/src/sign_tool_service_impl.cpp
 --- a/binary_sign_tool/api/src/sign_tool_service_impl.cpp	2026-06-23 01:04:41.383197655 +0800
 +++ b/binary_sign_tool/api/src/sign_tool_service_impl.cpp	2026-06-23 01:10:12.003199061 +0800
 @@ -15,6 +15,10 @@
@@ -94,7 +94,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  bool SignToolServiceImpl::Verify(Options* option)
  {
      VerifyElf verifyElf;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/cmd/src/cmd_util.cpp b/binary_sign_tool/cmd/src/cmd_util.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/cmd/src/cmd_util.cpp b/binary_sign_tool/cmd/src/cmd_util.cpp
 --- a/binary_sign_tool/cmd/src/cmd_util.cpp	2026-06-23 01:04:41.387196249 +0800
 +++ b/binary_sign_tool/cmd/src/cmd_util.cpp	2026-06-23 01:10:12.003199061 +0800
 @@ -53,7 +53,7 @@
@@ -212,7 +212,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
 -} // namespace OHOS
 \ No newline at end of file
 +} // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/cmd/src/params_run_tool.cpp b/binary_sign_tool/cmd/src/params_run_tool.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/cmd/src/params_run_tool.cpp b/binary_sign_tool/cmd/src/params_run_tool.cpp
 --- a/binary_sign_tool/cmd/src/params_run_tool.cpp	2026-06-23 01:04:41.387196249 +0800
 +++ b/binary_sign_tool/cmd/src/params_run_tool.cpp	2026-06-23 01:10:12.003199061 +0800
 @@ -1,4 +1,4 @@
@@ -294,7 +294,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      return api.Sign(params);
  }
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp b/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp b/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp
 --- a/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp	2026-06-23 01:04:41.387196249 +0800
 +++ b/binary_sign_tool/codesigning/fsverity/src/fs_verity_descriptor.cpp	2026-06-23 01:10:12.007199061 +0800
 @@ -82,7 +82,7 @@
@@ -306,7 +306,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          } else {
              buffer->PutData(src.data(), src.size());
          }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/codesigning/sign/src/code_signing.cpp b/binary_sign_tool/codesigning/sign/src/code_signing.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/codesigning/sign/src/code_signing.cpp b/binary_sign_tool/codesigning/sign/src/code_signing.cpp
 --- a/binary_sign_tool/codesigning/sign/src/code_signing.cpp	2026-06-23 01:04:41.387196249 +0800
 +++ b/binary_sign_tool/codesigning/sign/src/code_signing.cpp	2026-06-23 01:10:12.007199061 +0800
 @@ -125,20 +125,18 @@
@@ -331,7 +331,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      SIGNATURE_TOOLS_LOGI("organizationalUnitName = %s.", ownerID.c_str());
      return true;
  }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/common/include/constant.h b/binary_sign_tool/common/include/constant.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/common/include/constant.h b/binary_sign_tool/common/include/constant.h
 --- a/binary_sign_tool/common/include/constant.h	2026-06-23 01:04:41.391197030 +0800
 +++ b/binary_sign_tool/common/include/constant.h	2026-06-23 01:10:12.007199061 +0800
 @@ -87,10 +87,6 @@
@@ -346,7 +346,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace OHOS
  #endif // SIGNATRUETOOLS_CONSTANT_H
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/common/include/options.h b/binary_sign_tool/common/include/options.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/common/include/options.h b/binary_sign_tool/common/include/options.h
 --- a/binary_sign_tool/common/include/options.h	2026-06-23 01:04:41.391197030 +0800
 +++ b/binary_sign_tool/common/include/options.h	2026-06-23 01:10:12.007199061 +0800
 @@ -36,7 +36,7 @@
@@ -358,7 +358,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  
  public:
      /* Key alias parameter name. */
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/common/src/options.cpp b/binary_sign_tool/common/src/options.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/common/src/options.cpp b/binary_sign_tool/common/src/options.cpp
 --- a/binary_sign_tool/common/src/options.cpp	2026-06-23 01:04:41.391197030 +0800
 +++ b/binary_sign_tool/common/src/options.cpp	2026-06-23 01:10:12.011199218 +0800
 @@ -148,9 +148,11 @@
@@ -376,7 +376,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/hap/provider/src/sign_provider.cpp b/binary_sign_tool/hap/provider/src/sign_provider.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/hap/provider/src/sign_provider.cpp b/binary_sign_tool/hap/provider/src/sign_provider.cpp
 --- a/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-06-23 01:04:41.395196249 +0800
 +++ b/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-06-23 01:10:12.011199218 +0800
 @@ -20,12 +20,14 @@
@@ -394,7 +394,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  namespace OHOS {
  namespace SignatureTools {
  std::vector<std::string> SignProvider::VALID_SIGN_ALG_NAME = {
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/hap/sign/include/sign_elf.h b/binary_sign_tool/hap/sign/include/sign_elf.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/hap/sign/include/sign_elf.h b/binary_sign_tool/hap/sign/include/sign_elf.h
 --- a/binary_sign_tool/hap/sign/include/sign_elf.h	2026-06-23 01:04:41.395196249 +0800
 +++ b/binary_sign_tool/hap/sign/include/sign_elf.h	2026-06-23 01:10:12.015197968 +0800
 @@ -32,20 +32,25 @@
@@ -426,7 +426,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  };
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/hap/sign/src/sign_elf.cpp b/binary_sign_tool/hap/sign/src/sign_elf.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/hap/sign/src/sign_elf.cpp b/binary_sign_tool/hap/sign/src/sign_elf.cpp
 --- a/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:04:41.395196249 +0800
 +++ b/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:10:12.015197968 +0800
 @@ -15,19 +15,25 @@
@@ -941,7 +941,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      return true;
  }
  } // namespace SignatureTools
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/hap/verify/include/verify_elf.h b/binary_sign_tool/hap/verify/include/verify_elf.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/hap/verify/include/verify_elf.h b/binary_sign_tool/hap/verify/include/verify_elf.h
 --- a/binary_sign_tool/hap/verify/include/verify_elf.h	2026-06-23 01:04:41.395196249 +0800
 +++ b/binary_sign_tool/hap/verify/include/verify_elf.h	2026-06-23 01:10:12.015197968 +0800
 @@ -48,13 +48,15 @@
@@ -961,7 +961,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static bool ParseSignBlock(const ELFIO::elfio& elfReader);
      static bool PrintCertChainToCmd(std::vector<X509*>& certChain);
  };
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/hap/verify/src/verify_elf.cpp b/binary_sign_tool/hap/verify/src/verify_elf.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/hap/verify/src/verify_elf.cpp b/binary_sign_tool/hap/verify/src/verify_elf.cpp
 --- a/binary_sign_tool/hap/verify/src/verify_elf.cpp	2026-06-23 01:04:41.395196249 +0800
 +++ b/binary_sign_tool/hap/verify/src/verify_elf.cpp	2026-06-23 01:10:12.015197968 +0800
 @@ -16,14 +16,17 @@
@@ -1046,7 +1046,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      if ((signInfo->flags & FLAG_SELF_SIGN) == FLAG_SELF_SIGN) {
          PrintMsg("code signature is self-sign");
          return true;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/utils/include/file_utils.h b/binary_sign_tool/utils/include/file_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/utils/include/file_utils.h b/binary_sign_tool/utils/include/file_utils.h
 --- a/binary_sign_tool/utils/include/file_utils.h	2026-06-23 01:04:41.427196405 +0800
 +++ b/binary_sign_tool/utils/include/file_utils.h	2026-06-23 01:10:12.019197811 +0800
 @@ -37,11 +37,9 @@
@@ -1072,7 +1072,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  };
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/utils/signature_tools_utils.gni b/binary_sign_tool/utils/signature_tools_utils.gni
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/utils/signature_tools_utils.gni b/binary_sign_tool/utils/signature_tools_utils.gni
 --- a/binary_sign_tool/utils/signature_tools_utils.gni	2026-06-23 01:04:41.427196405 +0800
 +++ b/binary_sign_tool/utils/signature_tools_utils.gni	2026-06-23 01:10:12.019197811 +0800
 @@ -23,5 +23,4 @@
@@ -1081,7 +1081,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
    "${hapsigntool_cpp_utils}/src/verify_hap_openssl_utils.cpp",
 -  "${signature_tools_utils}/src/compare_elf.cpp",
  ]
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/binary_sign_tool/utils/src/file_utils.cpp b/binary_sign_tool/utils/src/file_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/binary_sign_tool/utils/src/file_utils.cpp b/binary_sign_tool/utils/src/file_utils.cpp
 --- a/binary_sign_tool/utils/src/file_utils.cpp	2026-06-23 01:04:41.427196405 +0800
 +++ b/binary_sign_tool/utils/src/file_utils.cpp	2026-06-23 01:10:12.019197811 +0800
 @@ -15,9 +15,6 @@
@@ -1196,7 +1196,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/BUILD.gn b/hapsigntool_cpp/BUILD.gn
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/BUILD.gn b/hapsigntool_cpp/BUILD.gn
 --- a/hapsigntool_cpp/BUILD.gn	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/BUILD.gn	2026-06-23 01:10:12.175196718 +0800
 @@ -83,13 +83,14 @@
@@ -1215,7 +1215,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      "zlib:shared_libz",
    ]
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/api/include/cert_tools.h b/hapsigntool_cpp/api/include/cert_tools.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/api/include/cert_tools.h b/hapsigntool_cpp/api/include/cert_tools.h
 --- a/hapsigntool_cpp/api/include/cert_tools.h	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/api/include/cert_tools.h	2026-06-23 01:10:12.175196718 +0800
 @@ -39,8 +39,8 @@
@@ -1238,7 +1238,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static bool SetBasicExt(X509* cert);
      static bool SetkeyUsageExt(X509* cert);
      static bool SetKeyUsageEndExt(X509* cert);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/api/include/service_api.h b/hapsigntool_cpp/api/include/service_api.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/api/include/service_api.h b/hapsigntool_cpp/api/include/service_api.h
 --- a/hapsigntool_cpp/api/include/service_api.h	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/api/include/service_api.h	2026-06-23 01:10:12.175196718 +0800
 @@ -35,7 +35,6 @@
@@ -1249,7 +1249,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      virtual bool VerifyHapSigner(Options* params) = 0;
  };
  } // namespace SignatureTools
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/api/include/sign_tool_service_impl.h b/hapsigntool_cpp/api/include/sign_tool_service_impl.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/api/include/sign_tool_service_impl.h b/hapsigntool_cpp/api/include/sign_tool_service_impl.h
 --- a/hapsigntool_cpp/api/include/sign_tool_service_impl.h	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/api/include/sign_tool_service_impl.h	2026-06-23 01:10:12.175196718 +0800
 @@ -45,7 +45,6 @@
@@ -1260,7 +1260,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      bool VerifyProfile(Options* options)override;
      bool OutPutCertChain(std::vector<X509*>& certs, const std::string& outPutPath);
      bool OutPutCert(X509* cert, const std::string& outPutPath);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/api/src/cert_tools.cpp b/hapsigntool_cpp/api/src/cert_tools.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/api/src/cert_tools.cpp b/hapsigntool_cpp/api/src/cert_tools.cpp
 --- a/hapsigntool_cpp/api/src/cert_tools.cpp	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/api/src/cert_tools.cpp	2026-06-23 01:10:12.175196718 +0800
 @@ -116,7 +116,7 @@
@@ -1384,7 +1384,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
              SIGNATURE_TOOLS_LOGE("failed to set cert validity or public key");
              break;
          }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp b/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp b/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp
 --- a/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/api/src/sign_tool_service_impl.cpp	2026-06-23 01:10:12.175196718 +0800
 @@ -18,7 +18,7 @@
@@ -1448,7 +1448,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      ProfileInfo provision;
      AppProvisionVerifyResult result = ParseProvision(ret, provision);
      if (result != PROVISION_OK) {
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/bundle.json b/hapsigntool_cpp/bundle.json
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/bundle.json b/hapsigntool_cpp/bundle.json
 --- a/hapsigntool_cpp/bundle.json	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/bundle.json	2026-06-23 01:10:12.175196718 +0800
 @@ -33,14 +33,16 @@
@@ -1470,7 +1470,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
              ]
          },
          "build": {
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/cmd/include/help.h b/hapsigntool_cpp/cmd/include/help.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/cmd/include/help.h b/hapsigntool_cpp/cmd/include/help.h
 --- a/hapsigntool_cpp/cmd/include/help.h	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/cmd/include/help.h	2026-06-23 01:10:12.175196718 +0800
 @@ -37,9 +37,6 @@
@@ -1605,7 +1605,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  + VERIFY_APP_HELP_TXT + HELP_END_TXT;
  }
  }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/cmd/include/params_run_tool.h b/hapsigntool_cpp/cmd/include/params_run_tool.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/cmd/include/params_run_tool.h b/hapsigntool_cpp/cmd/include/params_run_tool.h
 --- a/hapsigntool_cpp/cmd/include/params_run_tool.h	2026-06-23 01:04:41.595197343 +0800
 +++ b/hapsigntool_cpp/cmd/include/params_run_tool.h	2026-06-23 01:10:12.175196718 +0800
 @@ -25,7 +25,6 @@
@@ -1642,7 +1642,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static bool RunVerifyProfile(Options* params, SignToolServiceImpl& api);
      static bool RunVerifyApp(Options* params, SignToolServiceImpl& api);
      static bool CheckEndCertArguments(Options& params);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/cmd/src/cmd_util.cpp b/hapsigntool_cpp/cmd/src/cmd_util.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/cmd/src/cmd_util.cpp b/hapsigntool_cpp/cmd/src/cmd_util.cpp
 --- a/hapsigntool_cpp/cmd/src/cmd_util.cpp	2026-06-23 01:04:41.599196249 +0800
 +++ b/hapsigntool_cpp/cmd/src/cmd_util.cpp	2026-06-23 01:10:12.175196718 +0800
 @@ -33,7 +33,7 @@
@@ -1728,7 +1728,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          return true;
      }
      PrintErrorNumberMsg("COMMAND_PARAM_ERROR", COMMAND_PARAM_ERROR, "Not support command param '" + inputType + "'");
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/cmd/src/params_run_tool.cpp b/hapsigntool_cpp/cmd/src/params_run_tool.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/cmd/src/params_run_tool.cpp b/hapsigntool_cpp/cmd/src/params_run_tool.cpp
 --- a/hapsigntool_cpp/cmd/src/params_run_tool.cpp	2026-06-23 01:04:41.599196249 +0800
 +++ b/hapsigntool_cpp/cmd/src/params_run_tool.cpp	2026-06-23 01:10:12.175196718 +0800
 @@ -20,17 +20,11 @@
@@ -2034,7 +2034,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      return api.SignProfile(params);
  }
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/cmd/src/params_trust_list.cpp b/hapsigntool_cpp/cmd/src/params_trust_list.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/cmd/src/params_trust_list.cpp b/hapsigntool_cpp/cmd/src/params_trust_list.cpp
 --- a/hapsigntool_cpp/cmd/src/params_trust_list.cpp	2026-06-23 01:04:41.599196249 +0800
 +++ b/hapsigntool_cpp/cmd/src/params_trust_list.cpp	2026-06-23 01:10:12.175196718 +0800
 @@ -35,8 +35,7 @@
@@ -2056,7 +2056,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          trustMap[keyParam].clear();
          return trustMap[keyParam];
      }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h b/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h b/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h
 --- a/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h	2026-06-23 01:04:41.603195936 +0800
 +++ b/hapsigntool_cpp/codesigning/fsverity/include/fs_verity_hash_algorithm.h	2026-06-23 01:10:12.183195936 +0800
 @@ -15,7 +15,6 @@
@@ -2067,7 +2067,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  #include <string>
  
  namespace OHOS {
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp b/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp b/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp
 --- a/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp	2026-06-23 01:04:41.603195936 +0800
 +++ b/hapsigntool_cpp/codesigning/fsverity/src/fs_verity_descriptor.cpp	2026-06-23 01:10:12.183195936 +0800
 @@ -131,7 +131,7 @@
@@ -2079,7 +2079,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          } else {
              buffer->PutData(src.data(), src.size());
          }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/sign/include/code_signing.h b/hapsigntool_cpp/codesigning/sign/include/code_signing.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/sign/include/code_signing.h b/hapsigntool_cpp/codesigning/sign/include/code_signing.h
 --- a/hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-06-23 01:10:12.183195936 +0800
 @@ -1,5 +1,5 @@
@@ -2128,7 +2128,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      bool HandleZipGlobalInfo(const std::string& packageName, unzFile& zFile,
                               unz_global_info& zGlobalInfo, UnzipHandleParam& param);
      bool DoNativeLibVerify(std::string fileName, std::stringbuf& sb,
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h b/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h b/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h
 --- a/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-06-23 01:10:12.183195936 +0800
 @@ -49,7 +49,7 @@
@@ -2140,7 +2140,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static bool ParseMerkleTree(CodeSignBlock& csb, int32_t readOffset, std::ifstream& signedHap,
                                  int64_t computedTreeOffset);
      static int64_t GetAlignmentAddr(int64_t alignment, int64_t input);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp b/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp b/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp
 --- a/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-06-23 01:10:12.183195936 +0800
 @@ -1,5 +1,5 @@
@@ -2368,7 +2368,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  bool CodeSigning::IsNativeFile(const std::string& input)
  {
      size_t dotPos = input.rfind('.');
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp b/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp b/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp
 --- a/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-06-23 01:10:12.187196249 +0800
 @@ -61,11 +61,11 @@
@@ -2494,7 +2494,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      }
      return true;
  }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp b/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp b/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp
 --- a/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/utils/src/cms_utils.cpp	2026-06-23 01:10:12.187196249 +0800
 @@ -55,7 +55,7 @@
@@ -2506,7 +2506,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      }
      for (int i = 0; i < sk_PKCS7_SIGNER_INFO_num(signerInfosk); i++) {
          PKCS7_SIGNER_INFO* signerInfo = sk_PKCS7_SIGNER_INFO_value(signerInfosk, i);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp b/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp b/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp
 --- a/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp	2026-06-23 01:04:41.607196405 +0800
 +++ b/hapsigntool_cpp/codesigning/utils/src/fs_digest_utils.cpp	2026-06-23 01:10:12.187196249 +0800
 @@ -22,20 +22,14 @@
@@ -2559,7 +2559,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      }
  }
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/common/include/constant.h b/hapsigntool_cpp/common/include/constant.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/common/include/constant.h b/hapsigntool_cpp/common/include/constant.h
 --- a/hapsigntool_cpp/common/include/constant.h	2026-06-23 01:04:41.611196405 +0800
 +++ b/hapsigntool_cpp/common/include/constant.h	2026-06-23 01:10:12.187196249 +0800
 @@ -57,8 +57,6 @@
@@ -2579,7 +2579,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  const std::string SIGN_APP = "sign-app";
  const std::string SIGN_PROFILE = "sign-profile";
  const std::string VERIFY_APP = "verify-app";
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/common/include/options.h b/hapsigntool_cpp/common/include/options.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/common/include/options.h b/hapsigntool_cpp/common/include/options.h
 --- a/hapsigntool_cpp/common/include/options.h	2026-06-23 01:04:41.611196405 +0800
 +++ b/hapsigntool_cpp/common/include/options.h	2026-06-23 01:10:12.187196249 +0800
 @@ -37,7 +37,6 @@
@@ -2598,7 +2598,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  };
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/common/signature_tools_common.gni b/hapsigntool_cpp/common/signature_tools_common.gni
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/common/signature_tools_common.gni b/hapsigntool_cpp/common/signature_tools_common.gni
 --- a/hapsigntool_cpp/common/signature_tools_common.gni	2026-06-23 01:04:41.611196405 +0800
 +++ b/hapsigntool_cpp/common/signature_tools_common.gni	2026-06-23 01:10:12.191196874 +0800
 @@ -23,5 +23,4 @@
@@ -2607,7 +2607,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
    "${signature_tools_common}/src/options.cpp",
 -  "${signature_tools_common}/src/password_guard.cpp",
  ]
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/common/src/localization_adapter.cpp b/hapsigntool_cpp/common/src/localization_adapter.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/common/src/localization_adapter.cpp b/hapsigntool_cpp/common/src/localization_adapter.cpp
 --- a/hapsigntool_cpp/common/src/localization_adapter.cpp	2026-06-23 01:04:41.611196405 +0800
 +++ b/hapsigntool_cpp/common/src/localization_adapter.cpp	2026-06-23 01:10:12.191196874 +0800
 @@ -209,7 +209,7 @@
@@ -2619,7 +2619,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      for (int i = 0; i < static_cast<int>(certs.size()); i++) {
          sk_X509_push(certificates, certs[i]);
      }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/common/src/options.cpp b/hapsigntool_cpp/common/src/options.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/common/src/options.cpp b/hapsigntool_cpp/common/src/options.cpp
 --- a/hapsigntool_cpp/common/src/options.cpp	2026-06-23 01:04:41.615196405 +0800
 +++ b/hapsigntool_cpp/common/src/options.cpp	2026-06-23 01:10:12.191196874 +0800
 @@ -56,7 +56,6 @@
@@ -2642,7 +2642,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/entity/include/param_constants.h b/hapsigntool_cpp/hap/entity/include/param_constants.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/entity/include/param_constants.h b/hapsigntool_cpp/hap/entity/include/param_constants.h
 --- a/hapsigntool_cpp/hap/entity/include/param_constants.h	2026-06-23 01:04:41.615196405 +0800
 +++ b/hapsigntool_cpp/hap/entity/include/param_constants.h	2026-06-23 01:10:12.191196874 +0800
 @@ -58,17 +58,12 @@
@@ -2663,7 +2663,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  };
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/entity/src/param_constants.cpp b/hapsigntool_cpp/hap/entity/src/param_constants.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/entity/src/param_constants.cpp b/hapsigntool_cpp/hap/entity/src/param_constants.cpp
 --- a/hapsigntool_cpp/hap/entity/src/param_constants.cpp	2026-06-23 01:04:41.619197343 +0800
 +++ b/hapsigntool_cpp/hap/entity/src/param_constants.cpp	2026-06-23 01:10:12.195196561 +0800
 @@ -50,15 +50,10 @@
@@ -2683,7 +2683,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp b/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp b/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp
 --- a/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp	2026-06-23 01:04:41.619197343 +0800
 +++ b/hapsigntool_cpp/hap/entity/src/sign_content_info.cpp	2026-06-23 01:10:12.195196561 +0800
 @@ -57,36 +57,54 @@
@@ -2755,7 +2755,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
              return std::vector<int8_t>();
          }
      }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/provider/include/sign_provider.h b/hapsigntool_cpp/hap/provider/include/sign_provider.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/provider/include/sign_provider.h b/hapsigntool_cpp/hap/provider/include/sign_provider.h
 --- a/hapsigntool_cpp/hap/provider/include/sign_provider.h	2026-06-23 01:04:41.619197343 +0800
 +++ b/hapsigntool_cpp/hap/provider/include/sign_provider.h	2026-06-23 01:10:12.195196561 +0800
 @@ -54,21 +54,11 @@
@@ -2856,7 +2856,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      std::string profileContent;
  };
  } // namespace SignatureTools
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/provider/src/sign_provider.cpp b/hapsigntool_cpp/hap/provider/src/sign_provider.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/provider/src/sign_provider.cpp b/hapsigntool_cpp/hap/provider/src/sign_provider.cpp
 --- a/hapsigntool_cpp/hap/provider/src/sign_provider.cpp	2026-06-23 01:04:41.619197343 +0800
 +++ b/hapsigntool_cpp/hap/provider/src/sign_provider.cpp	2026-06-23 01:10:12.199196561 +0800
 @@ -21,10 +21,8 @@
@@ -3632,7 +3632,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          PrintErrorNumberMsg("COMMAND_PARAM_ERROR", COMMAND_PARAM_ERROR,
                              "compatibleVersion Parameter is must integer");
          return false;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/sign/include/sign_hap.h b/hapsigntool_cpp/hap/sign/include/sign_hap.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/sign/include/sign_hap.h b/hapsigntool_cpp/hap/sign/include/sign_hap.h
 --- a/hapsigntool_cpp/hap/sign/include/sign_hap.h	2026-06-23 01:04:41.623196874 +0800
 +++ b/hapsigntool_cpp/hap/sign/include/sign_hap.h	2026-06-23 01:10:12.199196561 +0800
 @@ -30,8 +30,6 @@
@@ -3654,7 +3654,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static void EncodeListOfPairsToByteArray(const DigestParameter& digestParam,
                                               const std::vector<std::pair<int32_t, ByteBuffer>>& contentDigests,
                                               ByteBuffer& result);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/sign/src/sign_hap.cpp b/hapsigntool_cpp/hap/sign/src/sign_hap.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/sign/src/sign_hap.cpp b/hapsigntool_cpp/hap/sign/src/sign_hap.cpp
 --- a/hapsigntool_cpp/hap/sign/src/sign_hap.cpp	2026-06-23 01:04:41.623196874 +0800
 +++ b/hapsigntool_cpp/hap/sign/src/sign_hap.cpp	2026-06-23 01:10:12.199196561 +0800
 @@ -198,109 +198,5 @@
@@ -3768,7 +3768,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/utils/include/hap_utils.h b/hapsigntool_cpp/hap/utils/include/hap_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/utils/include/hap_utils.h b/hapsigntool_cpp/hap/utils/include/hap_utils.h
 --- a/hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-06-23 01:04:41.623196874 +0800
 +++ b/hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-06-23 01:10:12.199196561 +0800
 @@ -1,5 +1,5 @@
@@ -3816,7 +3816,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  
  private:
      static const int32_t MAX_APP_ID_LEN = 32;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/utils/src/hap_utils.cpp b/hapsigntool_cpp/hap/utils/src/hap_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/utils/src/hap_utils.cpp b/hapsigntool_cpp/hap/utils/src/hap_utils.cpp
 --- a/hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-06-23 01:04:41.623196874 +0800
 +++ b/hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-06-23 01:10:12.199196561 +0800
 @@ -1,5 +1,5 @@
@@ -3954,7 +3954,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
 -} // namespace OHOS
 +} // namespace OHOS
 \ No newline at end of file
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/verify/include/verify_hap.h b/hapsigntool_cpp/hap/verify/include/verify_hap.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/verify/include/verify_hap.h b/hapsigntool_cpp/hap/verify/include/verify_hap.h
 --- a/hapsigntool_cpp/hap/verify/include/verify_hap.h	2026-06-23 01:04:41.623196874 +0800
 +++ b/hapsigntool_cpp/hap/verify/include/verify_hap.h	2026-06-23 01:10:12.203196874 +0800
 @@ -28,6 +28,7 @@
@@ -4043,7 +4043,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      bool isPrintCert;
  };
  } // namespace SignatureTools
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/hap/verify/src/verify_hap.cpp b/hapsigntool_cpp/hap/verify/src/verify_hap.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/hap/verify/src/verify_hap.cpp b/hapsigntool_cpp/hap/verify/src/verify_hap.cpp
 --- a/hapsigntool_cpp/hap/verify/src/verify_hap.cpp	2026-06-23 01:04:41.627196405 +0800
 +++ b/hapsigntool_cpp/hap/verify/src/verify_hap.cpp	2026-06-23 01:10:12.203196874 +0800
 @@ -18,7 +18,6 @@
@@ -4928,7 +4928,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      PKCS7Data p7Data;
      if (p7Data.Parse(profile) < 0) {
          ret = profile;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/profile/src/pkcs7_data.cpp b/hapsigntool_cpp/profile/src/pkcs7_data.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/profile/src/pkcs7_data.cpp b/hapsigntool_cpp/profile/src/pkcs7_data.cpp
 --- a/hapsigntool_cpp/profile/src/pkcs7_data.cpp	2026-06-23 01:04:41.627196405 +0800
 +++ b/hapsigntool_cpp/profile/src/pkcs7_data.cpp	2026-06-23 01:10:12.203196874 +0800
 @@ -463,7 +463,7 @@
@@ -4958,7 +4958,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      if (!attrBuf) {
          OPENSSL_free(attrBuf);
          return 0;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/profile/src/profile_verify.cpp b/hapsigntool_cpp/profile/src/profile_verify.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/profile/src/profile_verify.cpp b/hapsigntool_cpp/profile/src/profile_verify.cpp
 --- a/hapsigntool_cpp/profile/src/profile_verify.cpp	2026-06-23 01:04:41.627196405 +0800
 +++ b/hapsigntool_cpp/profile/src/profile_verify.cpp	2026-06-23 01:10:12.203196874 +0800
 @@ -14,14 +14,14 @@
@@ -5244,7 +5244,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      return PROVISION_OK;
  }
  } // namespace SignatureTools
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/signer/src/local_signer.cpp b/hapsigntool_cpp/signer/src/local_signer.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/signer/src/local_signer.cpp b/hapsigntool_cpp/signer/src/local_signer.cpp
 --- a/hapsigntool_cpp/signer/src/local_signer.cpp	2026-06-23 01:04:41.627196405 +0800
 +++ b/hapsigntool_cpp/signer/src/local_signer.cpp	2026-06-23 01:10:12.207196249 +0800
 @@ -81,7 +81,7 @@
@@ -5256,7 +5256,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          return ret;
      }
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/signer/src/signer_factory.cpp b/hapsigntool_cpp/signer/src/signer_factory.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/signer/src/signer_factory.cpp b/hapsigntool_cpp/signer/src/signer_factory.cpp
 --- a/hapsigntool_cpp/signer/src/signer_factory.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/signer/src/signer_factory.cpp	2026-06-23 01:10:12.207196249 +0800
 @@ -83,6 +83,10 @@
@@ -5270,7 +5270,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      std::shared_ptr<Signer> remoteSigner(signer);
      return remoteSigner;
  }
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/include/byte_array_utils.h b/hapsigntool_cpp/utils/include/byte_array_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/include/byte_array_utils.h b/hapsigntool_cpp/utils/include/byte_array_utils.h
 --- a/hapsigntool_cpp/utils/include/byte_array_utils.h	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/include/byte_array_utils.h	2026-06-23 01:10:12.207196249 +0800
 @@ -27,7 +27,7 @@
@@ -5282,7 +5282,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      static int InsertCharToByteArray(std::vector<int8_t>& des, int start, std::string src);
  
  private:
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/include/hap_signer_block_utils.h b/hapsigntool_cpp/utils/include/hap_signer_block_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/include/hap_signer_block_utils.h b/hapsigntool_cpp/utils/include/hap_signer_block_utils.h
 --- a/hapsigntool_cpp/utils/include/hap_signer_block_utils.h	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/include/hap_signer_block_utils.h	2026-06-23 01:10:12.207196249 +0800
 @@ -43,8 +43,6 @@
@@ -5324,7 +5324,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      DLL_EXPORT static bool SetUnsignedInt32(ByteBuffer& buffer, int32_t offset, int64_t value);
      DLL_EXPORT static bool ComputeDigestsWithOptionalBlock(const DigestParameter& digestParam,
                                                             const std::vector<OptionalBlock>& optionalBlocks,
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/include/key_store_helper.h b/hapsigntool_cpp/utils/include/key_store_helper.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/include/key_store_helper.h b/hapsigntool_cpp/utils/include/key_store_helper.h
 --- a/hapsigntool_cpp/utils/include/key_store_helper.h	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/include/key_store_helper.h	2026-06-23 01:10:12.207196249 +0800
 @@ -31,7 +31,6 @@
@@ -5335,7 +5335,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      int ReadKeyStore(std::string& keyStorePath, char* keyStorePwd, const std::string& alias,
                      char* keyPwd, EVP_PKEY** evpPkey);
      int GetPublicKey(PKCS7* safe, const std::string& alias, char* pass, int passlen, EVP_PKEY** publickey);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/include/string_utils.h b/hapsigntool_cpp/utils/include/string_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/include/string_utils.h b/hapsigntool_cpp/utils/include/string_utils.h
 --- a/hapsigntool_cpp/utils/include/string_utils.h	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/include/string_utils.h	2026-06-23 01:10:12.207196249 +0800
 @@ -38,7 +38,7 @@
@@ -5347,7 +5347,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  };
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h b/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h b/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h
 --- a/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/include/verify_hap_openssl_utils.h	2026-06-23 01:10:12.207196249 +0800
 @@ -38,6 +38,7 @@
@@ -5358,7 +5358,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
      DLL_EXPORT static bool VerifyPkcs7(Pkcs7Context& pkcs7Context);
  
      static void GetOpensslErrorMessage();
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/src/byte_array_utils.cpp b/hapsigntool_cpp/utils/src/byte_array_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/src/byte_array_utils.cpp b/hapsigntool_cpp/utils/src/byte_array_utils.cpp
 --- a/hapsigntool_cpp/utils/src/byte_array_utils.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/src/byte_array_utils.cpp	2026-06-23 01:10:12.207196249 +0800
 @@ -49,7 +49,7 @@
@@ -5370,7 +5370,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  {
      if (src.size() < srcLen) {
          return -1;
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp b/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp b/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp
 --- a/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/src/hap_signer_block_utils.cpp	2026-06-23 01:10:12.207196249 +0800
 @@ -27,7 +27,6 @@
@@ -5515,7 +5515,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
  
      if (!digestInfo.content.IsEqual(actualDigest)) {
          SIGNATURE_TOOLS_LOGE("digest of contents verify failed, alg %d", nId);
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/src/key_store_helper.cpp b/hapsigntool_cpp/utils/src/key_store_helper.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/src/key_store_helper.cpp b/hapsigntool_cpp/utils/src/key_store_helper.cpp
 --- a/hapsigntool_cpp/utils/src/key_store_helper.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/src/key_store_helper.cpp	2026-06-23 01:10:12.211196561 +0800
 @@ -248,13 +248,13 @@
@@ -5679,7 +5679,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
          goto err;
      }
  
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/src/string_utils.cpp b/hapsigntool_cpp/utils/src/string_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/src/string_utils.cpp b/hapsigntool_cpp/utils/src/string_utils.cpp
 --- a/hapsigntool_cpp/utils/src/string_utils.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/src/string_utils.cpp	2026-06-23 01:10:12.211196561 +0800
 @@ -31,20 +31,13 @@
@@ -5784,7 +5784,7 @@ diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '
 -
  } // namespace SignatureTools
  } // namespace OHOS
-diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' a/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp b/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp
+diff -ruN '--exclude=.git' '--exclude=*.o' '--exclude=build' '--exclude=*.jar' '--exclude=*.p12' '--exclude=dist' '--exclude=autosign' '--exclude=tools' '--exclude=figures' '--exclude=hapsigntool' '--exclude=*_test' '--exclude=Makefile' '--exclude=compat.h' '--exclude=run-build.sh' '--exclude=build-in-*' '--exclude=*.md' '--exclude=OAT.xml' '--exclude=NOTICE' '--exclude=.github' '--exclude=LICENSE' '--exclude=binary_sign_tool/java' '--exclude=binary_sign_tool/common/include/password_guard.h' '--exclude=binary_sign_tool/common/include/signature_tools_log.h' '--exclude=binary_sign_tool/utils/include/compare_elf.h' '--exclude=binary_sign_tool/utils/src/compare_elf.cpp' '--exclude=hapsigntool_cpp/common/include/password_guard.h' '--exclude=hapsigntool_cpp/common/src/password_guard.cpp' a/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp b/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp
 --- a/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp	2026-06-23 01:04:41.631196405 +0800
 +++ b/hapsigntool_cpp/utils/src/verify_hap_openssl_utils.cpp	2026-06-23 01:10:12.211196561 +0800
 @@ -133,6 +133,15 @@
