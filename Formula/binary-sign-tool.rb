@@ -19,7 +19,7 @@ class BinarySignTool < Formula
   # ELFIO — C++ header-only library for ELF parsing
   resource "elfio" do
     url "https://github.com/openharmony/third_party_elfio/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
-    sha256 "<TODO>"
+    sha256 "efaf64750081b10300430da5c4b1720758da02719f8d82c4f747962c29fda18b"
   end
 
   # nlohmann/json — C++ JSON library (header-only)
