@@ -5,7 +5,7 @@
 ## 使用
 
 ```sh
-brew tap nknkol/cask
+brew tap nknkol/cask https://github.com/nknkol/harmonybrew-cask.git
 brew install binary-sign-tool
 ```
 
