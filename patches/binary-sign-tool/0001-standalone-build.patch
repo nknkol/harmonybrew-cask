@@ -1,56 +1,19 @@
-Subject: [PATCH] Add standalone build support (compat.h + Makefile)
-
-Allows building binary_sign_tool independently without the full OpenHarmony
-GN build system.  The compat.h header force-includes missing standard library
-headers that the GN build normally injects globally.  The Makefile compiles
-all needed source files and links against external dependencies.
-
----
- compat.h  |  24 ++++++++++
- Makefile  | 148 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 172 insertions(+)
- create mode 100644 compat.h
- create mode 100644 Makefile
-
---- /dev/null
-+++ b/compat.h
-@@ -0,0 +1,24 @@
-+// compatibility header for standalone compilation
-+// force-included to fix missing includes in the OpenHarmony codebase
-+#ifndef STANDALONE_COMPAT_H
-+#define STANDALONE_COMPAT_H
-+
-+#include <cstdint>
-+#include <cinttypes>
-+#include <cstddef>
-+#include <algorithm>
-+#include <string>
-+#include <vector>
-+#include <memory>
-+#include <list>
-+#include <map>
-+#include <set>
-+#include <sstream>
-+#include <fstream>
-+#include <iostream>
-+#include <cstdio>
-+#include <cstring>
-+#include <cstdlib>
-+#include <cmath>
-+
-+#endif
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..d8d6715
 --- /dev/null
 +++ b/Makefile
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,141 @@
 +# Makefile for standalone compilation of binary_sign_tool
 +
-+PROJ ?= $(CURDIR)
-+OPENSSL_PREFIX ?= /usr
++PROJ := /home/user/developtools_hapsigner
++OPENSSL_PREFIX ?= /home/linuxbrew/.linuxbrew
 +
-+CXX ?= g++
-+CXXFLAGS ?= -std=c++17 -fno-rtti -Wall
-+CXXFLAGS += -include $(PROJ)/compat.h
++CXX := /home/linuxbrew/.linuxbrew/Cellar/gcc/15.2.0_1/bin/g++-15
++CXXFLAGS := -std=c++17 -fno-rtti -Wall -B/home/linuxbrew/.linuxbrew/Cellar/binutils/2.46.0/bin/ -include $(PROJ)/compat.h
 +
++# Use Homebrew binutils 2.46 (system 2.41 doesn't support .base64 pseudo-op)
++export PATH := /home/linuxbrew/.linuxbrew/Cellar/binutils/2.46.0/bin:$(PATH)
 +B := $(PROJ)/binary_sign_tool
 +H := $(PROJ)/hapsigntool_cpp
 +T := $(PROJ)/third_party
@@ -182,3 +145,33 @@ all needed source files and links against external dependencies.
 +
 +clean:
 +	rm -rf $(BLD)
+diff --git a/compat.h b/compat.h
+new file mode 100644
+index 0000000..7a7b093
+--- /dev/null
++++ b/compat.h
+@@ -0,0 +1,24 @@
++// compatibility header for standalone compilation
++// force-included to fix missing includes in the OpenHarmony codebase
++#ifndef STANDALONE_COMPAT_H
++#define STANDALONE_COMPAT_H
++
++#include <cstdint>
++#include <cinttypes>
++#include <cstddef>
++#include <algorithm>
++#include <string>
++#include <vector>
++#include <memory>
++#include <list>
++#include <map>
++#include <set>
++#include <sstream>
++#include <fstream>
++#include <iostream>
++#include <cstdio>
++#include <cstring>
++#include <cstdlib>
++#include <cmath>
++
++#endif
