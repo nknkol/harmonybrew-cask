@@ -2,8 +2,7 @@ class BinarySignTool < Formula
   desc "OpenHarmony ELF binary signing tool"
   homepage "https://gitee.com/openharmony/developtools_hapsigner"
   url "https://github.com/openharmony/developtools_hapsigner/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
-  # TODO: run `brew fetch --build-from-source binary-sign-tool` and fill in sha256
-  sha256 "<TODO>"
+  sha256 "5f1b8f6cb40443d5f80f2f394334fcc5a7da2f8ab0e50159608f58b885f9213d"
   license "Apache-2.0"
   version "1.0.0"
 
@@ -19,20 +18,20 @@ class BinarySignTool < Formula
 
   # ELFIO — C++ header-only library for ELF parsing
   resource "elfio" do
-    url "https://github.com/serge1/ELFIO/archive/refs/tags/Release_3.14.tar.gz"
-    sha256 "fdd5a4c27e00c57c53e87822cbc1bcbc9c66d0d700384f712b8e568d5b78a614"
+    url "https://github.com/openharmony/third_party_elfio/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
+    sha256 "<TODO>"
   end
 
   # nlohmann/json — C++ JSON library (header-only)
   resource "nlohmann-json" do
     url "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz"
-    sha256 "a22461d13119ac5c78f205d3df1db13403e58ce1bb1794edc9313677313f4a9d"
+    sha256 "d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d"
   end
 
   # bounds_checking_function — OpenHarmony secure C functions
   resource "bounds_checking_function" do
     url "https://github.com/openharmony/third_party_bounds_checking_function/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
-    sha256 "<TODO>"
+    sha256 "3b4500e94df63f475733c6dcaeb9a5efe67e955938392bfa3bcb5471ed78b296"
   end
 
   def install
