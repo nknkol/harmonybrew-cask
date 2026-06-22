@@ -34,7 +34,7 @@ class BinarySignTool < Formula
   # nlohmann/json — C++ JSON library (header-only, replaces cJSON)
   resource "nlohmann-json" do
     url "https://github.com/openharmony/third_party_json/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
-    sha256 "<TODO>"
+    sha256 "65d17c4ce65f48f79c233a959805e9cc8b3bcda90adeabe2721d4b3ec3d859c5"
   end
 
   # bounds_checking_function — OpenHarmony secure C functions
