@@ -29,6 +29,8 @@ class BinarySignTool < Formula
   end
 
   def install
+    ENV.deparallelize
+
     # ── Apply patches ─────────────────────────────────────────────
     # Use explicit patch commands to avoid Homebrew's patch DSL
     # which fails on harmless offset hunks in 0002.
