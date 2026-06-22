@@ -44,6 +44,42 @@ class BinarySignTool < Formula
   end
 
   def install
+    # ── Remove files deleted by the 0002 ELF signing patch ────────
+    # The patch removes Java build artifacts and unused C++ files
+    # that are not needed for standalone C++ compilation.
+    rm_f buildpath/"binary_sign_tool/common/include/password_guard.h"
+    rm_f buildpath/"binary_sign_tool/common/include/signature_tools_log.h"
+    rm_f buildpath/"binary_sign_tool/java/pom.xml"
+    rm_f buildpath/"binary_sign_tool/java/settings.xml"
+    rm_f buildpath/"binary_sign_tool/java/binary_sign_tool/pom.xml"
+    rm_f buildpath/"binary_sign_tool/java/binary_sign_tool/src/main/resources/help.txt"
+    rm_f buildpath/"binary_sign_tool/java/binary_sign_tool/src/main/resources/log.properties"
+    rm_f buildpath/"binary_sign_tool/java/binary_sign_tool_lib/pom.xml"
+    rm_f buildpath/"binary_sign_tool/java/binary_sign_tool_lib/src/test/resources/log.properties"
+    rm_f buildpath/"binary_sign_tool/java/elfio/pom.xml"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ArraySectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/DynamicSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ElfHeader.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ElfTypes.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/Elfio.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ElfioDump.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ElfioUtils.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ModInfoSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/NoteSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/RelocationSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/Section.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/Segment.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/StringSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/SymbolSectionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/VersionDefinitionAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/VersionNeedAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/VersionSymbolAccessor.java"
+    rm_f buildpath/"binary_sign_tool/java/elfio/src/main/java/com/ohos/elfio/ZlibCompression.java"
+    rm_f buildpath/"binary_sign_tool/utils/include/compare_elf.h"
+    rm_f buildpath/"binary_sign_tool/utils/src/compare_elf.cpp"
+    rm_f buildpath/"hapsigntool_cpp/common/include/password_guard.h"
+    rm_f buildpath/"hapsigntool_cpp/common/src/password_guard.cpp"
+
     # ── Unpack third-party resources into expected paths ──────────
     (buildpath/"third_party").mkpath
     (buildpath/"third_party/third_party_elfio").install resource("elfio")
