@@ -1,7 +1,4 @@
---- developtools_hapsigner/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:04:41.395196249 +0800
-+++ binary_sign_tool/binary_sign_tool/hap/sign/src/sign_elf.cpp	2026-06-23 01:10:12.015197968 +0800
-@@ -15,19 +15,25 @@
- 
+Subject: [PATCH] Fix ELF structure corruption during signing
  #include "sign_elf.h"
  #include <unistd.h>
 +#include <cstring>

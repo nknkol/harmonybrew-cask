@@ -17,10 +17,12 @@ class BinarySignTool < Formula
   end
 
   patch do
-    # Replaces cJSON with nlohmann/json (header-only, no link needed)
-    # The OpenHarmony GN build uses bundled cJSON; standalone build
-    # uses nlohmann for simpler dependency management
-    file "patches/binary-sign-tool/0002-cjson-to-nlohmann-json.patch"
+    # Fixes ELFIO::save() corrupting ELF layout during signing.
+    # Replaces the ELFIO-based section append with a raw-byte
+    # approach that preserves original Program Headers, section
+    # offsets, and inter-segment padding.  Also migrates cJSON
+    # to nlohmann/json (already used elsewhere in the tree).
+    file "patches/binary-sign-tool/0002-fix-elf-signing.patch"
   end
 
   # ELFIO — C++ header-only library for ELF parsing
