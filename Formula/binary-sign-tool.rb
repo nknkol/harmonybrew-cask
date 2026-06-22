@@ -28,6 +28,12 @@ class BinarySignTool < Formula
     sha256 "d6c65aca6b1ed68e7a182f4757257b107ae403032760ed6ef121c9d55e81757d"
   end
 
+  # cJSON — lightweight JSON parser (used by sign_elf / verify_elf)
+  resource "cjson" do
+    url "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.18.tar.gz"
+    sha256 "<TODO>"
+  end
+
   # bounds_checking_function — OpenHarmony secure C functions
   resource "bounds_checking_function" do
     url "https://github.com/openharmony/third_party_bounds_checking_function/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
@@ -39,6 +45,7 @@ class BinarySignTool < Formula
     (buildpath/"third_party").mkpath
     (buildpath/"third_party/third_party_elfio").install resource("elfio")
     (buildpath/"third_party/third_party_json").install resource("nlohmann-json")
+    (buildpath/"third_party/third_party_cjson").install resource("cjson")
     (buildpath/"third_party/third_party_bounds_checking_function").install resource("bounds_checking_function")
 
     # ── Build ─────────────────────────────────────────────────────
