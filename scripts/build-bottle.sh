@@ -97,11 +97,27 @@ fi
 
 # ── Merge bottle block into formula ─────────────────────────────────
 log_step "Merge bottle block into formula"
-git config --global user.email "bottle@harmonybrew.local"
-git config --global user.name "Harmonybrew Bottle"
 JSON_FILE=$(ls ./"$FORMULA"-*.json 2>/dev/null | head -1)
 if [ -n "$JSON_FILE" ] && [ -f "$JSON_FILE" ]; then
-  brew bottle --merge --write "$JSON_FILE"
+  python3 -c "
+import json, re
+with open('${JSON_FILE}') as f:
+    data = json.load(f)
+for name, info in data.items():
+    sha = info['bottle']['tags']['arm64_ohos']['sha256']
+    formula_path = 'Formula/${FORMULA}.rb'
+    with open(formula_path, 'r') as f:
+        content = f.read()
+    # Replace or insert sha256 line in bottle block
+    new_line = f'    sha256 cellar: :any_skip_relocation, arm64_ohos: \"{sha}\"'
+    if re.search(r'sha256 cellar:', content):
+        content = re.sub(r'  sha256 cellar:.*arm64_ohos:.*', new_line, content)
+    else:
+        content = re.sub(r'(  bottle do\n.*root_url.*\n)', r'\1' + new_line + '\n', content)
+    with open(formula_path, 'w') as f:
+        f.write(content)
+    print(f'Merged sha256 {sha} into {formula_path}')
+"
   log_step "Formula updated with bottle block"
 else
   echo "ERROR: No bottle JSON found for merge" >&2
