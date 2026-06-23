@@ -1,6 +1,6 @@
 # Formula 配方样板
 
-## 源码编译（binary-sign-tool 类型）
+## 1. 源码编译
 
 ```ruby
 class BinarySignTool < Formula
@@ -11,93 +11,89 @@ class BinarySignTool < Formula
   license "Apache-2.0"
   version "1.0.0"
 
-  # 必填：瓶子下载地址（每个软件一个稳定 Release）
   bottle do
     root_url "https://github.com/<user>/<repo>/releases/download/bottles%2F<formula>"
   end
 
-  # 编译依赖
   depends_on "cmake" => :build
   depends_on "make" => :build
-  depends_on "gpatch" => :build   # 需要打补丁时
+  depends_on "gpatch" => :build
   depends_on "openssl@3"
-
-  # 运行时依赖
   depends_on "zlib-ng-compat"
 
-  # 补丁（从官方源打）—— 把补丁放在 patches/<formula>/ 下
   patch do
     file "patches/binary-sign-tool/0001-fix-elf-signing.patch"
   end
 
-  # 第三方依赖（没有 Homebrew formula 的）
   resource "elfio" do
     url "https://github.com/openharmony/third_party_elfio/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "<fill-in>"
   end
 
   def install
-    ENV.deparallelize  # 鸿蒙 tmpfs 不支持并行 jobserver
+    ENV.deparallelize
 
-    # 解压 resource 到指定目录
     (buildpath/"third_party/third_party_elfio").install resource("elfio")
 
-    # 编译
     system "make",
            "CXX=clang++",
            "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
            "OPENSSL_PREFIX=#{Formula["openssl@3"].opt_prefix}",
            "PROJ=#{buildpath}"
 
-    bin.install "build/<binary-name>"
+    bin.install "build/<binary>"
   end
 
   test do
-    system "#{bin}/<binary-name>"
+    system "#{bin}/<binary>"
   end
 end
 ```
 
-## 预编译二进制（reasonix / starship 类型）
+## 2. 预编译 / 闭源软件
 
 ```ruby
-class Reasonix < Formula
-  desc "DeepSeek Reasonix"
-  homepage "https://github.com/esengine/DeepSeek-Reasonix"
-  version "1.10.0"
-  url "https://github.com/esengine/DeepSeek-Reasonix/releases/download/v#{version}/reasonix-linux-arm64.tar.gz"
+class SomeTool < Formula
+  desc "某预编译/闭源工具"
+  homepage "https://example.com"
+  url "https://example.com/releases/tool-arm64.tar.gz"
   sha256 "<fill-in>"
+  version "1.0.0"
 
   bottle do
-    root_url "https://github.com/<user>/<repo>/releases/download/bottles%2Freasonix"
+    root_url "https://github.com/<user>/<repo>/releases/download/bottles%2Fsome-tool"
   end
 
-  # 需要签名
-  depends_on "binary-sign-tool"
-
   def install
-    bin.install "reasonix"
-    chmod 0755, bin/"reasonix"
+    bin.install "tool"
   end
 
   def post_install
-    # 签名由 formula 自身处理，不在 CI 脚本中
+    # 本地签名：二进制必须先签名才能在鸿蒙运行
     system "binary-sign-tool-fix", "sign",
-           "-inFile", bin/"reasonix",
-           "-outFile", bin/"reasonix",
+           "-inFile", bin/"tool",
+           "-outFile", bin/"tool",
            "-selfSign", "1"
   end
 
   test do
-    system "#{bin}/reasonix", "--version"
+    system "#{bin}/tool", "--version"
   end
 end
 ```
 
-## 多版本固钉
+## 3. 多版本固钉
 
 ```ruby
-# Formula/binary-sign-tool.rb      — 最新版
-# Formula/binary-sign-tool@1.0.rb  — 旧版固钉
-# 每个配方独立的 root_url
+# Formula/xxx.rb          ← 最新版
+# Formula/xxx@1.0.rb      ← 旧版固钉
+
+# xxx@1.0.rb:
+class XxxAT10 < Formula
+  ...
+  bottle do
+    root_url ".../releases/download/bottles%2Fxxx%401.0"
+  end
+  ...
+end
 ```
