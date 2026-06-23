@@ -9,6 +9,7 @@ class BinarySignTool < Formula
   depends_on "openssl@3"
   depends_on "zlib-ng-compat"
   depends_on "make" => :build
+  depends_on "gpatch" => :build
 
   # ELFIO — C++ header-only library for ELF parsing
   resource "elfio" do
