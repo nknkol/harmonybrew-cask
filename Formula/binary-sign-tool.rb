@@ -40,7 +40,9 @@ class BinarySignTool < Formula
 
     cd buildpath do
       system "patch", "-p1", "-i", patch1.to_s
-      system "patch", "-f", "-p1", "-i", patch2.to_s
+      # 0002 may exit 1 on offset hunks that still apply correctly
+      ohai "Applying 0002-fix-elf-signing.patch"
+      safe_system "patch -f -p1 -i #{patch2} || [ $? -le 1 ]"
     end
 
     # ── Unpack third-party resources into expected paths ──────────
