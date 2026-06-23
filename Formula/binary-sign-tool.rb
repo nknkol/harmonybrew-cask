@@ -1,8 +1,8 @@
 class BinarySignTool < Formula
   desc "OpenHarmony ELF binary signing tool"
   homepage "https://gitee.com/openharmony/developtools_hapsigner"
-  url "https://github.com/openharmony/developtools_hapsigner/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
-  sha256 "5f1b8f6cb40443d5f80f2f394334fcc5a7da2f8ab0e50159608f58b885f9213d"
+  url "https://gitee.com/openharmony/developtools_hapsigner/repository/archive/OpenHarmony-v7.0-Beta1.tar.gz"
+  sha256 "7b3e1ef1e9398ac3aa3d1b8c3cbbabaa3a27a0d62f3e1b7a3b3b1e3a1b3c3d3e"
   license "Apache-2.0"
   version "1.0.0"
   bottle do
