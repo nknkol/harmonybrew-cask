@@ -52,11 +52,13 @@ class BinarySignTool < Formula
     # ── Build ─────────────────────────────────────────────────────
     openssl_prefix = Formula["openssl@3"].opt_prefix
 
-    system "make",
-           "CXX=clang++",
-           "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
-           "OPENSSL_PREFIX=#{openssl_prefix}",
-           "PROJ=#{buildpath}"
+    cd buildpath do
+      system "make",
+             "CXX=clang++",
+             "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
+             "OPENSSL_PREFIX=#{openssl_prefix}",
+             "PROJ=#{buildpath}"
+    end
 
     # ── Install ───────────────────────────────────────────────────
     bin.install "build/binary-sign-tool" => "binary-sign-tool-fix"
