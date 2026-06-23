@@ -712,13 +712,6 @@ diff --color -ruN a/binary_sign_tool/cmd/src/cmd_util.cpp b/binary_sign_tool/cmd
                  return false;
              }
          }
-@@ -392,4 +435,4 @@
-     return true;
- }
- } // namespace SignatureTools
--} // namespace OHOS
-\ No newline at end of file
-+} // namespace OHOS
 diff --color -ruN a/binary_sign_tool/cmd/src/params_run_tool.cpp b/binary_sign_tool/cmd/src/params_run_tool.cpp
 --- a/binary_sign_tool/cmd/src/params_run_tool.cpp	2026-05-08 18:49:30.000000000 +0800
 +++ b/binary_sign_tool/cmd/src/params_run_tool.cpp	2026-06-23 18:13:01.465894687 +0800
@@ -852,7 +845,6 @@ diff --color -ruN a/binary_sign_tool/common/include/constant.h b/binary_sign_too
  } // namespace UpdateEngine
  } // namespace OHOS
  #endif // SIGNATRUETOOLS_CONSTANT_H
-\ No newline at end of file
 diff --color -ruN a/binary_sign_tool/common/include/options.h b/binary_sign_tool/common/include/options.h
 --- a/binary_sign_tool/common/include/options.h	2026-05-08 18:49:30.000000000 +0800
 +++ b/binary_sign_tool/common/include/options.h	2026-06-23 18:13:01.469896093 +0800
@@ -882,7 +874,6 @@ diff --color -ruN a/binary_sign_tool/common/src/options.cpp b/binary_sign_tool/c
  }
  } // namespace SignatureTools
  } // namespace OHOS
-\ No newline at end of file
 diff --color -ruN a/binary_sign_tool/hap/provider/src/sign_provider.cpp b/binary_sign_tool/hap/provider/src/sign_provider.cpp
 --- a/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-05-08 18:49:30.000000000 +0800
 +++ b/binary_sign_tool/hap/provider/src/sign_provider.cpp	2026-06-23 18:13:01.473893906 +0800
@@ -2152,15 +2143,6 @@ diff --color -ruN a/hapsigntool/hap_sign_tool/src/main/resources/help.txt b/haps
  COMMANDS:
          generate-keypair : generate key pair
          generate-csr : generate certificate signing request
-@@ -237,5 +208,4 @@
-         sign-profile : Provision Profile file signature
-         verify-profile : Provision Profile file verification
-         sign-app : application package signature
--        verify-app : application package file verification
--        resign-enterprise-app : enterprise application package re-signature
-\ No newline at end of file
-+        verify-app : application package file verification
-\ No newline at end of file
 diff --color -ruN a/hapsigntool/hap_sign_tool/src/test/java/com/ohos/hapsigntoolcmd/CmdUnitTest.java b/hapsigntool/hap_sign_tool/src/test/java/com/ohos/hapsigntoolcmd/CmdUnitTest.java
 --- a/hapsigntool/hap_sign_tool/src/test/java/com/ohos/hapsigntoolcmd/CmdUnitTest.java	2026-05-08 18:49:30.000000000 +0800
 +++ b/hapsigntool/hap_sign_tool/src/test/java/com/ohos/hapsigntoolcmd/CmdUnitTest.java	2026-06-23 18:13:01.553895156 +0800
@@ -4900,7 +4882,6 @@ diff --color -ruN a/hapsigntool_cpp/common/src/options.cpp b/hapsigntool_cpp/com
 -}
  } // namespace SignatureTools
  } // namespace OHOS
-\ No newline at end of file
 diff --color -ruN a/hapsigntool_cpp/hap/entity/include/param_constants.h b/hapsigntool_cpp/hap/entity/include/param_constants.h
 --- a/hapsigntool_cpp/hap/entity/include/param_constants.h	2026-05-08 18:49:30.000000000 +0800
 +++ b/hapsigntool_cpp/hap/entity/include/param_constants.h	2026-06-23 18:13:01.617895312 +0800
@@ -5335,7 +5316,6 @@ diff --color -ruN a/hapsigntool_cpp/hap/sign/src/sign_hap.cpp b/hapsigntool_cpp/
 -}
  } // namespace SignatureTools
  } // namespace OHOS
-\ No newline at end of file
 diff --color -ruN a/hapsigntool_cpp/hap/utils/include/hap_utils.h b/hapsigntool_cpp/hap/utils/include/hap_utils.h
 --- a/hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-05-08 18:49:30.000000000 +0800
 +++ b/hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-06-23 18:13:01.625894218 +0800
@@ -6833,7 +6813,6 @@ diff --color -ruN a/hapsigntool_cpp_test/unittest/codeSigning/fsverity/fs_verity
  }
  } // namespace SignatureTools
  } // namespace OHOS
-\ No newline at end of file
 diff --color -ruN a/hapsigntool_cpp_test/unittest/generateCA/generate_sub_ca_test.cpp b/hapsigntool_cpp_test/unittest/generateCA/generate_sub_ca_test.cpp
 --- a/hapsigntool_cpp_test/unittest/generateCA/generate_sub_ca_test.cpp	2026-05-08 18:49:30.000000000 +0800
 +++ b/hapsigntool_cpp_test/unittest/generateCA/generate_sub_ca_test.cpp	2026-06-23 18:13:01.765895781 +0800
