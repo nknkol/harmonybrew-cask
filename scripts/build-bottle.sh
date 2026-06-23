@@ -97,9 +97,11 @@ fi
 
 # ── Merge bottle block into formula ─────────────────────────────────
 log_step "Merge bottle block into formula"
+git config --global user.email "bottle@harmonybrew.local"
+git config --global user.name "Harmonybrew Bottle"
 JSON_FILE=$(ls ./"$FORMULA"-*.json 2>/dev/null | head -1)
 if [ -n "$JSON_FILE" ] && [ -f "$JSON_FILE" ]; then
-  brew bottle --merge --write --no-commit "$JSON_FILE"
+  brew bottle --merge --write "$JSON_FILE"
   log_step "Formula updated with bottle block"
 else
   echo "ERROR: No bottle JSON found for merge" >&2
