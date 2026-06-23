@@ -40,8 +40,7 @@ class BinarySignTool < Formula
 
     cd buildpath do
       system "patch", "-p1", "-i", patch1.to_s
-      # 0002 may exit 1 on offset hunks; all changes apply correctly
-      system "patch -p1 -i #{patch2} || true"
+      system "patch", "-f", "-p1", "-i", patch2.to_s
     end
 
     # ── Unpack third-party resources into expected paths ──────────
