@@ -139,7 +139,7 @@ jobs:
           print(data['formulae'][0]['versions']['stable'])
           "
           )"
-          release_tag="bottles/${FORMULA}/${version}"
+          release_tag="bottles/${FORMULA}"
 
           mapfile -t assets < <(
             find "artifacts/$SOFTWARE" -maxdepth 1 -type f \

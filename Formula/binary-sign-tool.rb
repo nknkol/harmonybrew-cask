@@ -5,6 +5,9 @@ class BinarySignTool < Formula
   sha256 "5f1b8f6cb40443d5f80f2f394334fcc5a7da2f8ab0e50159608f58b885f9213d"
   license "Apache-2.0"
   version "1.0.0"
+  bottle do
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbinary-sign-tool"
+  end
 
   depends_on "openssl@3"
   depends_on "zlib-ng-compat"
