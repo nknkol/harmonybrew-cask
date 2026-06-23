@@ -10,6 +10,12 @@ class BinarySignTool < Formula
   depends_on "zlib-ng-compat"
   depends_on "make" => :build
 
+  patch do
+    # Standalone build support (compat.h + Makefile) +
+    # ELF signing fix (preserves ELF layout, cJSON→nlohmann)
+    file "patches/binary-sign-tool/0001-fix-elf-signing.patch"
+  end
+
   # ELFIO — C++ header-only library for ELF parsing
   resource "elfio" do
     url "https://github.com/openharmony/third_party_elfio/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
@@ -30,20 +36,6 @@ class BinarySignTool < Formula
 
   def install
     ENV.deparallelize
-
-    # ── Apply patches ─────────────────────────────────────────────
-    # Use explicit patch commands to avoid Homebrew's patch DSL
-    # which fails on harmless offset hunks in 0002.
-    tap_root = Pathname.new(__FILE__).dirname.parent
-    patch1 = tap_root/"patches/binary-sign-tool/0001-standalone-build.patch"
-    patch2 = tap_root/"patches/binary-sign-tool/0002-fix-elf-signing.patch"
-
-    cd buildpath do
-      system "patch", "-p1", "-i", patch1.to_s
-      # 0002 may exit 1 on offset hunks that still apply correctly
-      ohai "Applying 0002-fix-elf-signing.patch"
-      safe_system "patch -f -p1 -i #{patch2} || [ $? -le 1 ]"
-    end
 
     # ── Unpack third-party resources into expected paths ──────────
     (buildpath/"third_party").mkpath
