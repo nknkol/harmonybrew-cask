@@ -12,11 +12,6 @@ on:
         required: false
         type: string
         default: ""
-      sign_binaries:
-        description: Sign ELF binaries before bottling
-        required: false
-        type: boolean
-        default: true
       extra_packages:
         description: Space-separated extra formula to pre-install
         required: false
@@ -70,13 +65,11 @@ jobs:
               echo "Tag must match: bottle/<formula>/<version> or bottle/<software>/<formula>/<version>" >&2
               exit 1
             fi
-            sign_binaries="true"
             extra_packages=""
             run_tests="true"
           else
             software="${{ github.event.inputs.software }}"
             formula="${{ github.event.inputs.formula }}"
-            sign_binaries="${{ github.event.inputs.sign_binaries }}"
             extra_packages="${{ github.event.inputs.extra_packages }}"
             run_tests="${{ github.event.inputs.run_tests }}"
           fi
@@ -85,7 +78,6 @@ jobs:
 
           echo "software=$software"             >> "$GITHUB_OUTPUT"
           echo "formula=$formula"                >> "$GITHUB_OUTPUT"
-          echo "sign_binaries=$sign_binaries"    >> "$GITHUB_OUTPUT"
           echo "extra_packages=$extra_packages"  >> "$GITHUB_OUTPUT"
           echo "run_tests=$run_tests"            >> "$GITHUB_OUTPUT"
 
@@ -94,23 +86,20 @@ jobs:
         env:
           SOFTWARE: ${{ steps.inputs.outputs.software }}
           FORMULA: ${{ steps.inputs.outputs.formula }}
-          SIGN_BINARIES: ${{ steps.inputs.outputs.sign_binaries }}
           EXTRA_PACKAGES: ${{ steps.inputs.outputs.extra_packages }}
           RUN_TESTS: ${{ steps.inputs.outputs.run_tests }}
         run: |
           set -euo pipefail
 
-          sign_num=0;  [ "$SIGN_BINARIES" = "true" ] && sign_num=1
           tests_num=0; [ "$RUN_TESTS" = "true" ] && tests_num=1
 
-          chmod +x scripts/build-bottle.sh scripts/sign-elf.sh
+          chmod +x scripts/build-bottle.sh
 
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             -e SOFTWARE \
             -e FORMULA \
-            -e SIGN_BINARIES="$sign_num" \
             -e EXTRA_PACKAGES \
             -e RUN_FORMULA_TESTS="$tests_num" \
             ghcr.io/hqzing/dockerharmony:latest \

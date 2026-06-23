@@ -6,7 +6,7 @@
 #   FORMULA          — formula name (e.g. binary-sign-tool)
 # Optional env vars:
 #   SOFTWARE         — artifact directory name (default: same as FORMULA)
-#   SIGN_BINARIES    — 1 = sign all ELF binaries before bottling (default: 1)
+#   SCRIPT_DIR  — already set by wrapper
 #   EXTRA_PACKAGES   — space-separated list of extra formula to pre-install
 #   RUN_FORMULA_TESTS — 1 = run brew test after install (default: 1)
 set -eu
@@ -17,7 +17,6 @@ SOFTWARE="${SOFTWARE:-$FORMULA}"
 WORKSPACE="${WORKSPACE:-/workspace}"
 OUTPUT_DIR="${OUTPUT_DIR:-$WORKSPACE/artifacts/$SOFTWARE}"
 LOG_DIR="$OUTPUT_DIR/logs"
-SIGN_BINARIES="${SIGN_BINARIES:-1}"
 RUN_FORMULA_TESTS="${RUN_FORMULA_TESTS:-1}"
 
 QUALIFIED_FORMULA="$TAP_NAME/$FORMULA"
@@ -86,17 +85,6 @@ brew uninstall --ignore-dependencies --force "$QUALIFIED_FORMULA" >/dev/null 2>&
 run_with_log install \
   brew install --verbose --build-bottle "$QUALIFIED_FORMULA"
 
-# ── Sign ELF binaries ───────────────────────────────────────────────
-if [ "$SIGN_BINARIES" = "1" ]; then
-  log_step "Sign all ELF binaries in #{Formula[$FORMULA].prefix}"
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  find "$(brew --prefix "$FORMULA")" -type f | while read -r f; do
-    if [ -f "$f" ] && [ "$(head -c4 "$f" 2>/dev/null)" = "$(printf '\x7fELF')" ]; then
-      sh "$SCRIPT_DIR/sign-elf.sh" "$f"
-    fi
-  done
-fi
-
 # ── Generate bottle ─────────────────────────────────────────────────
 run_with_log bottle \
   brew bottle --verbose --skip-relocation --json "$QUALIFIED_FORMULA"
@@ -111,7 +99,7 @@ fi
 log_step "Merge bottle block into formula"
 JSON_FILE=$(ls ./"$FORMULA"-*.json 2>/dev/null | head -1)
 if [ -n "$JSON_FILE" ] && [ -f "$JSON_FILE" ]; then
-  brew bottle --merge --write "$JSON_FILE"
+  brew bottle --merge --write --no-commit "$JSON_FILE"
   log_step "Formula updated with bottle block"
 else
   echo "ERROR: No bottle JSON found for merge" >&2
