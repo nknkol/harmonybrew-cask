@@ -36,7 +36,7 @@ class LlvmAT21 < Formula
   # ---------------------------------------------------------------
   def install
     # 1. 环境伪装: uname -s → Linux
-    ENV.prepend_create_path "LD_PRELOAD",
+    ENV["LD_PRELOAD"] =
       Formula["uname-is-linux"].opt_lib/"libuname.so"
     ENV["TMPDIR"] = "/data/storage/el2/base/files/tmp"
     FileUtils.mkdir_p ENV["TMPDIR"]
