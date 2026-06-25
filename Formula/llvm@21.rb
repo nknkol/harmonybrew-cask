@@ -50,11 +50,18 @@ class LlvmAT21 < Formula
     objcopy = bin/"llvm-objcopy"
 
     path.chmod 0755
-    if quiet_system objcopy, "--remove-section=.codesign", path.to_s, unsigned.to_s
+
+    # Remove existing .codesign section if present
+    has_codesign = system objcopy, "--dump-section=.codesign=/dev/null", path.to_s,
+                          err: File::NULL
+    if has_codesign
+      odie ".codesign removal failed on #{path}" unless
+        system objcopy, "--remove-section=.codesign", path.to_s, unsigned.to_s
       unsigned.chmod 0755
     else
       FileUtils.cp path, unsigned
     end
+
     system sign_tool, "sign", "-inFile", unsigned.to_s,
            "-outFile", signed.to_s, "-selfSign", "1"
     signed.chmod 0755
