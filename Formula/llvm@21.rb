@@ -5,7 +5,7 @@ class LlvmAT21 < Formula
   sha256 "2b2aae18bdba34ba8ee8249ad42ad3cb56f932f4142070c6eb920966f7c5905f"
   license "Apache-2.0"
 
-  depends_on "binary-sign-tool" => :build
+  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "cmake" => :build
   depends_on "ninja" => :build
   depends_on "gpatch" => :build
@@ -46,7 +46,7 @@ class LlvmAT21 < Formula
     unsigned.unlink if unsigned.exist?
     signed.unlink   if signed.exist?
 
-    sign_tool = Formula["binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+    sign_tool = Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
     objcopy = bin/"llvm-objcopy"
 
     path.chmod 0755
