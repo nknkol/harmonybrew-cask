@@ -1,0 +1,11 @@
+--- a/llvm/include/llvm/TargetParser/Triple.h
++++ b/llvm/include/llvm/TargetParser/Triple.h
+@@ -1164,7 +1164,7 @@
+   /// Note: Android API level 29 (10) introduced ELF TLS.
+   bool hasDefaultEmulatedTLS() const {
+     return (isAndroid() && isAndroidVersionLT(29)) || isOSOpenBSD() ||
+-           isWindowsCygwinEnvironment() || isOHOSFamily();
++           isWindowsCygwinEnvironment();
+   }
+ 
+   /// True if the target uses TLSDESC by default.
