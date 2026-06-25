@@ -38,8 +38,16 @@ class LlvmAT21 < Formula
     false
   end
 
+  def should_sign?(path)
+    return false unless elf_file?(path)
+    # Only sign executables and shared libraries, skip .o / .a
+    ext = path.extname
+    return false if %w[.o .a .bc .pcm].include?(ext)
+    true
+  end
+
   def sign_elf!(path)
-    return unless elf_file?(path)
+    return unless should_sign?(path)
 
     unsigned = Pathname("#{path}.unsigned")
     signed   = Pathname("#{path}.signed")
@@ -51,12 +59,10 @@ class LlvmAT21 < Formula
 
     path.chmod 0755
 
-    # Remove existing .codesign section if present
-    has_codesign = system objcopy, "--dump-section=.codesign=/dev/null", path.to_s,
-                          err: File::NULL
-    if has_codesign
-      odie ".codesign removal failed on #{path}" unless
-        system objcopy, "--remove-section=.codesign", path.to_s, unsigned.to_s
+    # Remove any existing .codesign section first
+    system objcopy, "--remove-section=.codesign", path.to_s, unsigned.to_s,
+           err: File::NULL
+    if $?.success?
       unsigned.chmod 0755
     else
       FileUtils.cp path, unsigned
