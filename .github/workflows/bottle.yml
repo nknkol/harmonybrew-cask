@@ -24,7 +24,7 @@ on:
         default: true
   push:
     tags:
-      - "bottle/**"
+      - "bottles/**"
 
 permissions:
   contents: write
@@ -49,22 +49,13 @@ jobs:
           set -euo pipefail
 
           if [ "$EVENT_NAME" = "push" ]; then
-            # Tag format: bottle/<formula>/<version>  or  bottle/<software>/<formula>/<version>
-            IFS=/ read -r prefix arg1 arg2 arg3 extra <<< "$REF_NAME" || true
-            if [ "$prefix" != "bottle" ]; then
-              echo "Tag must match: bottle/<formula>/<version> or bottle/<software>/<formula>/<version>" >&2
+            # Tag format: bottles/<formula>  (same tag used for trigger and release)
+            IFS=/ read -r prefix formula extra <<< "$REF_NAME" || true
+            if [ "$prefix" != "bottles" ] || [ -z "${formula:-}" ] || [ -n "${extra:-}" ]; then
+              echo "Tag must match: bottles/<formula>" >&2
               exit 1
             fi
-            if [ -n "${arg3:-}" ] && [ -z "${extra:-}" ]; then
-              software="$arg1"
-              formula="$arg2"
-            elif [ -n "${arg2:-}" ] && [ -z "${extra:-}" ]; then
-              software=""
-              formula="$arg1"
-            else
-              echo "Tag must match: bottle/<formula>/<version> or bottle/<software>/<formula>/<version>" >&2
-              exit 1
-            fi
+            software=""
             extra_packages=""
             run_tests="true"
           else
@@ -129,6 +120,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOFTWARE: ${{ steps.inputs.outputs.software }}
           FORMULA: ${{ steps.inputs.outputs.formula }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
 
