@@ -237,7 +237,7 @@ diff --color -ruN a/Makefile b/Makefile
 +OBJS := $(patsubst %.cpp, $(BLD)/%.o, $(SRCS))
 +SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
 +
-+LDFLAGS := -L$(OPENSSL_PREFIX)/lib -lssl -lcrypto -ldl
++LDFLAGS := -L$(OPENSSL_PREFIX)/lib -lssl -lcrypto -ldl -Wl,--code-sign
 +
 +TARGET := $(BLD)/binary-sign-tool
 +
