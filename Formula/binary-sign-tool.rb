@@ -7,7 +7,7 @@ class BinarySignTool < Formula
   version "1.0.0"
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbinary-sign-tool"
-        sha256 cellar: :any_skip_relocation, arm64_ohos: "66e88b7957efdeaaf1ddf76d5c5628583e5888661178740c701c843ac60ee0b7"
+        sha256 cellar: :any_skip_relocation, arm64_ohos: "9b54d8bc5cc263381598aa3d88ab559769127cead3cd3e67af216c8960dfeef8"
   end
 
   depends_on "openssl@3"
