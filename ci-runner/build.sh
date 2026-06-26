@@ -41,27 +41,6 @@ busybox unzip -q toolchains-*.zip
 rm -f *.zip
 cd - >/dev/null
 
-# 官方打出来的包存在软链接实体化的问题。规避一下，自己处理掉，避免镜像体积膨胀。
-cd /opt/ohos-sdk/ohos/native/llvm/bin
-echo "clang clang-15
-clang++ clang-15
-clang-cl clang-15
-clang-cpp clang-15
-ld64.lld lld
-ld.lld lld
-lld-link lld
-llvm-addr2line llvm-symbolizer
-llvm-lib llvm-ar
-llvm-ranlib llvm-ar
-llvm-readelf llvm-readobj
-llvm-strip llvm-objcopy" > /tmp/links.txt
-while read -r link target; do
-    rm -f $link
-    ln -s $target $link
-done < /tmp/links.txt
-rm /tmp/links.txt
-cd - >/dev/null
-
 # 把 llvm 里面的命令封装一份放到 /bin 目录下，只封装必要的工具。
 # 为了照顾 clang （clang 软链接到其他目录使用会找不到 sysroot），
 # 对所有命令统一用这种封装的方案，而非软链接。

@@ -5,7 +5,6 @@ class LlvmAT21 < Formula
   sha256 "2b2aae18bdba34ba8ee8249ad42ad3cb56f932f4142070c6eb920966f7c5905f"
   license "Apache-2.0"
 
-  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "cmake" => :build
   depends_on "ninja" => :build
   depends_on "gpatch" => :build
@@ -25,63 +24,6 @@ class LlvmAT21 < Formula
     patch_file = tap_root/"patches/llvm@21/0001-disable-emulated-tls.patch"
     cd buildpath do
       system "patch", "-f", "-p1", "-i", patch_file.to_s
-    end
-  end
-
-  # ---------------------------------------------------------------
-  # ELF 签名辅助
-  # ---------------------------------------------------------------
-  def elf_file?(path)
-    return false unless path.file?
-    path.open("rb") { |f| f.read(4) } == "\x7fELF".b
-  rescue
-    false
-  end
-
-  def should_sign?(path)
-    return false unless elf_file?(path)
-    # Only sign executables and shared libraries, skip .o / .a
-    ext = path.extname
-    return false if %w[.o .a .bc .pcm].include?(ext)
-    true
-  end
-
-  def sign_elf!(path)
-    return unless should_sign?(path)
-
-    unsigned = Pathname("#{path}.unsigned")
-    signed   = Pathname("#{path}.signed")
-    unsigned.unlink if unsigned.exist?
-    signed.unlink   if signed.exist?
-
-    sign_tool = Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
-    objcopy = bin/"llvm-objcopy"
-
-    path.chmod 0755
-
-    # Remove any existing .codesign section first
-    system objcopy, "--remove-section=.codesign", path.to_s, unsigned.to_s,
-           err: File::NULL
-    if $?.success?
-      unsigned.chmod 0755
-    else
-      FileUtils.cp path, unsigned
-    end
-
-    system sign_tool, "sign", "-inFile", unsigned.to_s,
-           "-outFile", signed.to_s, "-selfSign", "1"
-    signed.chmod 0755
-    FileUtils.mv signed, path, force: true
-  ensure
-    unsigned&.unlink if unsigned&.exist?
-    signed&.unlink   if signed&.exist?
-  end
-
-  def sign_tree!(root)
-    return unless root.exist?
-    root.find do |path|
-      next if path.directory?
-      sign_elf!(path)
     end
   end
 
@@ -115,6 +57,8 @@ class LlvmAT21 < Formula
       "-DCLANG_DEFAULT_UNWINDLIB=libunwind",
       "-DCLANG_DEFAULT_CXX_STDLIB=libc++",
       "-DCLANG_DEFAULT_LINKER=lld",
+      "-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib",
+      "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON",
       "-DLLVM_ENABLE_LIBPFM=OFF",
       "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
       "-DLLVM_ENABLE_PROJECTS=clang;lld",
@@ -132,9 +76,6 @@ class LlvmAT21 < Formula
     ohos_llvm_lib.glob("libunwind.*").each { |f| ln_s f, lib/f.basename }
     ohos_llvm_lib.glob("libc++*").each      { |f| ln_s f, lib/f.basename }
 
-    # 后签名：鸿蒙 PC 要求所有 ELF 必须有效签名
-    sign_tree!(lib)
-    sign_tree!(bin)
   end
 
   test do
