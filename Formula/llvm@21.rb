@@ -99,11 +99,12 @@ class LlvmAT21 < Formula
   end
 
   test do
+    ohos_sysroot = Formula["ohos-sdk"].opt_prefix/"native/sysroot"
     (testpath/"hello.c").write <<~C
       #include <stdio.h>
       int main() { printf("hello\\n"); return 0; }
     C
-    system bin/"clang", "hello.c", "-o", "hello"
+    system bin/"clang", "--sysroot=#{ohos_sysroot}", "hello.c", "-o", "hello"
     assert_equal "hello\n", shell_output("./hello")
   end
 end
