@@ -124,6 +124,11 @@ else
     set -eu
     export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
     export HOMEBREW_NO_AUTO_UPDATE=1
+    if ! brew tap | grep -q '^$TAP\$'; then
+      echo 'ERROR: tap $TAP not found. Add it manually:' >&2
+      echo '  brew tap $TAP https://github.com/nknkol/harmonybrew-cask.git' >&2
+      exit 1
+    fi
     brew update
   "
 fi
