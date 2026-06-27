@@ -5,6 +5,7 @@
 #   sh scripts/local-build.sh <formula>              # 完整流程
 #   sh scripts/local-build.sh <formula> --no-test    # 跳过 brew test
 #   sh scripts/local-build.sh <formula> --fresh      # 先卸载旧版本
+#   sh scripts/local-build.sh <formula> --no-sync    # 跳过 brew update
 #   sh scripts/local-build.sh <formula> --shell      # 只进容器
 #   sh scripts/local-build.sh <formula> --rebuild    # 先重建镜像
 #
@@ -33,6 +34,7 @@ FRESH=false
 SHELL_ONLY=false
 REBUILD=false
 PULL=false
+NO_SYNC=false
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -41,6 +43,7 @@ while [ $# -gt 0 ]; do
     --shell)    SHELL_ONLY=true; shift ;;
     --rebuild)  REBUILD=true; shift ;;
     --pull)     PULL=true; shift ;;
+    --no-sync)  NO_SYNC=true; shift ;;
     --software) SOFTWARE="$2"; shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -89,6 +92,7 @@ if [ -z "$FORMULA" ]; then
   echo "  --no-test      skip brew test"
   echo "  --fresh        uninstall old version first"
   echo "  --shell        enter container shell only"
+  echo "  --no-sync      skip brew update before building"
   echo "  --rebuild      rebuild image before running"
   echo "  --pull         copy artifacts to ./artifacts/"
   echo "  --software <n> artifact dir name (default: same as formula)"
@@ -112,7 +116,19 @@ if $FRESH; then
   "
 fi
 
-echo "==> [1/4] Pre-requisites…"
+echo "==> [1/5] Sync tap…"
+if $NO_SYNC; then
+  echo "  (skipped)"
+else
+  docker exec -i "$CONTAINER" /bin/sh -lc "
+    set -eu
+    export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+    export HOMEBREW_NO_AUTO_UPDATE=1
+    brew update
+  "
+fi
+
+echo "==> [2/5] Pre-requisites…"
 if [ -n "$EXTRA_PACKAGES" ]; then
   docker exec -i "$CONTAINER" /bin/sh -lc "
     set -eu
@@ -127,7 +143,7 @@ else
   echo "  (none)"
 fi
 
-echo "==> [2/4] brew install --build-bottle $QUALIFIED …"
+echo "==> [3/5] brew install --build-bottle $QUALIFIED …"
 docker exec -i "$CONTAINER" /bin/sh -lc "
   set -eu
   export PATH='/storage/Users/currentUser/.harmonybrew/bin:/storage/Users/currentUser/.harmonybrew/sbin:\$PATH'
@@ -139,7 +155,7 @@ docker exec -i "$CONTAINER" /bin/sh -lc "
   brew install --verbose --build-bottle '$QUALIFIED'
 "
 
-echo "==> [3/4] brew bottle --skip-relocation $QUALIFIED …"
+echo "==> [4/5] brew bottle --skip-relocation $QUALIFIED …"
 docker exec -i "$CONTAINER" /bin/sh -lc "
   set -eu
   export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
@@ -151,7 +167,7 @@ docker exec -i "$CONTAINER" /bin/sh -lc "
 "
 
 if [ "$RUN_TESTS" -eq 1 ]; then
-  echo "==> [4/4] brew test $QUALIFIED …"
+  echo "==> [5/5] brew test $QUALIFIED …"
   docker exec -i "$CONTAINER" /bin/sh -lc "
     set -eu
     export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
@@ -163,7 +179,7 @@ if [ "$RUN_TESTS" -eq 1 ]; then
     brew test --verbose '$QUALIFIED'
   "
 else
-  echo "==> [4/4] brew test (skipped)"
+  echo "==> [5/5] brew test (skipped)"
 fi
 
 # ── 拉取产物（可选） ───────────────────────────────────────────
