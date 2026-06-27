@@ -21,10 +21,6 @@ class LlvmAT21 < Formula
   depends_on "libxml2"
   depends_on "libedit"
 
-  # Ensure Ruby mkmf finds a working compiler during brew test
-  ENV["CC"] = "clang"
-  ENV["CXX"] = "clang++"
-
   # ---------------------------------------------------------------
   # 补丁
   # ---------------------------------------------------------------
