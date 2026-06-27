@@ -69,7 +69,7 @@ if docker inspect "$CONTAINER" >/dev/null 2>&1; then
   fi
 else
   echo "==> Creating: $CONTAINER"
-  docker run -d --name "$CONTAINER" "$IMAGE" tail -f /dev/null
+  docker run -d --name "$CONTAINER" "$IMAGE" /bin/sh -c 'while true; do sleep 3600; done'
 fi
 
 # ── 只进 shell（无需 formula） ────────────────────────────────
