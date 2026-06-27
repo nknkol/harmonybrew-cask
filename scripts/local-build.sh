@@ -114,7 +114,7 @@ QUALIFIED="$TAP/$FORMULA"
 if $FRESH; then
   echo "==> Uninstalling old version…"
   docker exec -i "$CONTAINER" /bin/sh -c "
-    export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+    export PATH=/storage/Users/currentUser/.harmonybrew/bin:\$PATH
     brew uninstall --ignore-dependencies --force '$QUALIFIED' 2>/dev/null || true
   "
 fi
@@ -125,7 +125,7 @@ if $NO_SYNC; then
 else
   docker exec -i "$CONTAINER" /bin/sh -c "
     set -eu
-    export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+    export PATH=/storage/Users/currentUser/.harmonybrew/bin:\$PATH
     export HOMEBREW_NO_AUTO_UPDATE=1
     if ! brew tap | grep -q '^$TAP\$'; then
       echo '==> Adding tap $TAP …'
@@ -139,7 +139,7 @@ echo "==> [2/5] Pre-requisites…"
 if [ -n "$EXTRA_PACKAGES" ]; then
   docker exec -i "$CONTAINER" /bin/sh -c "
     set -eu
-    export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+    export PATH=/storage/Users/currentUser/.harmonybrew/bin:\$PATH
     export HOMEBREW_NO_AUTO_UPDATE=1
     export HOMEBREW_NO_INSTALL_FROM_API=1
     for pkg in $EXTRA_PACKAGES; do
@@ -153,7 +153,7 @@ fi
 echo "==> [3/5] brew install --build-bottle $QUALIFIED …"
 docker exec -i "$CONTAINER" /bin/sh -c "
   set -eu
-  export PATH='/storage/Users/currentUser/.harmonybrew/bin:/storage/Users/currentUser/.harmonybrew/sbin:\$PATH'
+  export PATH=/storage/Users/currentUser/.harmonybrew/bin:/storage/Users/currentUser/.harmonybrew/sbin:\$PATH
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_INSTALL_FROM_API=1
   export HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -165,7 +165,7 @@ docker exec -i "$CONTAINER" /bin/sh -c "
 echo "==> [4/5] brew bottle --skip-relocation $QUALIFIED …"
 docker exec -i "$CONTAINER" /bin/sh -c "
   set -eu
-  export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+  export PATH=/storage/Users/currentUser/.harmonybrew/bin:\$PATH
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_INSTALL_FROM_API=1
 
@@ -177,7 +177,7 @@ if [ "$RUN_TESTS" -eq 1 ]; then
   echo "==> [5/5] brew test $QUALIFIED …"
   docker exec -i "$CONTAINER" /bin/sh -c "
     set -eu
-    export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
+    export PATH=/storage/Users/currentUser/.harmonybrew/bin:\$PATH
     export HOMEBREW_NO_AUTO_UPDATE=1
     export HOMEBREW_NO_INSTALL_FROM_API=1
     export HOMEBREW_OHOS_BOTTLE_BINARY_SIGN=1
