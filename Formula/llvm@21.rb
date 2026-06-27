@@ -21,6 +21,10 @@ class LlvmAT21 < Formula
   depends_on "libxml2"
   depends_on "libedit"
 
+  # Ensure Ruby mkmf finds a working compiler during brew test
+  ENV["CC"] = "clang"
+  ENV["CXX"] = "clang++"
+
   # ---------------------------------------------------------------
   # 补丁
   # ---------------------------------------------------------------
@@ -80,6 +84,10 @@ class LlvmAT21 < Formula
 
     ohos_llvm_lib.glob("libunwind.*").each { |f| ln_s f, lib/f.basename }
     ohos_llvm_lib.glob("libc++*").each      { |f| ln_s f, lib/f.basename }
+
+    # Provide cc/c++ aliases so brew test and gem native extensions find a compiler
+    ln_s bin/"clang", bin/"cc"
+    ln_s bin/"clang++", bin/"c++"
 
   end
 
