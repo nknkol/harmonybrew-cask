@@ -4,6 +4,8 @@ class LlvmAT21 < Formula
   url "https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-21.1.8.zip"
   sha256 "2b2aae18bdba34ba8ee8249ad42ad3cb56f932f4142070c6eb920966f7c5905f"
   license "Apache-2.0"
+  keg_only "conflicts with ohos-sdk; use brew link llvm@21 to activate"
+
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fllvm@21"
   end
