@@ -83,6 +83,21 @@ class LlvmAT21 < Formula
 
   end
 
+  def caveats
+    <<~EOS
+      llvm@21 is keg-only to avoid conflicting with ohos-sdk.
+
+      To switch to this toolchain:
+        brew unlink ohos-sdk && brew link llvm@21
+
+      To switch back:
+        brew unlink llvm@21 && brew link ohos-sdk
+
+      Verify the active compiler:
+        which clang
+    EOS
+  end
+
   test do
     (testpath/"hello.c").write <<~C
       #include <stdio.h>
