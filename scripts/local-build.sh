@@ -58,7 +58,7 @@ RUN_TESTS=0; $NO_TEST || RUN_TESTS=1
 # ── 重建镜像（无需 formula） ──────────────────────────────────
 if $REBUILD; then
   echo "==> Rebuilding image: $IMAGE"
-  DOCKER_BUILDKIT=0 docker build --no-cache -t "$IMAGE" -f ci-runner/Dockerfile .
+  (cd ci-runner && DOCKER_BUILDKIT=0 docker build --no-cache -t "$IMAGE" .)
 fi
 
 # ── 确保容器运行 ──────────────────────────────────────────────
