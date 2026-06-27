@@ -13,6 +13,7 @@
 #   IMAGE          — 镜像名，默认 ohosci:1.0
 #   CONTAINER      — 容器名，默认 ohosci-builder
 #   TAP            — tap 全名，默认 nknkol/cask
+#   TAP_URL        — tap 仓库 URL，默认 https://github.com/nknkol/harmonybrew-cask.git
 #   EXTRA_PACKAGES — 额外预装 formula（空格分隔）
 
 set -eu
@@ -20,6 +21,7 @@ set -eu
 IMAGE="${IMAGE:-ohosci:1.0}"
 CONTAINER="${CONTAINER:-ohosci-builder}"
 TAP="${TAP:-nknkol/cask}"
+TAP_URL="${TAP_URL:-https://github.com/nknkol/harmonybrew-cask.git}"
 
 FORMULA="${1:-}"
 
@@ -101,6 +103,7 @@ if [ -z "$FORMULA" ]; then
   echo "  IMAGE            image name (default: ohosci:1.0)"
   echo "  CONTAINER        container name (default: ohosci-builder)"
   echo "  TAP              tap name (default: nknkol/cask)"
+  echo "  TAP_URL          tap repo URL (default: https://github.com/nknkol/harmonybrew-cask.git)"
   echo "  EXTRA_PACKAGES   extra formula to pre-install"
   exit 1
 fi
@@ -125,9 +128,8 @@ else
     export PATH='/storage/Users/currentUser/.harmonybrew/bin:\$PATH'
     export HOMEBREW_NO_AUTO_UPDATE=1
     if ! brew tap | grep -q '^$TAP\$'; then
-      echo 'ERROR: tap $TAP not found. Add it manually:' >&2
-      echo '  brew tap $TAP https://github.com/nknkol/harmonybrew-cask.git' >&2
-      exit 1
+      echo '==> Adding tap $TAP …'
+      brew tap --force '$TAP' '$TAP_URL'
     fi
     brew update
   "
