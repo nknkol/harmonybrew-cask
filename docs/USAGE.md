@@ -23,13 +23,15 @@ brew install -s nknkol/cask/binary-sign-tool
 │   └── binary-sign-tool/
 │       └── 0001-fix-elf-signing.patch
 ├── scripts/
-│   └── build-bottle.sh   # CI 瓶构建脚本
+│   ├── build-bottle.sh    # CI 瓶构建脚本
+│   └── local-build.sh     # 本地构建脚本
 ├── ci-runner/            # Docker CI 启动脚本
 │   └── build.sh
 ├── docs/                 # 文档
 │   ├── FORMULA_TEMPLATE.md   # 配方样板
 │   ├── FORMULA_SPEC.md       # 配方规范
 │   ├── CI_FLOW.md            # CI 流程
+│   ├── LOCAL_BUILD.md        # 本地构建
 │   └── USAGE.md              # 本文件
 └── .github/workflows/
     └── bottle.yml         # CI 工作流
@@ -42,7 +44,11 @@ brew install -s nknkol/cask/binary-sign-tool
 1. Fork 本仓库
 2. 编写 formula（参考 `docs/FORMULA_TEMPLATE.md`）
 3. 制作补丁（参考 `docs/FORMULA_SPEC.md`）
-4. 在 DockerHarmony 容器中验证：
+4. 本地验证（推荐使用 `scripts/local-build.sh`，详见 [`docs/LOCAL_BUILD.md`](LOCAL_BUILD.md)）：
+   ```bash
+   sh scripts/local-build.sh <formula>
+   ```
+   或在容器中手动验证（备选）：
    ```zsh
    docker pull ghcr.io/hqzing/dockerharmony:latest
    docker run -it --rm -v $(pwd):/workspace -w /workspace ghcr.io/hqzing/dockerharmony:latest
