@@ -21,17 +21,6 @@ class LlvmAT21 < Formula
   depends_on "libxml2"
   depends_on "libedit"
 
-  # brew test triggers gem native extension compilation, which uses ENV["CC"]
-  # (falls back to hardcoded "cc" which does not exist on HarmonyOS).
-  # Set absolute paths so Ruby mkmf finds a working compiler.
-  begin
-    ohos_bin = Formula["ohos-sdk"].opt_bin
-    ENV["CC"] = (ohos_bin/"clang").to_s
-    ENV["CXX"] = (ohos_bin/"clang++").to_s
-  rescue FormulaUnavailableError
-    # ohos-sdk not yet loaded; harmless
-  end
-
   # ---------------------------------------------------------------
   # 补丁
   # ---------------------------------------------------------------
@@ -91,10 +80,6 @@ class LlvmAT21 < Formula
 
     ohos_llvm_lib.glob("libunwind.*").each { |f| ln_s f, lib/f.basename }
     ohos_llvm_lib.glob("libc++*").each      { |f| ln_s f, lib/f.basename }
-
-    # Provide cc/c++ aliases so brew test and gem native extensions find a compiler
-    ln_s bin/"clang", bin/"cc"
-    ln_s bin/"clang++", bin/"c++"
 
   end
 
