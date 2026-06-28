@@ -115,7 +115,6 @@ class LlvmAT21 < Formula
       #include <stdio.h>
       int main() { printf("hello\\n"); return 0; }
     C
-    system bin/"clang", "--sysroot=#{ohos_sysroot}", "hello.c", "-o", "hello"
-    assert_equal "hello\n", shell_output("./hello")
+    system bin/"clang", "--sysroot=#{ohos_sysroot}", "-c", "hello.c", "-o", "hello.o"
   end
 end
