@@ -1,0 +1,456 @@
+diff -ruN a/lld/ELF/CMakeLists.txt b/lld/ELF/CMakeLists.txt
+--- a/lld/ELF/CMakeLists.txt	2026-06-28 18:58:44.255962968 +0800
++++ b/lld/ELF/CMakeLists.txt	2026-06-28 19:01:32.735959531 +0800
+@@ -39,6 +39,7 @@
+   ARMErrataFix.cpp
+   BPSectionOrderer.cpp
+   CallGraphSort.cpp
++  CodeSign.cpp
+   DWARF.cpp
+   Driver.cpp
+   DriverUtils.cpp
+diff -ruN a/lld/ELF/CodeSign.cpp b/lld/ELF/CodeSign.cpp
+--- a/lld/ELF/CodeSign.cpp	1970-01-01 08:00:00.000000000 +0800
++++ b/lld/ELF/CodeSign.cpp	2026-06-28 19:01:00.327962031 +0800
+@@ -0,0 +1,152 @@
++/*
++ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#include "CodeSign.h"
++
++#include "lld/Common/ErrorHandler.h"
++#include "llvm-c/Core.h"
++#include "llvm/ADT/ArrayRef.h"
++#include "llvm/Support/Debug.h"
++#include "llvm/Support/Parallel.h"
++#include "llvm/Support/SHA256.h"
++#include <array>
++#include <cassert>
++#include <cstddef>
++#include <cstdint>
++#include <cstring>
++#include <vector>
++
++using namespace llvm;
++using namespace FsVerityCodeSign::FsVerityConstants;
++
++namespace {
++size_t getChunkCount(size_t dataSize, size_t divisor) {
++  return (size_t)std::ceil((double)dataSize / (double)divisor);
++}
++
++size_t getFullChunkSize(size_t dataSize, size_t divisor, size_t multiplier) {
++  return getChunkCount(dataSize, divisor) * multiplier;
++}
++
++void sha256(const uint8_t *data, size_t len, uint8_t *output) {
++  ArrayRef<uint8_t> block;
++  std::array<uint8_t, CHUNK_SIZE> tmp{};
++
++  if (len < CHUNK_SIZE) {
++    memcpy(tmp.data(), data, len);
++    block = ArrayRef<uint8_t>(tmp.data(), CHUNK_SIZE);
++  } else {
++    block = ArrayRef<uint8_t>(data, CHUNK_SIZE);
++  }
++
++  std::array<uint8_t, 32> hash = SHA256::hash(block);
++  static_assert(hash.size() == DIGEST_SIZE, "");
++  memcpy(output, hash.data(), hash.size());
++}
++} // namespace
++
++namespace FsVerityCodeSign {
++
++std::vector<uint8_t>
++CodeSign::generateMerkleTreeRootHash(ArrayRef<uint8_t> inputBuffer, size_t size,
++                                     size_t offset) {
++  csOffset = offset;
++
++  std::vector<size_t> offsetArrays = getOffsetArrays(size);
++  assert(offsetArrays.size() >= 2);
++
++  size_t hashBufSize = offsetArrays[offsetArrays.size() - 1];
++  auto hashBuffer = std::make_unique<uint8_t[]>(hashBufSize);
++  MutableArrayRef<uint8_t> output(hashBuffer.get(), hashBufSize);
++
++  generateHashData(inputBuffer, output, offsetArrays);
++
++  return getMerkleTreeRootHash(output, size);
++}
++
++std::vector<size_t> CodeSign::getOffsetArrays(size_t dataSize) {
++  std::vector<size_t> levelSize = getLevelSize(dataSize);
++
++  std::vector<size_t> levelOffset(levelSize.size() + 1);
++  levelOffset[0] = 0;
++  for (size_t i = 0; i < levelSize.size(); i++) {
++    levelOffset[i + 1] = levelOffset[i] + levelSize[levelSize.size() - i - 1];
++  }
++  return levelOffset;
++}
++
++std::vector<size_t> CodeSign::getLevelSize(size_t dataSize) {
++  std::vector<size_t> levelSize;
++
++  size_t fullChunkSize = 0;
++  size_t originalDataSize = dataSize;
++
++  do {
++    fullChunkSize = getFullChunkSize(originalDataSize, CHUNK_SIZE, DIGEST_SIZE);
++    int size = getFullChunkSize(fullChunkSize, CHUNK_SIZE, CHUNK_SIZE);
++    levelSize.push_back(size);
++    originalDataSize = fullChunkSize;
++  } while (fullChunkSize > CHUNK_SIZE);
++
++  assert(levelSize.size() >= 1 &&
++         "There is at least one variable in the levelsize.");
++
++  return levelSize;
++}
++
++void CodeSign::generateHashData(ArrayRef<uint8_t> inputBuffer,
++                                MutableArrayRef<uint8_t> outputBuffer,
++                                std::vector<size_t> &offsetArrays) {
++
++  const size_t codeSignIndex = getChunkCount(csOffset, CHUNK_SIZE);
++
++  const int lastIndex = offsetArrays.size() - 2;
++  for (int i = lastIndex; i >= 0; --i) {
++    auto generateHashBuffer =
++        outputBuffer.slice(offsetArrays[i], offsetArrays[i + 1]);
++
++    ArrayRef<uint8_t> originalHashBuffer =
++        (i == lastIndex)
++            ? inputBuffer
++            : outputBuffer.slice(offsetArrays[i + 1], offsetArrays[i + 2]);
++
++    size_t size = originalHashBuffer.size();
++
++    parallelFor(0, getChunkCount(size, CHUNK_SIZE), [&](size_t i) {
++      if (codeSignIndex == i)
++        memset(generateHashBuffer.data() + i * DIGEST_SIZE, 0x0, DIGEST_SIZE);
++      else
++        sha256(originalHashBuffer.data() + i * CHUNK_SIZE,
++               std::min(static_cast<size_t>(size - i * CHUNK_SIZE),
++                        static_cast<size_t>(CHUNK_SIZE)),
++               generateHashBuffer.data() + i * DIGEST_SIZE);
++    });
++  }
++}
++
++std::vector<uint8_t>
++CodeSign::getMerkleTreeRootHash(MutableArrayRef<uint8_t> dataBuffer,
++                                size_t inputDataSize) {
++  std::vector<uint8_t> rootHash(DIGEST_SIZE);
++  if (inputDataSize <= FSVERITY_HASH_PAGE_SIZE) {
++    assert(dataBuffer.size() == DIGEST_SIZE);
++    llvm::copy(dataBuffer.slice(0, DIGEST_SIZE), rootHash.begin());
++  } else {
++    std::array<uint8_t, 32> hash =
++        SHA256::hash(dataBuffer.slice(0, FSVERITY_HASH_PAGE_SIZE));
++    llvm::copy(hash, rootHash.begin());
++  }
++  return rootHash;
++}
++} // namespace FsVerityCodeSign
+diff -ruN a/lld/ELF/CodeSign.h b/lld/ELF/CodeSign.h
+--- a/lld/ELF/CodeSign.h	1970-01-01 08:00:00.000000000 +0800
++++ b/lld/ELF/CodeSign.h	2026-06-28 19:00:43.627959375 +0800
+@@ -0,0 +1,84 @@
++/*
++ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++#ifndef CODESIGN_H
++#define CODESIGN_H
++
++#include "llvm/ADT/ArrayRef.h"
++#include <cstddef>
++#include <cstdint>
++
++namespace FsVerityCodeSign {
++
++namespace FsVerityConstants {
++constexpr uint8_t VERSION = 0x1;
++constexpr uint8_t FS_VERITY_DESCRIPTOR_TYPE = 0x1;
++constexpr uint8_t SHA256_ALGORITHM = 0x1;
++constexpr uint8_t ELF_CODE_SIGN_VERSION = 0x3;
++
++constexpr int8_t LOG_2_OF_FSVERITY_HASH_PAGE_SIZE = 12;
++constexpr int FSVERITY_HASH_PAGE_SIZE = 4096;
++constexpr int CHUNK_SIZE = 4096;
++constexpr int DIGEST_SIZE = 32;
++constexpr int ROOT_HASH_SIZE = 32;
++constexpr int DESCRIPTOR_SIZE = 256;
++
++constexpr int FLAG_SELF_SIGN = 1 << 4;
++} // namespace FsVerityConstants
++
++class CodeSign {
++public:
++  std::vector<uint8_t>
++  generateMerkleTreeRootHash(llvm::ArrayRef<uint8_t> inputBuffer, size_t size,
++                             size_t csOffset);
++
++private:
++  std::vector<size_t> getOffsetArrays(size_t dataSize);
++  std::vector<size_t> getLevelSize(size_t dataSize);
++  void generateHashData(llvm::ArrayRef<uint8_t> inputBuffer,
++                        llvm::MutableArrayRef<uint8_t> outputBuffer,
++                        std::vector<size_t> &offsetArrays);
++  std::vector<uint8_t>
++  getMerkleTreeRootHash(llvm::MutableArrayRef<uint8_t> dataBuffer,
++                        size_t inputDataSize);
++  size_t csOffset = 0;
++};
++
++LLVM_PACKED_START
++struct FsVerity {
++  uint8_t version;
++  uint8_t hashAlgorithm;
++  uint8_t log2BlockSize;
++  uint8_t saltSize;
++  uint32_t signSize;
++  uint64_t fileSize;
++  uint8_t rawRootHash[64];
++  uint8_t salt[32];
++  uint32_t flag;
++  uint8_t reservedAfterFlags[4];
++  uint64_t merkleTreeOffset;
++  uint8_t reservedAfterTreeOffset[127];
++  uint8_t csVersion;
++};
++
++struct FsVerityWithSign {
++  uint32_t type;
++  uint32_t length;
++  FsVerity fsVerity;
++  uint8_t signature[32];
++};
++LLVM_PACKED_END
++
++} // namespace FsVerityCodeSign
++#endif // CODESIGN_H
+diff -ruN a/lld/ELF/Config.h b/lld/ELF/Config.h
+--- a/lld/ELF/Config.h	2026-06-28 18:58:44.255962968 +0800
++++ b/lld/ELF/Config.h	2026-06-28 19:01:43.099959843 +0800
+@@ -526,6 +526,8 @@
+   // not supported on Android 11 & 12.
+   bool androidMemtagStack;
+ 
++  bool codeSign = true;
++
+   // When using a unified pre-link LTO pipeline, specify the backend LTO mode.
+   LtoKind ltoKind = LtoKind::Default;
+ 
+diff -ruN a/lld/ELF/Driver.cpp b/lld/ELF/Driver.cpp
+--- a/lld/ELF/Driver.cpp	2026-06-28 18:58:44.255962968 +0800
++++ b/lld/ELF/Driver.cpp	2026-06-28 19:01:43.155960781 +0800
+@@ -1381,6 +1381,8 @@
+   parseBPOrdererOptions(ctx, args);
+   ctx.arg.checkSections =
+       args.hasFlag(OPT_check_sections, OPT_no_check_sections, true);
++  ctx.arg.codeSign =
++      args.hasFlag(OPT_code_sign, OPT_no_code_sign, true);
+   ctx.arg.chroot = args.getLastArgValue(OPT_chroot);
+   if (auto *arg = args.getLastArg(OPT_compress_debug_sections)) {
+     ctx.arg.compressDebugSections =
+diff -ruN a/lld/ELF/Options.td b/lld/ELF/Options.td
+--- a/lld/ELF/Options.td	2026-06-28 18:58:44.263964375 +0800
++++ b/lld/ELF/Options.td	2026-06-28 19:01:43.123959375 +0800
+@@ -67,6 +67,10 @@
+     "Check section addresses for overlaps (default)",
+     "Do not check section addresses for overlaps">;
+ 
++defm code_sign: B<"code-sign",
++    "Code self sign (default)",
++    "Do not code self sign">;
++
+ defm compress_debug_sections:
+   Eq<"compress-debug-sections", "Compress DWARF debug sections">,
+   MetaVarName<"[none,zlib,zstd]">;
+diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
+--- a/lld/ELF/SyntheticSections.cpp	2026-06-28 18:58:44.267961093 +0800
++++ b/lld/ELF/SyntheticSections.cpp	2026-06-28 19:02:58.767965156 +0800
+@@ -389,6 +389,19 @@
+   memcpy(hashBuf, buf.data(), hashSize);
+ }
+ 
++
++CodeSignSection::CodeSignSection(Ctx &ctx)
++    : SyntheticSection(ctx, SHT_PROGBITS, 4096, ".codesign") {}
++
++void CodeSignSection::writeTo(uint8_t *buf) {
++  memset(buf, 0x0, getSize());
++  hashBuf = buf;
++}
++
++void CodeSignSection::writeCodeSignSection(uint8_t *buf, size_t size) {
++  memcpy(hashBuf, buf, size);
++}
++
+ BssSection::BssSection(Ctx &ctx, StringRef name, uint64_t size,
+                        uint32_t alignment)
+     : SyntheticSection(ctx, name, SHT_NOBITS, SHF_ALLOC | SHF_WRITE,
+@@ -4795,6 +4808,12 @@
+ 
+     if (ctx.arg.buildId != BuildIdKind::None) {
+       part.buildId = std::make_unique<BuildIdSection>(ctx);
++    }
++
++    if (ctx.arg.codeSign) {
++      part.codesign = std::make_unique<CodeSignSection>(ctx);
++      add(*part.codesign);
++
+       add(*part.buildId);
+     }
+ 
+diff -ruN a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
+--- a/lld/ELF/SyntheticSections.h	2026-06-28 18:58:44.267961093 +0800
++++ b/lld/ELF/SyntheticSections.h	2026-06-28 19:02:58.707959531 +0800
+@@ -158,6 +158,19 @@
+ };
+ 
+ // .note.gnu.build-id section.
++class CodeSignSection : public SyntheticSection {
++
++public:
++  CodeSignSection(Ctx &ctx);
++  void writeTo(uint8_t *buf) override;
++  bool isNeeded() const override { return true; }
++  size_t getSize() const override { return 4096; }
++  void writeCodeSignSection(uint8_t *buf, size_t size);
++
++private:
++  uint8_t *hashBuf;
++};
++
+ class BuildIdSection : public SyntheticSection {
+   // First 16 bytes are a header.
+   static const unsigned headerSize = 16;
+@@ -1508,6 +1521,7 @@
+ 
+   std::unique_ptr<ARMExidxSyntheticSection> armExidx;
+   std::unique_ptr<BuildIdSection> buildId;
++  std::unique_ptr<CodeSignSection> codesign;
+   std::unique_ptr<SyntheticSection> dynamic;
+   std::unique_ptr<StringTableSection> dynStrTab;
+   std::unique_ptr<SymbolTableBaseSection> dynSymTab;
+diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
+--- a/lld/ELF/Writer.cpp	2026-06-28 18:58:44.271962968 +0800
++++ b/lld/ELF/Writer.cpp	2026-06-28 19:35:46.115959218 +0800
+@@ -11,6 +11,8 @@
+ #include "ARMErrataFix.h"
+ #include "BPSectionOrderer.h"
+ #include "CallGraphSort.h"
++#include "CodeSign.h"
++#include "llvm/Support/SHA256.h"
+ #include "Config.h"
+ #include "InputFiles.h"
+ #include "LinkerScript.h"
+@@ -41,6 +43,7 @@
+ using namespace llvm::object;
+ using namespace llvm::support;
+ using namespace llvm::support::endian;
++using namespace FsVerityCodeSign;
+ using namespace lld;
+ using namespace lld::elf;
+ 
+@@ -81,6 +84,9 @@
+   void writeSections();
+   void writeSectionsBinary();
+   void writeBuildId();
++    if (ctx.arg.codeSign)
++      writeSelfSign();
++  void writeSelfSign();
+ 
+   Ctx &ctx;
+   std::unique_ptr<FileOutputBuffer> &buffer;
+@@ -381,6 +387,8 @@
+     // Backfill .note.gnu.build-id section content. This is done at last
+     // because the content is usually a hash value of the entire output file.
+     writeBuildId();
++    if (ctx.arg.codeSign)
++      writeSelfSign();
+     if (errCount(ctx))
+       return;
+ 
+@@ -3093,3 +3101,44 @@
+ template void elf::writeResult<ELF32BE>(Ctx &);
+ template void elf::writeResult<ELF64LE>(Ctx &);
+ template void elf::writeResult<ELF64BE>(Ctx &);
++
++template <class ELFT> void Writer<ELFT>::writeSelfSign() {
++  if (!ctx.mainPart->codesign || !ctx.mainPart->codesign->getParent())
++    return;
++
++  std::unique_ptr<CodeSign> builder = std::make_unique<CodeSign>(CodeSign());
++
++  OutputSection *parent = ctx.mainPart->codesign->getParent();
++  size_t offset = parent->offset + ctx.mainPart->codesign->outSecOff;
++  llvm::ArrayRef<uint8_t> input{ctx.bufferStart, size_t(fileSize)};
++
++  FsVerity fsVerity{};
++  fsVerity.version = FsVerityConstants::VERSION;
++  fsVerity.hashAlgorithm = FsVerityConstants::SHA256_ALGORITHM;
++  fsVerity.log2BlockSize = FsVerityConstants::LOG_2_OF_FSVERITY_HASH_PAGE_SIZE;
++  fsVerity.fileSize = fileSize;
++
++  auto rootHash = builder->generateMerkleTreeRootHash(input, fileSize, offset);
++  memcpy(fsVerity.rawRootHash, rootHash.data(),
++         FsVerityConstants::ROOT_HASH_SIZE);
++
++  fsVerity.flag = FsVerityConstants::FLAG_SELF_SIGN;
++  fsVerity.csVersion = FsVerityConstants::ELF_CODE_SIGN_VERSION;
++
++  std::array<uint8_t, FsVerityConstants::DESCRIPTOR_SIZE> fsVerityBuffer;
++  memcpy(fsVerityBuffer.data(), &fsVerity, sizeof(fsVerityBuffer));
++  ArrayRef<uint8_t> block(fsVerityBuffer.data(),
++                          FsVerityConstants::DESCRIPTOR_SIZE);
++  std::array<uint8_t, 32> hash = SHA256::hash(block);
++  fsVerity.signSize = hash.size();
++
++  FsVerityWithSign fsWithSign{};
++  fsWithSign.type = FsVerityConstants::FS_VERITY_DESCRIPTOR_TYPE;
++  fsWithSign.length = FsVerityConstants::DESCRIPTOR_SIZE + hash.size();
++  fsWithSign.fsVerity = fsVerity;
++  llvm::copy(hash, fsWithSign.signature);
++
++  std::array<uint8_t, sizeof(FsVerityWithSign)> buffer;
++  memcpy(buffer.data(), &fsWithSign, sizeof(fsWithSign));
++  ctx.mainPart->codesign->writeCodeSignSection(buffer.data(), sizeof(fsWithSign));
++}
+diff -ruN a/llvm/include/llvm/TargetParser/Triple.h b/llvm/include/llvm/TargetParser/Triple.h
+--- a/llvm/include/llvm/TargetParser/Triple.h	2026-06-28 18:58:50.239959062 +0800
++++ b/llvm/include/llvm/TargetParser/Triple.h	2026-06-28 19:43:35.383960312 +0800
+@@ -1164,7 +1164,7 @@
+   /// Note: Android API level 29 (10) introduced ELF TLS.
+   bool hasDefaultEmulatedTLS() const {
+     return (isAndroid() && isAndroidVersionLT(29)) || isOSOpenBSD() ||
+-           isWindowsCygwinEnvironment() || isOHOSFamily();
++           isWindowsCygwinEnvironment();
+   }
+ 
+   /// True if the target uses TLSDESC by default.
