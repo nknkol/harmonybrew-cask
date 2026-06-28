@@ -293,7 +293,7 @@ diff -ruN a/lld/ELF/Options.td b/lld/ELF/Options.td
    MetaVarName<"[none,zlib,zstd]">;
 diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
 --- a/lld/ELF/SyntheticSections.cpp	2026-06-28 18:58:44.267961093 +0800
-+++ b/lld/ELF/SyntheticSections.cpp	2026-06-28 22:12:30.133105155 +0800
++++ b/lld/ELF/SyntheticSections.cpp	2026-06-28 23:22:39.841102655 +0800
 @@ -389,6 +389,19 @@
    memcpy(hashBuf, buf.data(), hashSize);
  }
@@ -314,19 +314,18 @@ diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
  BssSection::BssSection(Ctx &ctx, StringRef name, uint64_t size,
                         uint32_t alignment)
      : SyntheticSection(ctx, name, SHT_NOBITS, SHF_ALLOC | SHF_WRITE,
-@@ -4795,6 +4808,12 @@
- 
-     if (ctx.arg.buildId != BuildIdKind::None) {
-       part.buildId = std::make_unique<BuildIdSection>(ctx);
-+    }
-+
-+    if (ctx.arg.codeSign) {
-+      part.codesign = std::make_unique<CodeSignSection>(ctx);
-+      add(*part.codesign);
-+
+@@ -4798,6 +4811,11 @@
        add(*part.buildId);
      }
  
++    if (ctx.arg.codeSign) {
++      part.codesign = std::make_unique<CodeSignSection>(ctx);
++      add(*part.codesign);
++    }
++
+     // dynSymTab is always present to simplify several finalizeSections
+     // functions.
+     part.dynStrTab = std::make_unique<StringTableSection>(ctx, ".dynstr", true);
 diff -ruN a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
 --- a/lld/ELF/SyntheticSections.h	2026-06-28 18:58:44.267961093 +0800
 +++ b/lld/ELF/SyntheticSections.h	2026-06-28 19:02:58.707959531 +0800
