@@ -27,7 +27,7 @@ class LlvmAT21 < Formula
   # ---------------------------------------------------------------
   def apply_patches
     tap_root = Pathname.new(__FILE__).dirname.parent
-    patch_file = tap_root/"patches/llvm@21/0001-disable-emulated-tls.patch"
+    patch_file = tap_root/"patches/llvm@21/0001-add-ohos-codesign-lts.patch"
     cd buildpath do
       system "patch", "-f", "-p1", "-i", patch_file.to_s
     end
