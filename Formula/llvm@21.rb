@@ -78,8 +78,19 @@ class LlvmAT21 < Formula
     system "ninja", "-C", "build"
     system "cmake", "--install", "build", "--prefix", prefix
 
-    ohos_llvm_lib.glob("libunwind.*").each { |f| ln_s f, lib/f.basename }
-    ohos_llvm_lib.glob("libc++*").each      { |f| ln_s f, lib/f.basename }
+    clang_runtime_lib = lib/"clang/#{version.major}/lib"
+    default_runtime_dir = clang_runtime_lib/"aarch64-unknown-linux-ohos"
+    ohos_runtime_dir = clang_runtime_lib/"aarch64-linux-ohos"
+    ln_s default_runtime_dir.basename, ohos_runtime_dir unless ohos_runtime_dir.exist?
+
+    ohos_llvm_lib.glob("libunwind.*").each do |f|
+      ln_s f, lib/f.basename
+      ln_s f, default_runtime_dir/f.basename
+    end
+    ohos_llvm_lib.glob("libc++*").each do |f|
+      ln_s f, lib/f.basename
+      ln_s f, default_runtime_dir/f.basename
+    end
 
   end
 
