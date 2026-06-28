@@ -8,6 +8,7 @@ class LlvmAT21 < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fllvm@21"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "2adaa6425bfb9c91fa5e0366cc92eed339d27c16df88b4d47c92d6843f97e4eb"
   end
 
   depends_on "cmake" => :build
