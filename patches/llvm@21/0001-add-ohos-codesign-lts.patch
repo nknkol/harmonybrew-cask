@@ -293,14 +293,14 @@ diff -ruN a/lld/ELF/Options.td b/lld/ELF/Options.td
    MetaVarName<"[none,zlib,zstd]">;
 diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
 --- a/lld/ELF/SyntheticSections.cpp	2026-06-28 18:58:44.267961093 +0800
-+++ b/lld/ELF/SyntheticSections.cpp	2026-06-28 19:02:58.767965156 +0800
++++ b/lld/ELF/SyntheticSections.cpp	2026-06-28 22:12:30.133105155 +0800
 @@ -389,6 +389,19 @@
    memcpy(hashBuf, buf.data(), hashSize);
  }
  
 +
 +CodeSignSection::CodeSignSection(Ctx &ctx)
-+    : SyntheticSection(ctx, SHT_PROGBITS, 4096, ".codesign") {}
++    : SyntheticSection(ctx, ".codesign", SHT_PROGBITS, 0, 4096) {}
 +
 +void CodeSignSection::writeTo(uint8_t *buf) {
 +  memset(buf, 0x0, getSize());
@@ -360,7 +360,7 @@ diff -ruN a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
    std::unique_ptr<SymbolTableBaseSection> dynSymTab;
 diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
 --- a/lld/ELF/Writer.cpp	2026-06-28 18:58:44.271962968 +0800
-+++ b/lld/ELF/Writer.cpp	2026-06-28 19:35:46.115959218 +0800
++++ b/lld/ELF/Writer.cpp	2026-06-28 22:16:12.053102186 +0800
 @@ -11,6 +11,8 @@
  #include "ARMErrataFix.h"
  #include "BPSectionOrderer.h"
@@ -378,17 +378,15 @@ diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
  using namespace lld;
  using namespace lld::elf;
  
-@@ -81,6 +84,9 @@
+@@ -81,6 +84,7 @@
    void writeSections();
    void writeSectionsBinary();
    void writeBuildId();
-+    if (ctx.arg.codeSign)
-+      writeSelfSign();
 +  void writeSelfSign();
  
    Ctx &ctx;
    std::unique_ptr<FileOutputBuffer> &buffer;
-@@ -381,6 +387,8 @@
+@@ -381,6 +385,8 @@
      // Backfill .note.gnu.build-id section content. This is done at last
      // because the content is usually a hash value of the entire output file.
      writeBuildId();
@@ -397,11 +395,10 @@ diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
      if (errCount(ctx))
        return;
  
-@@ -3093,3 +3101,44 @@
- template void elf::writeResult<ELF32BE>(Ctx &);
- template void elf::writeResult<ELF64LE>(Ctx &);
- template void elf::writeResult<ELF64BE>(Ctx &);
-+
+@@ -3089,6 +3095,47 @@
+     part.buildId->writeBuildId(output);
+ }
+ 
 +template <class ELFT> void Writer<ELFT>::writeSelfSign() {
 +  if (!ctx.mainPart->codesign || !ctx.mainPart->codesign->getParent())
 +    return;
@@ -442,6 +439,10 @@ diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
 +  memcpy(buffer.data(), &fsWithSign, sizeof(fsWithSign));
 +  ctx.mainPart->codesign->writeCodeSignSection(buffer.data(), sizeof(fsWithSign));
 +}
++
+ template void elf::writeResult<ELF32LE>(Ctx &);
+ template void elf::writeResult<ELF32BE>(Ctx &);
+ template void elf::writeResult<ELF64LE>(Ctx &);
 diff -ruN a/llvm/include/llvm/TargetParser/Triple.h b/llvm/include/llvm/TargetParser/Triple.h
 --- a/llvm/include/llvm/TargetParser/Triple.h	2026-06-28 18:58:50.239959062 +0800
 +++ b/llvm/include/llvm/TargetParser/Triple.h	2026-06-28 19:43:35.383960312 +0800
