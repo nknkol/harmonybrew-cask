@@ -1,0 +1,26 @@
+--- a/src/llvm-project/llvm/cmake/modules/GetHostTriple.cmake	2026-05-26 07:21:07.000000000 +0800
++++ b/src/llvm-project/llvm/cmake/modules/GetHostTriple.cmake	2026-06-29 03:03:48.423456875 +0800
+@@ -41,8 +41,10 @@
+     else()
+       set( value "powerpc-ibm-aix" )
+     endif()
+-  else()
+-    if(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows AND NOT MSYS)
++    elseif( CMAKE_SYSTEM_NAME STREQUAL "HarmonyOS" )
++      set( value "aarch64-unknown-linux-ohos" )
++    else()
++      if(CMAKE_HOST_SYSTEM_NAME STREQUAL Windows AND NOT MSYS)
+       message(WARNING "unable to determine host target triple")
+     else()
+       set(config_guess ${LLVM_MAIN_SRC_DIR}/cmake/config.guess)
+--- a/src/llvm-project/llvm/cmake/modules/HandleLLVMOptions.cmake	2026-05-26 07:21:07.000000000 +0800
++++ b/src/llvm-project/llvm/cmake/modules/HandleLLVMOptions.cmake	2026-06-29 03:03:59.959456094 +0800
+@@ -235,7 +235,7 @@
+ if(WIN32)
+   set(LLVM_HAVE_LINK_VERSION_SCRIPT 0)
+   set(LLVM_ON_UNIX 0)
+-elseif(FUCHSIA OR UNIX OR CYGWIN)
++elseif(FUCHSIA OR UNIX OR CYGWIN OR CMAKE_SYSTEM_NAME STREQUAL "HarmonyOS")
+   set(LLVM_ON_UNIX 1)
+   if(APPLE OR CYGWIN OR "${CMAKE_SYSTEM_NAME}" MATCHES "AIX")
+     set(LLVM_HAVE_LINK_VERSION_SCRIPT 0)
