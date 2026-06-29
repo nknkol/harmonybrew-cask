@@ -67,6 +67,10 @@ class Rust < Formula
     Formula["llvm@21"].opt_prefix
   end
 
+  def ohos_llvm
+    Formula["ohos-sdk"].opt_prefix/"native/llvm"
+  end
+
   def sign_tool
     Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
@@ -176,8 +180,9 @@ class Rust < Formula
     ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
     ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
-    # Linker wrapper: llvm@21 clang + post-link settle workaround.
+    # Linker wrapper: llvm@21 clang with --code-sign for lld signing.
     llvm_bin = llvm_root/"bin"
+    ohos_bin = ohos_llvm/"bin"
     target_triple = "aarch64-unknown-linux-ohos"
 
     linker_wrapper = buildpath/"ohos-linker-wrapper"
@@ -221,10 +226,10 @@ class Rust < Formula
       --release-channel=stable
       --release-description=#{tap.user}
       --set=rust.jemalloc=false
-      --set=target.#{target_triple}.cc=#{llvm_bin}/clang
-      --set=target.#{target_triple}.cxx=#{llvm_bin}/clang++
-      --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
-      --set=target.#{target_triple}.ranlib=#{llvm_bin}/llvm-ranlib
+      --set=target.#{target_triple}.cc=#{ohos_bin}/clang
+      --set=target.#{target_triple}.cxx=#{ohos_bin}/clang++
+      --set=target.#{target_triple}.ar=#{ohos_bin}/llvm-ar
+      --set=target.#{target_triple}.ranlib=#{ohos_bin}/llvm-ranlib
       --set=target.#{target_triple}.linker=#{linker_wrapper}
       --set=rust.rustflags=#{rustflags}
     ]
@@ -232,10 +237,8 @@ class Rust < Formula
     system "./configure", *args
 
     # Prepend llvm@21's bin to PATH so that any direct linker invocation
-    # by stage0 cargo / rustc finds the code-sign-capable lld first.
+    # finds the code-sign-capable lld first.
     ENV.prepend_path "PATH", llvm_bin
-    ENV["CC"] = "#{llvm_bin}/clang"
-    ENV["CXX"] = "#{llvm_bin}/clang++"
 
     system "make"
     system "make", "install"
