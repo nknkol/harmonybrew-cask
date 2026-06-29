@@ -238,8 +238,8 @@ class Rust < Formula
     # bootstrap.toml directly so --code-sign and rpath flags reach every
     # compilation stage, including the initial stage0→stage1 bootstrap.
     inreplace "bootstrap.toml",
-              /^(linker\s*=\s*".*")$/,
-              "\\1\nrustflags = \"" + rustflags + "\""
+              /^(linker\s*=\s*'.*')$/,
+              "\\1\nrustflags = '" + rustflags + "'"
     system "make"
     system "make", "install"
 
