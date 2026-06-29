@@ -146,6 +146,7 @@ class Rust < Formula
 
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
+    ENV.prepend_path "PATH", llvm_bin
 
     # RUSTFLAGS: inject runtime library search paths (HarmonyOS has no default
     # system library path, so we must enumerate every shared library location).
@@ -159,7 +160,7 @@ class Rust < Formula
       Formula["sqlite"].opt_lib,
       Formula["xz"].opt_lib,
     ]
-    ENV["RUSTFLAGS"] = runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }.join(" ")
+    ENV["RUSTFLAGS"] = (["-Clink-arg=-Wl,--code-sign"] + runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
 
     # Stage bootstrap resources
     cache_date = File.basename(File.dirname(resource("rustc-bootstrap").url))
