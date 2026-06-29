@@ -179,8 +179,6 @@ class Rust < Formula
     llvm_bin = llvm_root/"bin"
     target_triple = "aarch64-unknown-linux-ohos"
 
-    ENV.prepend_path "PATH", llvm_bin
-
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
@@ -230,6 +228,10 @@ class Rust < Formula
     ]
 
     system "./configure", *args
+
+    # Prepend llvm@21's bin to PATH so that any direct linker invocation
+    # by stage0 cargo / rustc finds the code-sign-capable lld first.
+    ENV.prepend_path "PATH", llvm_bin
 
     # configure.py only recognises keys already in the template config;
     # rustflags is not one of them.  Inject it into the generated
