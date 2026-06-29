@@ -147,8 +147,9 @@ class Rust < Formula
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
 
-    # RUSTFLAGS: inject runtime library search paths (HarmonyOS has no default
-    # system library path, so we must enumerate every shared library location).
+    # RUSTFLAGS: inject runtime library search paths and code-sign.
+    # Set via build.rustflags in config.toml (not ENV) so stage0 bootstrap
+    # compilation also picks them up.
     runtime_rpaths = [
       "$ORIGIN/../lib",
       Formula["openssl@3"].opt_lib,
@@ -159,7 +160,7 @@ class Rust < Formula
       Formula["sqlite"].opt_lib,
       Formula["xz"].opt_lib,
     ]
-    ENV["RUSTFLAGS"] = (["-Clink-arg=-Wl,--code-sign"] + runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
+    rustflags = (["-Clink-arg=-Wl,--code-sign"] + runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
 
     # Stage bootstrap resources
     cache_date = File.basename(File.dirname(resource("rustc-bootstrap").url))
@@ -221,6 +222,7 @@ class Rust < Formula
       --release-channel=stable
       --release-description=#{tap.user}
       --set=rust.jemalloc=false
+      --set=build.rustflags=#{rustflags}
       --set=target.#{target_triple}.cc=#{llvm_bin}/clang
       --set=target.#{target_triple}.cxx=#{llvm_bin}/clang++
       --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
