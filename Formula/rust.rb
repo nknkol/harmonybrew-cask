@@ -146,7 +146,6 @@ class Rust < Formula
 
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
-    ENV.prepend_path "PATH", llvm_bin
 
     # RUSTFLAGS: inject runtime library search paths (HarmonyOS has no default
     # system library path, so we must enumerate every shared library location).
@@ -178,6 +177,8 @@ class Rust < Formula
     # Linker wrapper: llvm@21 clang + post-link settle workaround.
     llvm_bin = llvm_root/"bin"
     target_triple = "aarch64-unknown-linux-ohos"
+
+    ENV.prepend_path "PATH", llvm_bin
 
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
