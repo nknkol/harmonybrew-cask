@@ -226,6 +226,7 @@ class Rust < Formula
       --release-channel=stable
       --release-description=#{tap.user}
       --set=rust.jemalloc=false
+      --set=rust.codegen-tests=false
       --set=target.#{target_triple}.cc=#{ohos_bin}/clang
       --set=target.#{target_triple}.cxx=#{ohos_bin}/clang++
       --set=target.#{target_triple}.ar=#{ohos_bin}/llvm-ar
