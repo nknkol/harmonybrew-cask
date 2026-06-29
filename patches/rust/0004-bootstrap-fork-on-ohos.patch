@@ -1,0 +1,23 @@
+--- a/src/bootstrap/bootstrap.py	2026-05-26 07:21:07.000000000 +0800
++++ b/src/bootstrap/bootstrap.py	2026-06-29 03:04:36.391459844 +0800
+@@ -13,7 +13,7 @@
+ import tempfile
+ 
+ from time import time
+-from multiprocessing import Pool, cpu_count
++from multiprocessing import Pool, cpu_count, get_context
+ 
+ try:
+     import lzma
+@@ -705,7 +705,10 @@
+                     pool_size,
+                     "for the unpacking of the tarballs",
+                 )
+-            p = Pool(pool_size)
++            if hasattr(os, "uname") and os.uname().sysname == "HarmonyOS":
++                p = get_context("fork").Pool(pool_size)
++            else:
++                p = Pool(pool_size)
+             try:
+                 # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
+                 # remove this once the issue is closed.

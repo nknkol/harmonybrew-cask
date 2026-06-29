@@ -1,0 +1,13 @@
+--- a/compiler/rustc_target/src/spec/base/linux_ohos.rs	2026-05-26 07:21:07.000000000 +0800
++++ b/compiler/rustc_target/src/spec/base/linux_ohos.rs	2026-06-29 03:03:34.835458438 +0800
+@@ -4,8 +4,8 @@
+     TargetOptions {
+         env: Env::Ohos,
+         crt_static_default: false,
+-        tls_model: TlsModel::Emulated,
+-        has_thread_local: false,
++        tls_model: TlsModel::GeneralDynamic,
++        has_thread_local: true,
+         ..base::linux::opts()
+     }
+ }
