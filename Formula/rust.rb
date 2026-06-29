@@ -226,7 +226,7 @@ class Rust < Formula
       --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
       --set=target.#{target_triple}.ranlib=#{llvm_bin}/llvm-ranlib
       --set=target.#{target_triple}.linker=#{linker_wrapper}
-      --set=target.#{target_triple}.rustflags=#{rustflags}
+      --set=rust.rustflags=#{rustflags}
     ]
 
     system "./configure", *args
