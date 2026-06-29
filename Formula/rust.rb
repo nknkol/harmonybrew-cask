@@ -44,6 +44,9 @@ class Rust < Formula
   patch do
     file "patches/rust/0004-bootstrap-fork-on-ohos.patch"
   end
+  patch do
+    file "patches/rust/0005-fix-configure-rustflags-array.patch"
+  end
 
   resource "rustc-bootstrap" do
     url "https://static.rust-lang.org/dist/2026-04-16/rustc-1.95.0-aarch64-unknown-linux-ohos.tar.xz", using: :nounzip

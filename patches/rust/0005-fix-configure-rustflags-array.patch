@@ -1,0 +1,22 @@
+--- a/src/bootstrap/configure.py	2026-05-26 07:21:07.000000000 +0800
++++ b/src/bootstrap/configure.py	2026-06-29 16:17:47.246879532 +0800
+@@ -362,6 +362,8 @@
+ 
+ 
+ def is_value_list(key):
++    if key == "rustflags":
++        return True
+     for option in options:
+         if option.name == key and option.desc.startswith("List of"):
+             return True
+@@ -495,7 +497,9 @@
+ 
+     for i, part in enumerate(parts):
+         if i == len(parts) - 1:
+-            if is_value_list(part) and isinstance(value, str):
++            if part == "rustflags" and isinstance(value, str):
++                value = value.split()
++            elif is_value_list(part) and isinstance(value, str):
+                 value = value.split(",")
+             arr[part] = value
+         else:
