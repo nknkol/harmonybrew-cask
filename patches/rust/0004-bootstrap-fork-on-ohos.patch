@@ -1,5 +1,5 @@
 --- a/src/bootstrap/bootstrap.py	2026-05-26 07:21:07.000000000 +0800
-+++ b/src/bootstrap/bootstrap.py	2026-06-29 03:04:36.391459844 +0800
++++ b/src/bootstrap/bootstrap.py	2026-06-29 11:29:05.259458282 +0800
 @@ -13,7 +13,7 @@
  import tempfile
  
@@ -21,3 +21,41 @@
              try:
                  # FIXME: A cheap workaround for https://github.com/rust-lang/rust/issues/125578,
                  # remove this once the issue is closed.
+@@ -718,6 +721,37 @@
+                 p.close()
+             p.join()
+ 
++            if hasattr(os, "uname") and os.uname().sysname == "HarmonyOS":
++                # Sign bootstrap ELF binaries so they can run on HarmonyOS.
++                objcopy = os.environ.get("RUST_OHOS_OBJCOPY", "llvm-objcopy")
++                sign_tool = os.environ.get("RUST_OHOS_SIGN_TOOL", "binary-sign-tool-fix")
++                bin_root = self.bin_root()
++                for dirpath, _, filenames in os.walk(bin_root):
++                    for filename in filenames:
++                        path = os.path.join(dirpath, filename)
++                        try:
++                            with open(path, "rb") as f:
++                                if f.read(4) != b"\x7fELF":
++                                    continue
++                        except OSError:
++                            continue
++                        os.chmod(path, 0o755)
++                        unsigned = path + ".unsigned"
++                        signed = path + ".signed"
++                        if os.path.exists(unsigned):
++                            os.unlink(unsigned)
++                        if os.path.exists(signed):
++                            os.unlink(signed)
++                        try:
++                            subprocess.check_call([objcopy, "--remove-section=.codesign", path, unsigned])
++                        except subprocess.CalledProcessError:
++                            shutil.copyfile(path, unsigned)
++                        subprocess.check_call([sign_tool, "sign", "-inFile", unsigned, "-outFile", signed, "-selfSign", "1"])
++                        os.chmod(signed, 0o755)
++                        os.replace(signed, path)
++                        if os.path.exists(unsigned):
++                            os.unlink(unsigned)
++
+             if self.should_fix_bins_and_dylibs():
+                 self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
+ 

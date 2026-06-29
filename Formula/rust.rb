@@ -168,15 +168,10 @@ class Rust < Formula
     resource("cargo-bootstrap").stage build_cache_directory
     resource("rust-std-bootstrap").stage build_cache_directory
 
-    # Unpack bootstrap tarballs so we can sign the ELF binaries inside them
-    # before make runs.  Rust's bootstrap skips extraction when the unpacked
-    # directory already exists, so pre-extracting is harmless.
-    Dir.glob(build_cache_directory/"*.tar.xz").each do |archive|
-      system "tar", "xf", archive, "-C", build_cache_directory
-    end
-
-    # Sign pre-compiled bootstrap ELF binaries (HarmonyOS requirement).
-    sign_tree!(build_cache_directory)
+    # bootstrap.py patches sign bootstrap ELFs after extraction;
+    # expose tool paths via environment variables.
+    ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
+    ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
     # Linker wrapper: OHOS clang + post-link settle workaround.
     ohos_llvm_bin = llvm_root/"bin"
