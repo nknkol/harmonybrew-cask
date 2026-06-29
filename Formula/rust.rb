@@ -9,7 +9,7 @@ class Rust < Formula
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Frust"
   end
 
-  depends_on "nknkol/harmonybrew-cask/binary-sign-tool" => :build
+  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "gpatch" => :build
   depends_on "llvm-gcc-compat" => :build
   depends_on "pkgconf" => :build
@@ -64,7 +64,7 @@ class Rust < Formula
   end
 
   def sign_tool
-    Formula["nknkol/harmonybrew-cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+    Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
 
   def objcopy
@@ -143,7 +143,7 @@ class Rust < Formula
     ENV.delete("HOMEBREW_RUSTFLAGS")
     ENV.delete("RUSTFLAGS")
 
-    ENV.prepend_path "PATH", Formula["nknkol/harmonybrew-cask/binary-sign-tool"].opt_bin
+    ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
 
     # RUSTFLAGS: inject runtime library search paths (HarmonyOS has no default
