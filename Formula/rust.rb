@@ -147,9 +147,7 @@ class Rust < Formula
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
 
-    # RUSTFLAGS: inject runtime library search paths and code-sign.
-    # Set via build.rustflags in config.toml (not ENV) so stage0 bootstrap
-    # compilation also picks them up.
+    # RUSTFLAGS: inject code-sign and runtime library search paths.
     runtime_rpaths = [
       "$ORIGIN/../lib",
       Formula["openssl@3"].opt_lib,
@@ -225,6 +223,7 @@ class Rust < Formula
       --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
       --set=target.#{target_triple}.ranlib=#{llvm_bin}/llvm-ranlib
       --set=target.#{target_triple}.linker=#{linker_wrapper}
+      --set=target.#{target_triple}.rustflags=#{rustflags}
     ]
 
     system "./configure", *args
@@ -233,13 +232,6 @@ class Rust < Formula
     # by stage0 cargo / rustc finds the code-sign-capable lld first.
     ENV.prepend_path "PATH", llvm_bin
 
-    # configure.py only recognises keys already in the template config;
-    # rustflags is not one of them.  Inject it into the generated
-    # bootstrap.toml directly so --code-sign and rpath flags reach every
-    # compilation stage, including the initial stage0→stage1 bootstrap.
-    inreplace "bootstrap.toml",
-              /^(linker\s*=\s*'.*')$/,
-              "\\1\nrustflags = '" + rustflags + "'"
     system "make"
     system "make", "install"
 
