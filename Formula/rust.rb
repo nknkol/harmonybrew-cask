@@ -9,9 +9,10 @@ class Rust < Formula
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Frust"
   end
 
-  depends_on "nknkol/cask/binary-sign-tool" => :build
+  depends_on "llvm@21"
   depends_on "gpatch" => :build
   depends_on "llvm-gcc-compat" => :build
+  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "pkgconf" => :build
   depends_on "python" => :build
 
@@ -60,7 +61,7 @@ class Rust < Formula
   end
 
   def llvm_root
-    Formula["ohos-sdk"].opt_prefix/"native/llvm"
+    Formula["llvm@21"].opt_prefix
   end
 
   def sign_tool
@@ -173,14 +174,14 @@ class Rust < Formula
     ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
     ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
-    # Linker wrapper: OHOS clang + post-link settle workaround.
-    ohos_llvm_bin = llvm_root/"bin"
+    # Linker wrapper: llvm@21 clang + post-link settle workaround.
+    llvm_bin = llvm_root/"bin"
     target_triple = "aarch64-unknown-linux-ohos"
 
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
-      "#{ohos_llvm_bin}/#{target_triple}-clang" "$@"
+      "#{llvm_bin}/clang" "$@"
       rc=$?
       if [ "$rc" -eq 0 ]; then
         sleep "${RUST_LINK_SETTLE_SECONDS:-0.1}"
@@ -218,10 +219,10 @@ class Rust < Formula
       --release-channel=stable
       --release-description=#{tap.user}
       --set=rust.jemalloc=false
-      --set=target.#{target_triple}.cc=#{ohos_llvm_bin}/clang
-      --set=target.#{target_triple}.cxx=#{ohos_llvm_bin}/clang++
-      --set=target.#{target_triple}.ar=#{ohos_llvm_bin}/llvm-ar
-      --set=target.#{target_triple}.ranlib=#{ohos_llvm_bin}/llvm-ranlib
+      --set=target.#{target_triple}.cc=#{llvm_bin}/clang
+      --set=target.#{target_triple}.cxx=#{llvm_bin}/clang++
+      --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
+      --set=target.#{target_triple}.ranlib=#{llvm_bin}/llvm-ranlib
       --set=target.#{target_triple}.linker=#{linker_wrapper}
     ]
 
