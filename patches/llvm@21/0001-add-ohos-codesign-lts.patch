@@ -1,6 +1,6 @@
 diff -ruN a/lld/ELF/CMakeLists.txt b/lld/ELF/CMakeLists.txt
 --- a/lld/ELF/CMakeLists.txt	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/CMakeLists.txt	2026-06-29 20:04:42.170731407 +0800
++++ b/lld/ELF/CMakeLists.txt	2026-06-29 21:01:11.008162655 +0800
 @@ -39,6 +39,7 @@
    ARMErrataFix.cpp
    BPSectionOrderer.cpp
@@ -11,7 +11,7 @@ diff -ruN a/lld/ELF/CMakeLists.txt b/lld/ELF/CMakeLists.txt
    DriverUtils.cpp
 diff -ruN a/lld/ELF/CodeSign.cpp b/lld/ELF/CodeSign.cpp
 --- a/lld/ELF/CodeSign.cpp	1970-01-01 08:00:00.000000000 +0800
-+++ b/lld/ELF/CodeSign.cpp	2026-06-29 20:09:42.910734063 +0800
++++ b/lld/ELF/CodeSign.cpp	2026-06-29 21:01:11.012160937 +0800
 @@ -0,0 +1,156 @@
 +/*
 + * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
@@ -171,7 +171,7 @@ diff -ruN a/lld/ELF/CodeSign.cpp b/lld/ELF/CodeSign.cpp
 +} // namespace FsVerityCodeSign
 diff -ruN a/lld/ELF/CodeSign.h b/lld/ELF/CodeSign.h
 --- a/lld/ELF/CodeSign.h	1970-01-01 08:00:00.000000000 +0800
-+++ b/lld/ELF/CodeSign.h	2026-06-29 20:04:42.174736876 +0800
++++ b/lld/ELF/CodeSign.h	2026-06-29 21:01:11.012160937 +0800
 @@ -0,0 +1,84 @@
 +/*
 + * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
@@ -259,7 +259,7 @@ diff -ruN a/lld/ELF/CodeSign.h b/lld/ELF/CodeSign.h
 +#endif // CODESIGN_H
 diff -ruN a/lld/ELF/Config.h b/lld/ELF/Config.h
 --- a/lld/ELF/Config.h	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/Config.h	2026-06-29 20:04:42.174736876 +0800
++++ b/lld/ELF/Config.h	2026-06-29 21:01:11.012160937 +0800
 @@ -526,6 +526,8 @@
    // not supported on Android 11 & 12.
    bool androidMemtagStack;
@@ -271,7 +271,7 @@ diff -ruN a/lld/ELF/Config.h b/lld/ELF/Config.h
  
 diff -ruN a/lld/ELF/Driver.cpp b/lld/ELF/Driver.cpp
 --- a/lld/ELF/Driver.cpp	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/Driver.cpp	2026-06-29 20:04:42.178733594 +0800
++++ b/lld/ELF/Driver.cpp	2026-06-29 21:01:11.016165468 +0800
 @@ -1381,6 +1381,8 @@
    parseBPOrdererOptions(ctx, args);
    ctx.arg.checkSections =
@@ -283,7 +283,7 @@ diff -ruN a/lld/ELF/Driver.cpp b/lld/ELF/Driver.cpp
      ctx.arg.compressDebugSections =
 diff -ruN a/lld/ELF/Options.td b/lld/ELF/Options.td
 --- a/lld/ELF/Options.td	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/Options.td	2026-06-29 20:04:42.178733594 +0800
++++ b/lld/ELF/Options.td	2026-06-29 21:01:11.016165468 +0800
 @@ -67,6 +67,10 @@
      "Check section addresses for overlaps (default)",
      "Do not check section addresses for overlaps">;
@@ -297,7 +297,7 @@ diff -ruN a/lld/ELF/Options.td b/lld/ELF/Options.td
    MetaVarName<"[none,zlib,zstd]">;
 diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
 --- a/lld/ELF/SyntheticSections.cpp	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/SyntheticSections.cpp	2026-06-29 20:04:42.182743438 +0800
++++ b/lld/ELF/SyntheticSections.cpp	2026-06-29 21:01:11.020169218 +0800
 @@ -389,6 +389,19 @@
    memcpy(hashBuf, buf.data(), hashSize);
  }
@@ -332,7 +332,7 @@ diff -ruN a/lld/ELF/SyntheticSections.cpp b/lld/ELF/SyntheticSections.cpp
      part.dynStrTab = std::make_unique<StringTableSection>(ctx, ".dynstr", true);
 diff -ruN a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
 --- a/lld/ELF/SyntheticSections.h	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/SyntheticSections.h	2026-06-29 20:04:42.182743438 +0800
++++ b/lld/ELF/SyntheticSections.h	2026-06-29 21:01:11.020169218 +0800
 @@ -158,6 +158,19 @@
  };
  
@@ -363,7 +363,7 @@ diff -ruN a/lld/ELF/SyntheticSections.h b/lld/ELF/SyntheticSections.h
    std::unique_ptr<SymbolTableBaseSection> dynSymTab;
 diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
 --- a/lld/ELF/Writer.cpp	2025-12-12 18:35:47.000000000 +0800
-+++ b/lld/ELF/Writer.cpp	2026-06-29 20:04:42.186733126 +0800
++++ b/lld/ELF/Writer.cpp	2026-06-29 21:04:10.920164843 +0800
 @@ -11,6 +11,8 @@
  #include "ARMErrataFix.h"
  #include "BPSectionOrderer.h"
@@ -410,15 +410,15 @@ diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
 +
 +  OutputSection *parent = ctx.mainPart->codesign->getParent();
 +  size_t offset = parent->offset + ctx.mainPart->codesign->outSecOff;
-+  llvm::ArrayRef<uint8_t> input{ctx.bufferStart, size_t(fileSize)};
++  llvm::ArrayRef<uint8_t> input{ctx.bufferStart, size_t(offset)};
 +
 +  FsVerity fsVerity{};
 +  fsVerity.version = FsVerityConstants::VERSION;
 +  fsVerity.hashAlgorithm = FsVerityConstants::SHA256_ALGORITHM;
 +  fsVerity.log2BlockSize = FsVerityConstants::LOG_2_OF_FSVERITY_HASH_PAGE_SIZE;
-+  fsVerity.fileSize = fileSize;
++  fsVerity.fileSize = offset;
 +
-+  auto rootHash = builder->generateMerkleTreeRootHash(input, fileSize, offset);
++  auto rootHash = builder->generateMerkleTreeRootHash(input, offset, offset);
 +  memcpy(fsVerity.rawRootHash, rootHash.data(),
 +         FsVerityConstants::ROOT_HASH_SIZE);
 +
@@ -448,7 +448,7 @@ diff -ruN a/lld/ELF/Writer.cpp b/lld/ELF/Writer.cpp
  template void elf::writeResult<ELF64LE>(Ctx &);
 diff -ruN a/llvm/include/llvm/TargetParser/Triple.h b/llvm/include/llvm/TargetParser/Triple.h
 --- a/llvm/include/llvm/TargetParser/Triple.h	2025-12-12 18:35:47.000000000 +0800
-+++ b/llvm/include/llvm/TargetParser/Triple.h	2026-06-29 20:04:42.186733126 +0800
++++ b/llvm/include/llvm/TargetParser/Triple.h	2026-06-29 21:01:11.024164062 +0800
 @@ -1164,7 +1164,7 @@
    /// Note: Android API level 29 (10) introduced ELF TLS.
    bool hasDefaultEmulatedTLS() const {
