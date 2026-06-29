@@ -181,7 +181,7 @@ class Rust < Formula
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
-      "#{llvm_bin}/clang" "$@"
+      "#{llvm_bin}/clang" -Wl,--code-sign "$@"
       rc=$?
       if [ "$rc" -eq 0 ]; then
         sleep "${RUST_LINK_SETTLE_SECONDS:-0.1}"
