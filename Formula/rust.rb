@@ -234,6 +234,8 @@ class Rust < Formula
     # Prepend llvm@21's bin to PATH so that any direct linker invocation
     # by stage0 cargo / rustc finds the code-sign-capable lld first.
     ENV.prepend_path "PATH", llvm_bin
+    ENV["CC"] = "#{llvm_bin}/clang"
+    ENV["CXX"] = "#{llvm_bin}/clang++"
 
     system "make"
     system "make", "install"
