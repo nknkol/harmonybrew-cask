@@ -222,7 +222,6 @@ class Rust < Formula
       --release-channel=stable
       --release-description=#{tap.user}
       --set=rust.jemalloc=false
-      --set=build.rustflags=#{rustflags}
       --set=target.#{target_triple}.cc=#{llvm_bin}/clang
       --set=target.#{target_triple}.cxx=#{llvm_bin}/clang++
       --set=target.#{target_triple}.ar=#{llvm_bin}/llvm-ar
@@ -231,6 +230,14 @@ class Rust < Formula
     ]
 
     system "./configure", *args
+
+    # configure.py only recognises keys already in the template config;
+    # rustflags is not one of them.  Inject it into the generated
+    # config.toml directly so --code-sign and rpath flags reach every
+    # compilation stage, including the initial stage0→stage1 bootstrap.
+    inreplace "config.toml",
+              /^(linker\s*=\s*".*")$/,
+              "\\1\nrustflags = \"" + rustflags + "\""
     system "make"
     system "make", "install"
 
