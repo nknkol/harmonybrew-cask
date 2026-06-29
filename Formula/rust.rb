@@ -216,7 +216,6 @@ class Rust < Formula
       --target=#{target_triple}
       --tools=#{tools.join(",")}
       --llvm-root=#{llvm_root}
-      --enable-llvm-link-shared
       --enable-profiler
       --enable-vendor
       --disable-cargo-native-static
