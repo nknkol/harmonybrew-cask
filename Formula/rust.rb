@@ -235,9 +235,9 @@ class Rust < Formula
 
     # configure.py only recognises keys already in the template config;
     # rustflags is not one of them.  Inject it into the generated
-    # config.toml directly so --code-sign and rpath flags reach every
+    # bootstrap.toml directly so --code-sign and rpath flags reach every
     # compilation stage, including the initial stage0→stage1 bootstrap.
-    inreplace "config.toml",
+    inreplace "bootstrap.toml",
               /^(linker\s*=\s*".*")$/,
               "\\1\nrustflags = \"" + rustflags + "\""
     system "make"
