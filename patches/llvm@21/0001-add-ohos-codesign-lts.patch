@@ -11,7 +11,7 @@ diff -ruN a/lld/ELF/CMakeLists.txt b/lld/ELF/CMakeLists.txt
    DriverUtils.cpp
 diff -ruN a/lld/ELF/CodeSign.cpp b/lld/ELF/CodeSign.cpp
 --- a/lld/ELF/CodeSign.cpp	1970-01-01 08:00:00.000000000 +0800
-+++ b/lld/ELF/CodeSign.cpp	2026-06-29 20:05:47.106734376 +0800
++++ b/lld/ELF/CodeSign.cpp	2026-06-29 20:09:42.910734063 +0800
 @@ -0,0 +1,156 @@
 +/*
 + * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
@@ -141,7 +141,7 @@ diff -ruN a/lld/ELF/CodeSign.cpp b/lld/ELF/CodeSign.cpp
 +    size_t curChunk = codeSignChunk;
 +
 +    parallelFor(0, getChunkCount(size, CHUNK_SIZE), [&](size_t j) {
-+      if (curChunk == j)
++      if (csOffset > 0 && curChunk == j)
 +        memset(generateHashBuffer.data() + j * DIGEST_SIZE, 0x0, DIGEST_SIZE);
 +      else
 +        sha256(originalHashBuffer.data() + j * CHUNK_SIZE,
