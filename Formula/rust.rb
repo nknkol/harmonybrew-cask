@@ -9,7 +9,7 @@ class Rust < Formula
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Frust"
   end
 
-  depends_on "binary-sign-tool" => :build
+  depends_on "nknkol/harmonybrew-cask/binary-sign-tool" => :build
   depends_on "gpatch" => :build
   depends_on "llvm-gcc-compat" => :build
   depends_on "pkgconf" => :build
@@ -27,7 +27,6 @@ class Rust < Formula
   conflicts_with "rust", because: "both install cargo, rustc, rustfmt and the Rust toolchain"
 
   preserve_rpath
-  strip :skip
 
   link_overwrite "etc/bash_completion.d/cargo"
   link_overwrite "bin/cargo-fmt", "bin/git-rustfmt", "bin/rustfmt", "bin/rustfmt-*"
@@ -65,7 +64,7 @@ class Rust < Formula
   end
 
   def sign_tool
-    Formula["binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+    Formula["nknkol/harmonybrew-cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
 
   def objcopy
@@ -144,7 +143,7 @@ class Rust < Formula
     ENV.delete("HOMEBREW_RUSTFLAGS")
     ENV.delete("RUSTFLAGS")
 
-    ENV.prepend_path "PATH", Formula["binary-sign-tool"].opt_bin
+    ENV.prepend_path "PATH", Formula["nknkol/harmonybrew-cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
 
     # RUSTFLAGS: inject runtime library search paths (HarmonyOS has no default
@@ -179,7 +178,7 @@ class Rust < Formula
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
-      "#{ohos_llvm_bin}/#{target_triple}-clang" -Wl,--code-sign "$@"
+      "#{ohos_llvm_bin}/#{target_triple}-clang" "$@"
       rc=$?
       if [ "$rc" -eq 0 ]; then
         sleep "${RUST_LINK_SETTLE_SECONDS:-0.1}"
@@ -243,6 +242,10 @@ class Rust < Formula
     llvm_objcopy = llvm_root/"bin/llvm-objcopy"
     rm(rust_objcopy) if rust_objcopy.exist?
     ln_sf llvm_objcopy.relative_path_from(rust_objcopy.dirname), rust_objcopy
+  end
+
+  def post_install
+    sign_tree!(prefix)
   end
 
   def caveats
