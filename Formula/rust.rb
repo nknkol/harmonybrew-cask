@@ -187,6 +187,12 @@ class Rust < Formula
     ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
     ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
+    # llvm@21's lib directory is in the linker search path, but zstd and
+    # libxml2 (LLVM's transitive dependencies) are not.  Symlink them in.
+    llvm_lib = llvm_root/"lib"
+    ln_sf Formula["zstd"].opt_lib/"libzstd.so", llvm_lib/"libzstd.so"
+    ln_sf Formula["libxml2"].opt_lib/"libxml2.so", llvm_lib/"libxml2.so"
+
     # Linker wrapper: llvm@21 clang with --code-sign for lld signing.
     llvm_bin = llvm_root/"bin"
     ohos_bin = ohos_llvm/"bin"
@@ -195,11 +201,7 @@ class Rust < Formula
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
-      "#{llvm_bin}/clang" \
-        -Wl,--code-sign \
-        -L#{Formula["zstd"].opt_lib} \
-        -L#{Formula["libxml2"].opt_lib} \
-        "$@"
+      "#{llvm_bin}/clang" -Wl,--code-sign "$@"
       rc=$?
       if [ "$rc" -eq 0 ]; then
         sleep "${RUST_LINK_SETTLE_SECONDS:-0.1}"
