@@ -22,7 +22,6 @@ class Libgcc < Formula
   # ---------------------------------------------------------------
   # 运行时 / 工具链依赖
   # ---------------------------------------------------------------
-  depends_on "llvm@21"
   depends_on "ohos-sdk"
 
   # ---------------------------------------------------------------
@@ -94,10 +93,10 @@ class Libgcc < Formula
     resource("mpc").stage(buildpath/"mpc")
     resource("isl").stage(buildpath/"isl")
 
-    # ── 工具链路径 ─────────────────────────────────────────────────
-    llvm       = Formula["llvm@21"]
-    llvm_bin   = llvm.opt_bin
+    # ── 工具链路径：使用 ohos-sdk 的 clang（libc++ 头文件完备） ──
     ohos       = Formula["ohos-sdk"]
+    ohos_llvm  = ohos.opt_prefix/"native/llvm"
+    ohos_bin   = ohos_llvm/"bin"
     sysroot    = ohos.opt_prefix/"native/sysroot"
 
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
@@ -109,13 +108,13 @@ class Libgcc < Formula
       --with-sysroot=#{sysroot}
     ]
 
-    # ── 构建编译器：使用 llvm@21 的 clang ─────────────────────────
-    ENV["CC"]  = "#{llvm_bin}/clang"
-    ENV["CXX"] = "#{llvm_bin}/clang++"
+    # ── 构建编译器：使用 ohos-sdk 的 clang ─────────────────────────
+    ENV["CC"]  = "#{ohos_bin}/clang"
+    ENV["CXX"] = "#{ohos_bin}/clang++"
 
-    # 指定汇编器 & 链接器：分别委派给 clang 的集成汇编器与 lld
-    args << "--with-as=#{llvm_bin}/clang"
-    args << "--with-ld=#{llvm_bin}/ld.lld"
+    # 汇编器 & 链接器同样走 ohos-sdk
+    args << "--with-as=#{ohos_bin}/clang"
+    args << "--with-ld=#{ohos_bin}/ld.lld"
 
     # ── 语言：仅 C / C++ ──────────────────────────────────────────
     args << "--enable-languages=c,c++"
@@ -204,7 +203,7 @@ class Libgcc < Formula
   # ---------------------------------------------------------------
   test do
     ohos_sysroot = Formula["ohos-sdk"].opt_prefix/"native/sysroot"
-    clangxx      = Formula["llvm@21"].opt_bin/"clang++"
+    clangxx = Formula["ohos-sdk"].opt_prefix/"native/llvm/bin/clang++"
 
     (testpath/"hello.cpp").write <<~CPP
       #include <iostream>
