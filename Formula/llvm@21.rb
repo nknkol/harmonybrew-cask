@@ -62,7 +62,6 @@ class LlvmAT21 < Formula
       "-DCLANG_DEFAULT_RTLIB=compiler-rt",
       "-DCLANG_DEFAULT_UNWINDLIB=libunwind",
       "-DCLANG_DEFAULT_CXX_STDLIB=libc++",
-      "-DLLVM_BUILD_LLVM_DYLIB=ON",
       "-DLLVM_INSTALL_UTILS=ON",
       "-DCLANG_DEFAULT_LINKER=lld",
       "-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib",
