@@ -210,6 +210,7 @@ class Rust < Formula
 
       [llvm]
       download-ci-llvm = false
+      llvm-config = "#{llvm_bin}/llvm-config"
 
       [build]
       build = "#{target_triple}"
