@@ -14,8 +14,8 @@ class Libgcc < Formula
   # 构建依赖
   # ---------------------------------------------------------------
   depends_on "bash" => :build
-  depends_on "coreutils" => :build
   depends_on "gawk" => :build
+  depends_on "gnu-sed" => :build
   depends_on "grep" => :build
   depends_on "make" => :build
 
@@ -65,14 +65,15 @@ class Libgcc < Formula
     ENV["TMPDIR"] = "/data/storage/el2/base/files/tmp"
     FileUtils.mkdir_p ENV["TMPDIR"]
 
-    # ── 不依赖系统 Toybox 工具：强制使用 Homebrew 的 GNU 工具链 ──
-    ohos_tools = %w[bash coreutils gawk grep make]
-    ohos_tools.each do |t|
-      ENV.prepend_path "PATH", Formula[t].opt_bin
-      ENV.prepend_path "PATH", Formula[t].opt_libexec/"gnubin" if (Formula[t].opt_libexec/"gnubin").exist?
-    end
+    # ── 不依赖系统 Toybox 工具：通过 autoconf 环境变量精确指定 ──
+    # 注意：不能 prepend coreutils 到 PATH（GNU cat 在管道中断时
+    # 会向 stderr 打印 "Broken pipe"，触发 configure 的 set -e 致死）
     ENV["CONFIG_SHELL"] = Formula["bash"].opt_bin/"bash"
-    ENV["AWK"] = Formula["gawk"].opt_bin/"awk"
+    ENV["AWK"]          = Formula["gawk"].opt_bin/"awk"
+    ENV["GREP"]         = Formula["grep"].opt_bin/"grep"
+    ENV["SED"]          = Formula["gnu-sed"].opt_bin/"sed"
+    # 仅 make 需要 prepend（configure 通过 MAKE 变量不一定生效）
+    ENV.prepend_path "PATH", Formula["make"].opt_bin
 
     # ── 展开 resource 至 GCC 源码树顶层（configure 自动探测） ──────
     resource("gmp").stage(buildpath/"gmp")
