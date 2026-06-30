@@ -57,6 +57,10 @@ class Libgcc < Formula
   # 构建
   # ---------------------------------------------------------------
   def install
+    # ── 修复 TMPDIR（HarmonyOS 沙箱限制） ──────────────────────────
+    ENV["TMPDIR"] = "/data/storage/el2/base/files/tmp"
+    FileUtils.mkdir_p ENV["TMPDIR"]
+
     # ── 展开 resource 至 GCC 源码树顶层（configure 自动探测） ──────
     resource("gmp").stage(buildpath/"gmp")
     resource("mpfr").stage(buildpath/"mpfr")
@@ -72,6 +76,8 @@ class Libgcc < Formula
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
     args = %W[
       --prefix=#{opt_prefix}
+      --build=#{target}
+      --host=#{target}
       --target=#{target}
       --with-sysroot=#{sysroot}
     ]
