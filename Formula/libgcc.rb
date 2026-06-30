@@ -13,6 +13,10 @@ class Libgcc < Formula
   # ---------------------------------------------------------------
   # 构建依赖
   # ---------------------------------------------------------------
+  depends_on "bash" => :build
+  depends_on "coreutils" => :build
+  depends_on "gawk" => :build
+  depends_on "grep" => :build
   depends_on "make" => :build
 
   # ---------------------------------------------------------------
@@ -60,6 +64,15 @@ class Libgcc < Formula
     # ── 修复 TMPDIR（HarmonyOS 沙箱限制） ──────────────────────────
     ENV["TMPDIR"] = "/data/storage/el2/base/files/tmp"
     FileUtils.mkdir_p ENV["TMPDIR"]
+
+    # ── 不依赖系统 Toybox 工具：强制使用 Homebrew 的 GNU 工具链 ──
+    ohos_tools = %w[bash coreutils gawk grep make]
+    ohos_tools.each do |t|
+      ENV.prepend_path "PATH", Formula[t].opt_bin
+      ENV.prepend_path "PATH", Formula[t].opt_libexec/"gnubin" if (Formula[t].opt_libexec/"gnubin").exist?
+    end
+    ENV["CONFIG_SHELL"] = Formula["bash"].opt_bin/"bash"
+    ENV["AWK"] = Formula["gawk"].opt_bin/"awk"
 
     # ── 展开 resource 至 GCC 源码树顶层（configure 自动探测） ──────
     resource("gmp").stage(buildpath/"gmp")
