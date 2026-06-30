@@ -188,10 +188,11 @@ class Rust < Formula
     ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
     # llvm@21's lib directory is in the linker search path, but zstd and
-    # libxml2 (LLVM's transitive dependencies) are not.  Symlink them in.
+    # libxml2 (LLVM's transitive dependencies) are not.  Symlink the real
+    # .so files (not intermediate symlinks, which break relative resolution).
     llvm_lib = llvm_root/"lib"
-    ln_sf Formula["zstd"].opt_lib/"libzstd.so", llvm_lib/"libzstd.so"
-    ln_sf Formula["libxml2"].opt_lib/"libxml2.so", llvm_lib/"libxml2.so"
+    ln_sf Formula["zstd"].opt_lib/"libzstd.so".realpath, llvm_lib/"libzstd.so"
+    ln_sf Formula["libxml2"].opt_lib/"libxml2.so".realpath, llvm_lib/"libxml2.so"
 
     # Linker wrapper: llvm@21 clang with --code-sign for lld signing.
     llvm_bin = llvm_root/"bin"
