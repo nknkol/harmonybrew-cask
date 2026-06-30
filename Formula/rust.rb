@@ -210,7 +210,6 @@ class Rust < Formula
 
       [llvm]
       download-ci-llvm = false
-      llvm-config = "#{llvm_bin}/llvm-config"
 
       [build]
       build = "#{target_triple}"
@@ -242,6 +241,7 @@ class Rust < Formula
       ar = "#{ohos_bin}/llvm-ar"
       ranlib = "#{ohos_bin}/llvm-ranlib"
       linker = "#{linker_wrapper}"
+      llvm-config = "#{llvm_bin}/llvm-config"
       rustflags = #{rustflags_toml}
     TOML
 
