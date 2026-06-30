@@ -65,6 +65,19 @@ class Libgcc < Formula
     ENV["TMPDIR"] = "/data/storage/el2/base/files/tmp"
     FileUtils.mkdir_p ENV["TMPDIR"]
 
+    # ── 修复 config.status 的 umask 077 subshell 权限问题 ──────────
+    # HarmonyOS hmdfs 不支持 chmod，只能靠创建时的 umask 控制权限。
+    # config.status 中 (umask 077 && mktemp -d ...) 导致目录无 group/other
+    # 写权限。提供 wrapper 在调用真实 mktemp 前先 umask 000 覆盖。
+    mktemp_wrapper = buildpath/"mktemp"
+    mktemp_wrapper.atomic_write <<~SH
+      #!/bin/sh
+      umask 000
+      exec /bin/mktemp "$@"
+    SH
+    mktemp_wrapper.chmod 0755
+    ENV.prepend_path "PATH", buildpath
+
     # ── 不依赖系统 Toybox 工具：通过 autoconf 环境变量精确指定 ──
     # 注意：不能 prepend coreutils 到 PATH（GNU cat 在管道中断时
     # 会向 stderr 打印 "Broken pipe"，触发 configure 的 set -e 致死）
