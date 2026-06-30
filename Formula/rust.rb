@@ -19,11 +19,13 @@ class Rust < Formula
   depends_on "curl"
   depends_on "libgit2"
   depends_on "libssh2"
+  depends_on "libxml2"
   depends_on "ohos-sdk"
   depends_on "openssl@3"
   depends_on "sqlite"
   depends_on "xz"
   depends_on "zlib-ng-compat"
+  depends_on "zstd"
 
   conflicts_with "rust", because: "both install cargo, rustc, rustfmt and the Rust toolchain"
 
