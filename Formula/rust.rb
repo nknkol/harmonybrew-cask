@@ -36,6 +36,9 @@ class Rust < Formula
   patch do
     file "patches/rust/0001-enable-native-elf-tls.patch"
   end
+  patch do
+    file "patches/rust/0004-bootstrap-fork-on-ohos.patch"
+  end
   resource "rustc-bootstrap" do
     url "https://static.rust-lang.org/dist/2026-04-16/rustc-1.95.0-aarch64-unknown-linux-ohos.tar.xz", using: :nounzip
     sha256 "832d7e0ac5baaacfd3ff1b1f056cc05ec13f0665372eeb42a65efd8f868e9855"
@@ -143,6 +146,10 @@ class Rust < Formula
 
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
+
+    # bootstrap.py (patched by 0004) reads these to sign bootstrap ELFs.
+    ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
+    ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
 
     # Stage bootstrap resources
     cache_date = File.basename(File.dirname(resource("rustc-bootstrap").url))
