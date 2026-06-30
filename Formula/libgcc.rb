@@ -109,8 +109,10 @@ class Libgcc < Formula
     ]
 
     # ── 构建编译器：使用 ohos-sdk 的 clang ─────────────────────────
-    ENV["CC"]  = "#{ohos_bin}/clang"
-    ENV["CXX"] = "#{ohos_bin}/clang++"
+    # 显式追加 --code-sign：wrapper 可能被编译脚本逃逸，确保签名生效
+    ENV["CC"]       = "#{ohos_bin}/clang   -Wl,--code-sign"
+    ENV["CXX"]      = "#{ohos_bin}/clang++ -Wl,--code-sign"
+    ENV["LDFLAGS"]  = "-Wl,--code-sign"
 
     # 汇编器 & 链接器同样走 ohos-sdk
     args << "--with-as=#{ohos_bin}/clang"
@@ -156,20 +158,25 @@ class Libgcc < Formula
     mkdir "build" do
       system "../configure", *args
 
+      # 目标库编译时也需要签名（wrapper 可能被 xgcc 逃逸）
+      make_args = %W[
+        LDFLAGS_FOR_TARGET=-Wl,--code-sign
+      ]
+
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
-      system "gmake", "-j#{ENV.make_jobs}", "all-gcc"
+      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-gcc"
 
       # Step 2 · 构建目标运行时库
-      system "gmake", "-j#{ENV.make_jobs}", "all-target-libgcc"
-      system "gmake", "-j#{ENV.make_jobs}", "all-target-libstdc++-v3"
-      system "gmake", "-j#{ENV.make_jobs}", "all-target-libatomic"
+      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libgcc"
+      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libstdc++-v3"
+      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libatomic"
 
       # Step 3 · 仅安装目标运行时库（编译器二进制不入包）
-      system "gmake", "install-target-libgcc",
+      system "gmake", *make_args, "install-target-libgcc",
              "DESTDIR=#{Pathname.pwd}/../instdir"
-      system "gmake", "install-target-libstdc++-v3",
+      system "gmake", *make_args, "install-target-libstdc++-v3",
              "DESTDIR=#{Pathname.pwd}/../instdir"
-      system "gmake", "install-target-libatomic",
+      system "gmake", *make_args, "install-target-libatomic",
              "DESTDIR=#{Pathname.pwd}/../instdir"
 
       # 移入实际 prefix（配合 --prefix=#{opt_prefix} 避免路径固化）
