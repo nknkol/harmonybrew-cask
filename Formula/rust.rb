@@ -167,7 +167,12 @@ class Rust < Formula
       Formula["sqlite"].opt_lib,
       Formula["xz"].opt_lib,
     ]
-    rustflags = (["-Clink-arg=-Wl,--code-sign"] + runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
+    zstd_lib = Formula["zstd"].opt_lib.to_s
+    libxml2_lib = Formula["libxml2"].opt_lib.to_s
+    rustflags = (["-Clink-arg=-Wl,--code-sign",
+                  "-Clink-arg=-L", "-Clink-arg=#{zstd_lib}",
+                  "-Clink-arg=-L", "-Clink-arg=#{libxml2_lib}"] +
+                 runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
 
     # Stage bootstrap resources
     cache_date = File.basename(File.dirname(resource("rustc-bootstrap").url))
@@ -190,10 +195,7 @@ class Rust < Formula
     linker_wrapper = buildpath/"ohos-linker-wrapper"
     linker_wrapper.atomic_write <<~SH
       #!/bin/sh
-      "#{llvm_bin}/clang" -Wl,--code-sign \
-        -L#{Formula["zstd"].opt_lib} \
-        -L#{Formula["libxml2"].opt_lib} \
-        "$@"
+      "#{llvm_bin}/clang" -Wl,--code-sign "$@"
       rc=$?
       if [ "$rc" -eq 0 ]; then
         sleep "${RUST_LINK_SETTLE_SECONDS:-0.1}"
