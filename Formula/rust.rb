@@ -10,7 +10,6 @@ class Rust < Formula
   end
 
   depends_on "llvm@21"
-  depends_on "gpatch" => :build
   depends_on "llvm-gcc-compat" => :build
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "pkgconf" => :build
@@ -37,19 +36,6 @@ class Rust < Formula
   patch do
     file "patches/rust/0001-enable-native-elf-tls.patch"
   end
-  patch do
-    file "patches/rust/0002-llvm-cmake-ohos-host.patch"
-  end
-  patch do
-    file "patches/rust/0003-llvm-dist-no-linker-script.patch"
-  end
-  patch do
-    file "patches/rust/0004-bootstrap-fork-on-ohos.patch"
-  end
-  patch do
-    file "patches/rust/0005-fix-configure-rustflags-array.patch"
-  end
-
   resource "rustc-bootstrap" do
     url "https://static.rust-lang.org/dist/2026-04-16/rustc-1.95.0-aarch64-unknown-linux-ohos.tar.xz", using: :nounzip
     sha256 "832d7e0ac5baaacfd3ff1b1f056cc05ec13f0665372eeb42a65efd8f868e9855"
@@ -158,26 +144,6 @@ class Rust < Formula
     ENV.prepend_path "PATH", Formula["nknkol/cask/binary-sign-tool"].opt_bin
     ENV.prepend_path "PATH", Formula["llvm-gcc-compat"].opt_bin
 
-    # RUSTFLAGS: inject code-sign and runtime library search paths.
-    runtime_rpaths = [
-      "$ORIGIN/../lib",
-      Formula["openssl@3"].opt_lib,
-      Formula["zlib-ng-compat"].opt_lib,
-      Formula["libssh2"].opt_lib,
-      Formula["libgit2"].opt_lib,
-      Formula["curl"].opt_lib,
-      Formula["sqlite"].opt_lib,
-      Formula["xz"].opt_lib,
-      Formula["zstd"].opt_lib,
-      Formula["libxml2"].opt_lib,
-    ]
-    zstd_lib = Formula["zstd"].opt_lib.to_s
-    libxml2_lib = Formula["libxml2"].opt_lib.to_s
-    rustflags = (["-Clink-arg=-Wl,--code-sign",
-                  "-Clink-arg=-L", "-Clink-arg=#{zstd_lib}",
-                  "-Clink-arg=-L", "-Clink-arg=#{libxml2_lib}"] +
-                 runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }).join(" ")
-
     # Stage bootstrap resources
     cache_date = File.basename(File.dirname(resource("rustc-bootstrap").url))
     build_cache_directory = buildpath/"build/cache"/cache_date
@@ -185,20 +151,6 @@ class Rust < Formula
     resource("rustc-bootstrap").stage build_cache_directory
     resource("cargo-bootstrap").stage build_cache_directory
     resource("rust-std-bootstrap").stage build_cache_directory
-
-    # bootstrap.py patches sign bootstrap ELFs after extraction;
-    # expose tool paths via environment variables.
-    ENV["RUST_OHOS_OBJCOPY"] = objcopy.to_s
-    ENV["RUST_OHOS_SIGN_TOOL"] = sign_tool.to_s
-
-    # llvm@21's lib directory is in the linker search path, but zstd and
-    # libxml2 (LLVM's transitive dependencies) are not.  Add them to
-    # LIBRARY_PATH so clang/lld can find them.
-    ENV["LIBRARY_PATH"] = [
-      Formula["zstd"].opt_lib.to_s,
-      Formula["libxml2"].opt_lib.to_s,
-      ENV["LIBRARY_PATH"],
-    ].compact.join(":")
 
     # Linker wrapper: llvm@21 clang with --code-sign for lld signing.
     llvm_bin = llvm_root/"bin"
@@ -227,41 +179,80 @@ class Rust < Formula
       rust-analyzer-proc-macro-srv
       src
     ]
+    tools_toml = "[#{tools.map { |t| "\"#{t}\"" }.join(", ")}]"
 
-    args = %W[
-      --prefix=#{prefix}
-      --sysconfdir=#{etc}
-      --build=#{target_triple}
-      --host=#{target_triple}
-      --target=#{target_triple}
-      --tools=#{tools.join(",")}
-      --llvm-root=#{llvm_root}
-      --enable-profiler
-      --enable-vendor
-      --disable-cargo-native-static
-      --disable-docs
-      --disable-lld
-      --enable-rpath
-      --release-channel=stable
-      --release-description=#{tap.user}
-      --set=rust.jemalloc=false
-      --set=rust.codegen-tests=false
-      --set=target.#{target_triple}.cc=#{ohos_bin}/clang
-      --set=target.#{target_triple}.cxx=#{ohos_bin}/clang++
-      --set=target.#{target_triple}.ar=#{ohos_bin}/llvm-ar
-      --set=target.#{target_triple}.ranlib=#{ohos_bin}/llvm-ranlib
-      --set=target.#{target_triple}.linker=#{linker_wrapper}
-      --set=rust.rustflags=#{rustflags}
+    # RUSTFLAGS: inject code-sign and runtime library search paths.
+    runtime_rpaths = [
+      "$ORIGIN/../lib",
+      Formula["openssl@3"].opt_lib,
+      Formula["zlib-ng-compat"].opt_lib,
+      Formula["libssh2"].opt_lib,
+      Formula["libgit2"].opt_lib,
+      Formula["curl"].opt_lib,
+      Formula["sqlite"].opt_lib,
+      Formula["xz"].opt_lib,
+      Formula["zstd"].opt_lib,
+      Formula["libxml2"].opt_lib,
     ]
+    rustflags = ["-Clink-arg=-Wl,--code-sign"] +
+      runtime_rpaths.map { |p| "-Clink-arg=-Wl,-rpath,#{p}" }
+    rustflags_toml = "[#{rustflags.map { |f| "\"#{f}\"" }.join(", ")}]"
 
-    system "./configure", *args
+    (buildpath/"bootstrap.toml").write <<~TOML
+      change-id = "ignore"
 
-    # Prepend llvm@21's bin to PATH so that any direct linker invocation
-    # finds the code-sign-capable lld first.
+      [llvm]
+      download-ci-llvm = false
+
+      [build]
+      build = "#{target_triple}"
+      host = ["#{target_triple}"]
+      target = ["#{target_triple}"]
+      extended = true
+      tools = #{tools_toml}
+      vendor = true
+      cargo-native-static = false
+      profiler = true
+      docs = false
+      submodules = false
+
+      [install]
+      prefix = "#{prefix}"
+      sysconfdir = "#{etc}"
+
+      [rust]
+      channel = "stable"
+      download-rustc = false
+      jemalloc = false
+      rpath = true
+      lld = false
+      codegen-tests = false
+
+      [target.#{target_triple}]
+      cc = "#{ohos_bin}/clang"
+      cxx = "#{ohos_bin}/clang++"
+      ar = "#{ohos_bin}/llvm-ar"
+      ranlib = "#{ohos_bin}/llvm-ranlib"
+      linker = "#{linker_wrapper}"
+      rustflags = #{rustflags_toml}
+    TOML
+
+    # llvm@21's lib directory is in the linker search path, but zstd and
+    # libxml2 (LLVM's transitive dependencies) are not.  Add them to
+    # LIBRARY_PATH so clang/lld can find them.
+    ENV["LIBRARY_PATH"] = [
+      Formula["zstd"].opt_lib.to_s,
+      Formula["libxml2"].opt_lib.to_s,
+      ENV["LIBRARY_PATH"],
+    ].compact.join(":")
+
+    # Ensure llvm@21's llvm-config is on PATH so x.py can find it.
     ENV.prepend_path "PATH", llvm_bin
 
-    system "make"
-    system "make", "install"
+    python = which("python3") || which("python")
+    odie "python3 or python is required to bootstrap Rust" if python.nil?
+
+    system python, "x.py", "install", "--config", "bootstrap.toml"
 
     # Post-install cleanup: install shell completions and source code.
     bash_completion.install etc/"bash_completion.d/cargo"
