@@ -143,6 +143,8 @@ class Rust < Formula
       Formula["curl"].opt_lib,
       Formula["sqlite"].opt_lib,
       Formula["xz"].opt_lib,
+      Formula["zstd"].opt_lib,
+      Formula["libxml2"].opt_lib,
     ].join(":")
     ENV["LD_LIBRARY_PATH"] = bootstrap_lib_path
 
@@ -166,6 +168,8 @@ class Rust < Formula
       Formula["curl"].opt_lib,
       Formula["sqlite"].opt_lib,
       Formula["xz"].opt_lib,
+      Formula["zstd"].opt_lib,
+      Formula["libxml2"].opt_lib,
     ]
     zstd_lib = Formula["zstd"].opt_lib.to_s
     libxml2_lib = Formula["libxml2"].opt_lib.to_s
