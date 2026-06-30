@@ -114,9 +114,11 @@ class Libgcc < Formula
     ENV["CXX"]      = "#{ohos_bin}/clang++ -Wl,--code-sign"
     ENV["LDFLAGS"]  = "-Wl,--code-sign"
 
-    # 汇编器 & 链接器同样走 ohos-sdk
+    # 汇编器 & 链接器 & 归档工具同样走 ohos-sdk
     args << "--with-as=#{ohos_bin}/clang"
     args << "--with-ld=#{ohos_bin}/ld.lld"
+    args << "--with-ar=#{ohos_bin}/llvm-ar"
+    args << "--with-ranlib=#{ohos_bin}/llvm-ranlib"
 
     # ── 语言：仅 C / C++ ──────────────────────────────────────────
     args << "--enable-languages=c,c++"
