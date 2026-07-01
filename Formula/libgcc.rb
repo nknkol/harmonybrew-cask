@@ -116,6 +116,7 @@ class Libgcc < Formula
       --host=#{target}
       --target=#{target}
       --with-sysroot=#{sysroot}
+      --with-build-sysroot=#{sysroot}
     ]
 
     # ── 构建编译器：使用 ohos-sdk 的 clang ─────────────────────────
@@ -176,9 +177,13 @@ class Libgcc < Formula
     mkdir "build" do
       system "../configure", *args
 
-      # 目标库编译时也需要签名（wrapper 可能被 xgcc 逃逸）
+      # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
+      # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
       make_args = %W[
-        LDFLAGS_FOR_TARGET=-Wl,--code-sign
+        CPPFLAGS_FOR_TARGET=-isystem =/usr/include/aarch64-linux-ohos
+        CFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos
+        CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos
+        LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
