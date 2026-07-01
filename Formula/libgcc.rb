@@ -109,6 +109,21 @@ class Libgcc < Formula
       end
     end
 
+    # ── autoconf 头文件检测修复 ──────────────────────────────────
+    # -Wl,--code-sign 在预处理阶段（-E）产生 stderr 警告，
+    # ac_fn_c_try_cpp 发现 stderr 非空即判失败 → HAVE_FCNTL_H=no
+    # ① 从 CC/CXX 移除 --code-sign，仅保留在 LDFLAGS
+    # ② ac_cv_header_* 直接告诉 configure 跳过检测
+    ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot}"
+    ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot}"
+    ENV["CFLAGS"]   = "--sysroot=#{sysroot}"
+    ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
+    ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
+    ENV["ac_cv_header_fcntl_h"] = "yes"
+    ENV["ac_cv_header_limits_h"] = "yes"
+    ENV["ac_cv_header_spawn_h"] = "yes"
+    ENV["ac_cv_header_unistd_h"] = "yes"
+
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
     args = %W[
       --prefix=#{opt_prefix}
@@ -118,14 +133,6 @@ class Libgcc < Formula
       --with-sysroot=#{sysroot}
       --with-build-sysroot=#{sysroot}
     ]
-
-    # ── 构建编译器：使用 ohos-sdk 的 clang ─────────────────────────
-    # 显式追加 --code-sign：wrapper 可能被编译脚本逃逸，确保签名生效
-    ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot} -Wl,--code-sign"
-    ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot} -Wl,--code-sign"
-    ENV["CFLAGS"]   = "--sysroot=#{sysroot} -include limits.h -include fcntl.h -include spawn.h -include unistd.h"
-    ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
-    ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
 
     # 汇编器 & 链接器 & 归档工具同样走 ohos-sdk
     args << "--with-as=#{ohos_bin}/clang"
