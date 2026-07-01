@@ -123,7 +123,7 @@ class Libgcc < Formula
     # 显式追加 --code-sign：wrapper 可能被编译脚本逃逸，确保签名生效
     ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot} -Wl,--code-sign"
     ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot} -Wl,--code-sign"
-    ENV["CFLAGS"]   = "--sysroot=#{sysroot} -include limits.h"
+    ENV["CFLAGS"]   = "--sysroot=#{sysroot} -include limits.h -include fcntl.h -include spawn.h -include unistd.h"
     ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
     ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
 
