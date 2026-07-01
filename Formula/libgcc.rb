@@ -99,6 +99,16 @@ class Libgcc < Formula
     ohos_bin   = ohos_llvm/"bin"
     sysroot    = ohos.opt_prefix/"native/sysroot"
 
+    # GCC 的 --with-as 路径被编译进 xgcc 二进制，不走任何 wrapper。
+    # clang 作为汇编器需要 -c 标志来停在汇编阶段（否则会继续链接）。
+    # 创建一个始终带 -c 的 wrapper，让 configure 将它当作"汇编器"。
+    clang_as = buildpath/"clang-as"
+    clang_as.atomic_write <<~SH
+      #!/bin/sh
+      exec "#{ohos_bin}/clang" -c "$@"
+    SH
+    clang_as.chmod 0755
+
     # ── sysroot 是 aarch64-linux-ohos，但 GCC 只认 linux-musl ──
     # 创建相对符号链接，让 GCC 在 musl 路径下找到 ohos 的 bits/ 和 lib/
     %w[usr/include usr/lib].each do |sub|
@@ -142,7 +152,7 @@ class Libgcc < Formula
     ]
 
     # 汇编器 & 链接器 & 归档工具同样走 ohos-sdk
-    args << "--with-as=#{ohos_bin}/clang"
+    args << "--with-as=#{clang_as}"
     args << "--with-ld=#{ohos_bin}/ld.lld"
     args << "--with-ar=#{ohos_bin}/llvm-ar"
     args << "--with-ranlib=#{ohos_bin}/llvm-ranlib"
@@ -229,14 +239,6 @@ class Libgcc < Formula
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-gcc"
-
-      # GCC 的 as wrapper 把 clang 当 GNU as 调用，不传 -c。
-      # clang 无 -c 会汇编+链接，导致 libgcc 目标库编译时拉入
-      # Scrt1.o 报 main 缺失。as wrapper 由 all-gcc 阶段生成，
-      # 必须在 all-gcc 之后修改。
-      inreplace "gcc/as",
-        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang\"",
-        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang -c\""
 
       # Step 2 · 构建目标运行时库
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libgcc"
