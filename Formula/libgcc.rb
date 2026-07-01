@@ -126,6 +126,9 @@ class Libgcc < Formula
     # ISL 的 configure 检测到 clang 不报 undeclared builtin 后
     # 会全局加 -fno-builtin，导致后续 ffs/__builtin_ffs 检测全挂。
     ENV["ac_cv_c_undeclared_builtin_options"] = "none needed"
+    # ISL 的 ffs 检测不含 <strings.h>，clang-15 不支持
+    # (void) __builtin_ffs 取地址。直接告诉 ISL ffs 可用。
+    ENV["ac_cv_have_decl_ffs"] = "yes"
 
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
     args = %W[
