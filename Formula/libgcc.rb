@@ -190,10 +190,12 @@ class Libgcc < Formula
     mkdir "build" do
       system "../configure", *args
 
-      # ISL 的 C++17 测试与 clang-15 不兼容（isl::id::try_user 不存在），
-      # GCC 只需 ISL 的 C 库。让 ISL 的 make 只编译 . 子目录，跳过
-      # interface（C++绑定）和 doc，避免测试编译报错。
-      inreplace "Makefile", "TARGET-isl=all", "TARGET-isl=SUBDIRS=."
+      # ISL 的 C++17 测试与 clang-15 不兼容（isl::id::try_user 不存在）。
+      # 修改 GCC Makefile 中 ISL 的 configure 调用，传 CXX=false
+      # 让 ISL 跳过 C++ 接口编译，GCC 只需 ISL 的 C 库。
+      inreplace "Makefile",
+        "--target=${target_alias} --disable-shared --with-gmp-builddir",
+        "--target=${target_alias} --disable-shared CXX=false --with-gmp-builddir"
 
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
