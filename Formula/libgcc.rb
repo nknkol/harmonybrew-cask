@@ -206,12 +206,6 @@ class Libgcc < Formula
         "--target=${target_alias} --disable-shared --with-gmp-builddir",
         "--target=${target_alias} --disable-shared CXX=false --with-gmp-builddir"
 
-      # GCC 的 as wrapper 把 clang 当 GNU as 调用，不传 -c。
-      # clang 默认会汇编+链接，导致目标库编译时拉入 Scrt1.o 报 main 缺失。
-      inreplace "gcc/as",
-        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang\"",
-        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang -c\""
-
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
       #
@@ -235,6 +229,14 @@ class Libgcc < Formula
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-gcc"
+
+      # GCC 的 as wrapper 把 clang 当 GNU as 调用，不传 -c。
+      # clang 无 -c 会汇编+链接，导致 libgcc 目标库编译时拉入
+      # Scrt1.o 报 main 缺失。as wrapper 由 all-gcc 阶段生成，
+      # 必须在 all-gcc 之后修改。
+      inreplace "gcc/as",
+        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang\"",
+        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang -c\""
 
       # Step 2 · 构建目标运行时库
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libgcc"
