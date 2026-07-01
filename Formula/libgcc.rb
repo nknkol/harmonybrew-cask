@@ -1,5 +1,5 @@
 class Libgcc < Formula
-  desc "GCC runtime libraries for aarch64-unknown-linux-musl — libgcc, libstdc++, libatomic"
+  desc "GCC runtime libraries for aarch64-unknown-linux-ohos — libgcc, libstdc++, libatomic"
   homepage "https://gcc.gnu.org/"
   url "https://ftpmirror.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz"
   mirror "https://ftp.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz"
@@ -53,7 +53,7 @@ class Libgcc < Formula
   # 目标三元组
   # ---------------------------------------------------------------
   def target
-    "aarch64-unknown-linux-musl"
+    "aarch64-unknown-linux-ohos"
   end
 
   # ---------------------------------------------------------------
@@ -112,7 +112,7 @@ class Libgcc < Formula
     # 显式追加 --code-sign：wrapper 可能被编译脚本逃逸，确保签名生效
     ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot} -Wl,--code-sign"
     ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot} -Wl,--code-sign"
-    ENV["CFLAGS"]   = "--sysroot=#{sysroot} -include limits.h -include fcntl.h -include spawn.h -include unistd.h"
+    ENV["CFLAGS"]   = "--sysroot=#{sysroot}"
     ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
     ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
 
