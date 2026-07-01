@@ -201,9 +201,10 @@ class Libgcc < Formula
     # 的 crtbegin.o 使用 .eh_frame,"a"（只读），clang 汇编器拒绝标志变更。
     # 根源：configure 检测到 lld 不支持 RO/RW 混合 → EH_TABLES_CAN_BE_
     # READ_ONLY=0 → 走 else 分支 flags=SECTION_WRITE。改为强制只读。
+    # 注意行首是 TAB，必须包含在匹配模式中。
     inreplace "gcc/dwarf2out.cc",
-              "flags = SECTION_WRITE",
-              "flags = 0"
+              "\tflags = SECTION_WRITE",
+              "\tflags = 0"
 
     # ── 创建构建目录并执行三部曲 ────────────────────────────────
     mkdir "build" do
