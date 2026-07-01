@@ -183,9 +183,16 @@ class Libgcc < Formula
     # ── musl 不支持 GNU 符号版本化 ────────────────────────────────
     args << "--disable-symvers"
 
-    # ── 修正 AArch64 multilib 的 lib64 → lib ─────────────────────
+    # 修正 AArch64 multilib 的 lib64 → lib ─────────────────────
     inreplace "gcc/config/aarch64/t-aarch64-linux",
               "lp64=../lib64", "lp64="
+
+    # xgcc 对 AArch64 默认生成 .eh_frame,"aw"（可写），但 OHOS sysroot
+    # 的 crtbegin.o 使用 .eh_frame,"a"（只读），clang 汇编器拒绝标志变更。
+    # 强制 eh_frame 始终只读（flags=0 代替 SECTION_WRITE）。
+    inreplace "gcc/dwarf2out.cc",
+              "? 0 : SECTION_WRITE);",
+              "? 0 : 0);"
 
     # ── 创建构建目录并执行三部曲 ────────────────────────────────
     mkdir "build" do
