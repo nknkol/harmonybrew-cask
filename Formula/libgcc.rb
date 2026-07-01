@@ -119,6 +119,10 @@ class Libgcc < Formula
     args << "--with-ld=#{ohos_bin}/ld.lld"
     args << "--with-ar=#{ohos_bin}/llvm-ar"
     args << "--with-ranlib=#{ohos_bin}/llvm-ranlib"
+    # 宿主端工具也需显式指定（--with-* 仅影响 $target 端）
+    ENV["AR"] = "#{ohos_bin}/llvm-ar"
+    ENV["RANLIB"] = "#{ohos_bin}/llvm-ranlib"
+    ENV["NM"] = "#{ohos_bin}/llvm-nm"
 
     # ── 语言：仅 C / C++ ──────────────────────────────────────────
     args << "--enable-languages=c,c++"
