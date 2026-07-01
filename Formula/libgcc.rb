@@ -110,9 +110,11 @@ class Libgcc < Formula
 
     # ── 构建编译器：使用 ohos-sdk 的 clang ─────────────────────────
     # 显式追加 --code-sign：wrapper 可能被编译脚本逃逸，确保签名生效
-    ENV["CC"]       = "#{ohos_bin}/clang   -Wl,--code-sign"
-    ENV["CXX"]      = "#{ohos_bin}/clang++ -Wl,--code-sign"
-    ENV["LDFLAGS"]  = "-Wl,--code-sign"
+    ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot} -Wl,--code-sign"
+    ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot} -Wl,--code-sign"
+    ENV["CFLAGS"]   = "--sysroot=#{sysroot}"
+    ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
+    ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
 
     # 汇编器 & 链接器 & 归档工具同样走 ohos-sdk
     args << "--with-as=#{ohos_bin}/clang"
