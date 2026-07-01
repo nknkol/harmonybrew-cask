@@ -206,6 +206,12 @@ class Libgcc < Formula
         "--target=${target_alias} --disable-shared --with-gmp-builddir",
         "--target=${target_alias} --disable-shared CXX=false --with-gmp-builddir"
 
+      # GCC 的 as wrapper 把 clang 当 GNU as 调用，不传 -c。
+      # clang 默认会汇编+链接，导致目标库编译时拉入 Scrt1.o 报 main 缺失。
+      inreplace "gcc/as",
+        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang\"",
+        "ORIGINAL_AS_FOR_TARGET=\"#{ohos_bin}/clang -c\""
+
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
       #
@@ -218,7 +224,7 @@ class Libgcc < Formula
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
       # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
       # -nostartfiles 防止 startup files 被包含。
-      cflags_target = "--sysroot=#{sysroot} -nostartfiles #{cppflags_target}"
+      cflags_target = "--sysroot=#{sysroot} #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
