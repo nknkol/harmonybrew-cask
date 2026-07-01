@@ -1,5 +1,5 @@
 class Libgcc < Formula
-  desc "GCC runtime libraries for aarch64-unknown-linux-ohos — libgcc, libstdc++, libatomic"
+  desc "GCC runtime libraries for aarch64-unknown-linux-musl — libgcc, libstdc++, libatomic"
   homepage "https://gcc.gnu.org/"
   url "https://ftpmirror.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz"
   mirror "https://ftp.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz"
@@ -53,7 +53,7 @@ class Libgcc < Formula
   # 目标三元组
   # ---------------------------------------------------------------
   def target
-    "aarch64-unknown-linux-ohos"
+    "aarch64-unknown-linux-musl"
   end
 
   # ---------------------------------------------------------------
@@ -98,6 +98,16 @@ class Libgcc < Formula
     ohos_llvm  = ohos.opt_prefix/"native/llvm"
     ohos_bin   = ohos_llvm/"bin"
     sysroot    = ohos.opt_prefix/"native/sysroot"
+
+    # ── sysroot 是 aarch64-linux-ohos，但 GCC 只认 linux-musl ──
+    # 创建相对符号链接，让 GCC 在 musl 路径下找到 ohos 的 bits/ 和 lib/
+    %w[usr/include usr/lib].each do |sub|
+      target_dir = sysroot/sub/ "aarch64-unknown-linux-musl"
+      ohos_dir   = sysroot/sub/ "aarch64-linux-ohos"
+      unless target_dir.exist?
+        ln_s "aarch64-linux-ohos", target_dir
+      end
+    end
 
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
     args = %W[
