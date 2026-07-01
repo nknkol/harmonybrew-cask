@@ -123,6 +123,9 @@ class Libgcc < Formula
     ENV["ac_cv_header_limits_h"] = "yes"
     ENV["ac_cv_header_spawn_h"] = "yes"
     ENV["ac_cv_header_unistd_h"] = "yes"
+    # ISL 的 configure 检测到 clang 不报 undeclared builtin 后
+    # 会全局加 -fno-builtin，导致后续 ffs/__builtin_ffs 检测全挂。
+    ENV["ac_cv_c_undeclared_builtin_options"] = "none needed"
 
     # ── 避免 GCC 将 cellar 路径写死到安装文件中 ─────────────────
     args = %W[
