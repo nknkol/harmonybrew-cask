@@ -179,11 +179,11 @@ class Libgcc < Formula
 
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
-      make_args = %W[
-        CPPFLAGS_FOR_TARGET=-isystem =/usr/include/aarch64-linux-ohos
-        CFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos
-        CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos
-        LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign
+      make_args = [
+        "CPPFLAGS_FOR_TARGET=-isystem =/usr/include/aarch64-linux-ohos",
+        "CFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
+        "CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
+        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign",
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
