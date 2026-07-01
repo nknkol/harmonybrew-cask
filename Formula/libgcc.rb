@@ -216,11 +216,14 @@ class Libgcc < Formula
         #define __availability__(...)
       C
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
+      # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
+      # -nostartfiles 防止 startup files 被包含。
+      cflags_target = "--sysroot=#{sysroot} -nostartfiles #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
-        "CFLAGS_FOR_TARGET=--sysroot=#{sysroot} #{cppflags_target}",
-        "CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} #{cppflags_target}",
+        "CFLAGS_FOR_TARGET=#{cflags_target}",
+        "CXXFLAGS_FOR_TARGET=#{cflags_target}",
         "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign",
       ]
 
