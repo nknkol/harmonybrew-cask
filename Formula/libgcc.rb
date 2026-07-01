@@ -200,10 +200,19 @@ class Libgcc < Formula
 
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
+      #
+      # OHOS 头文件含 __attribute__((__availability__(ohos, ...)))
+      # 这是 clang 特有属性，xgcc 不认识。创建预包含头文件消除它。
+      ohos_fix_header = buildpath/"ohos-gcc-fix.h"
+      ohos_fix_header.atomic_write <<~C
+        #define __availability__(...)
+      C
+      cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
+
       make_args = [
-        "CPPFLAGS_FOR_TARGET=-isystem =/usr/include/aarch64-linux-ohos",
-        "CFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
-        "CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
+        "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
+        "CFLAGS_FOR_TARGET=--sysroot=#{sysroot} #{cppflags_target}",
+        "CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} #{cppflags_target}",
         "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign",
       ]
 
