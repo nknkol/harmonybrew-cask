@@ -116,9 +116,13 @@ class Libgcc < Formula
     # ② ac_cv_header_* 直接告诉 configure 跳过检测
     ENV["CC"]       = "#{ohos_bin}/clang   --sysroot=#{sysroot}"
     ENV["CXX"]      = "#{ohos_bin}/clang++ --sysroot=#{sysroot}"
-    ENV["CFLAGS"]   = "--sysroot=#{sysroot}"
-    ENV["CXXFLAGS"] = "--sysroot=#{sysroot}"
+    ENV["CFLAGS"]   = "--sysroot=#{sysroot} -mstrict-align"
+    ENV["CXXFLAGS"] = "--sysroot=#{sysroot} -mstrict-align"
     ENV["LDFLAGS"]  = "--sysroot=#{sysroot} -Wl,--code-sign"
+    # 构建工具链也用 strict-align：clang 可能对 GCC 数据结构
+    # 生成 LDST64 重定位，但实际只有 4 字节对齐 → lld 拒绝
+    ENV["CFLAGS_FOR_BUILD"] = "-mstrict-align"
+    ENV["CXXFLAGS_FOR_BUILD"] = "-mstrict-align"
     ENV["ac_cv_header_fcntl_h"] = "yes"
     ENV["ac_cv_header_limits_h"] = "yes"
     ENV["ac_cv_header_spawn_h"] = "yes"
@@ -200,6 +204,10 @@ class Libgcc < Formula
       # 目标库（由 xgcc 编译）需显式指定 OHOS sysroot 的架构目录
       # -isystem =/... 中 = 是 sysroot 占位符，xgcc 会自动替换
       make_args = [
+        "CFLAGS=--sysroot=#{sysroot} -mstrict-align",
+        "CXXFLAGS=--sysroot=#{sysroot} -mstrict-align",
+        "CFLAGS_FOR_BUILD=-mstrict-align",
+        "CXXFLAGS_FOR_BUILD=-mstrict-align",
         "CPPFLAGS_FOR_TARGET=-isystem =/usr/include/aarch64-linux-ohos",
         "CFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
         "CXXFLAGS_FOR_TARGET=--sysroot=#{sysroot} -isystem =/usr/include/aarch64-linux-ohos",
