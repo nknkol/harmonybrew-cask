@@ -228,16 +228,15 @@ class Libgcc < Formula
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
       # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
       # -nostartfiles 防止 startup files 被包含。
-      # xgcc 的 startfile 查找不走 multiarch 目录，搜不到 crti.o/crtn.o。
-      # 在本地创建 crt 软链接目录，通过 GCC_EXEC_PREFIX 传给 xgcc。
+      # xgcc 的 startfile 查找（gcc.cc:8652）只搜 /usr/lib/，不走
+      # multiarch 子目录。在本地建 crt symlink 目录，通过 -B 传入。
       crt_stub = buildpath/"crt-stub"
       crt_stub.mkpath
       Pathname.glob(sysroot/"usr/lib/aarch64-linux-ohos/crt*.o").each do |f|
         ln_sf f, crt_stub/f.basename
       end
-      ENV["GCC_EXEC_PREFIX"] = crt_stub.to_s
 
-      cflags_target = "--sysroot=#{sysroot} #{cppflags_target}"
+      cflags_target = "--sysroot=#{sysroot} -B#{crt_stub}/ #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
