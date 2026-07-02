@@ -234,7 +234,7 @@ class Libgcc < Formula
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
         "CFLAGS_FOR_TARGET=#{cflags_target}",
         "CXXFLAGS_FOR_TARGET=#{cflags_target}",
-        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -Wl,--code-sign",
+        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -L#{sysroot}/usr/lib/aarch64-linux-ohos -Wl,--code-sign",
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
