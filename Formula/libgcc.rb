@@ -118,12 +118,6 @@ class Libgcc < Formula
         ln_s "aarch64-linux-ohos", target_dir
       end
     end
-    # xgcc 的 startfile 查找不走 multiarch 目录，搜不到 crti.o/crtn.o。
-    # 把 crt 文件 symlink 到 usr/lib/ 顶层。
-    crt_dir = sysroot/"usr/lib/aarch64-linux-ohos"
-    Pathname.glob(crt_dir/"crt*.o").each do |f|
-      ln_sf "aarch64-linux-ohos/#{f.basename}", sysroot/"usr/lib"/f.basename
-    end
 
     # ── autoconf 头文件检测修复 ──────────────────────────────────
     # -Wl,--code-sign 在预处理阶段（-E）产生 stderr 警告，
@@ -234,7 +228,15 @@ class Libgcc < Formula
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
       # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
       # -nostartfiles 防止 startup files 被包含。
-      cflags_target = "--sysroot=#{sysroot} #{cppflags_target}"
+      # xgcc 的 startfile 查找不走 multiarch 目录，搜不到 crti.o/crtn.o。
+      # 在本地创建 crt 软链接目录，通过 -B 传给 xgcc，不动 sysroot。
+      crt_stub = buildpath/"crt-stub"
+      crt_stub.mkpath
+      Pathname.glob(sysroot/"usr/lib/aarch64-linux-ohos/crt*.o").each do |f|
+        ln_sf f, crt_stub/f.basename
+      end
+
+      cflags_target = "--sysroot=#{sysroot} -B#{crt_stub}/ #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
