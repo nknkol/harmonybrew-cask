@@ -228,13 +228,13 @@ class Libgcc < Formula
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
       # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
       # -nostartfiles 防止 startup files 被包含。
-      cflags_target = "--sysroot=#{sysroot} #{cppflags_target}"
+      cflags_target = "--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
         "CFLAGS_FOR_TARGET=#{cflags_target}",
         "CXXFLAGS_FOR_TARGET=#{cflags_target}",
-        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -B#{sysroot}/usr/lib/aarch64-linux-ohos/ -L#{sysroot}/usr/lib/aarch64-linux-ohos -Wl,--code-sign",
+        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -L#{sysroot}/usr/lib/aarch64-linux-ohos -Wl,--code-sign",
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
