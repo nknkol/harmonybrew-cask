@@ -192,6 +192,8 @@ class Libgcc < Formula
 
     # ── musl 不支持 GNU 符号版本化 ────────────────────────────────
     args << "--disable-symvers"
+    # libiberty 的 basename 与 musl <string.h> 冲突，libstdc++ backtrace 非必需
+    args << "--disable-libstdcxx-backtrace"
 
     # 修正 AArch64 multilib 的 lib64 → lib ─────────────────────
     inreplace "gcc/config/aarch64/t-aarch64-linux",
