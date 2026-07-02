@@ -201,13 +201,9 @@ class Libgcc < Formula
     # 的 crtbegin.o 使用 .eh_frame,"a"（只读），clang 汇编器拒绝标志变更。
     # 根源：EH_TABLES_CAN_BE_READ_ONLY=0 → else flags=SECTION_WRITE。
     # 改为 flags=0，让 .eh_frame 只读（"a" 而非 "aw"）。
-    inreplace "gcc/dwarf2out.cc",
-              "flags = SECTION_WRITE;",
-              "flags = 0;"
-    # 验证修改是否生效
-    unless File.read(buildpath/"gcc/dwarf2out.cc").include?("flags = 0;")
-      odie "dwarf2out.cc inreplace failed"
-    end
+    system Formula["gnu-sed"].opt_bin/"sed", "-i",
+           "s/flags = SECTION_WRITE;/flags = 0;/",
+           (buildpath/"gcc/dwarf2out.cc").to_s
 
     # ── 创建构建目录并执行三部曲 ────────────────────────────────
     mkdir "build" do
