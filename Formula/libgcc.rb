@@ -226,27 +226,25 @@ class Libgcc < Formula
         #define __availability__(...)
       C
       cppflags_target = "-include #{ohos_fix_header} -isystem =/usr/include/aarch64-linux-ohos"
-      # -fPIC 导致 xgcc 即使在 -c 时也将 Scrt1.o 拉入链接，添加
-      # -nostartfiles 防止 startup files 被包含。
-      # xgcc 的 startfile 查找（gcc.cc:8652）只搜 /usr/lib/，不走
-      # multiarch 子目录。在本地建 crt symlink 目录，通过 -B 传入。
-      crt_stub = buildpath/"crt-stub"
-      crt_stub.mkpath
-      Pathname.glob(sysroot/"usr/lib/aarch64-linux-ohos/crt*.o").each do |f|
-        ln_sf f, crt_stub/f.basename
-      end
 
-      cflags_target = "--sysroot=#{sysroot} -B#{crt_stub}/ #{cppflags_target}"
+      cflags_target = "--sysroot=#{sysroot} #{cppflags_target}"
 
       make_args = [
         "CPPFLAGS_FOR_TARGET=#{cppflags_target}",
         "CFLAGS_FOR_TARGET=#{cflags_target}",
         "CXXFLAGS_FOR_TARGET=#{cflags_target}",
-        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -L#{sysroot}/usr/lib/aarch64-linux-ohos -B#{crt_stub}/ -Wl,--code-sign",
+        "LDFLAGS_FOR_TARGET=--sysroot=#{sysroot} -L#{sysroot}/usr/lib/aarch64-linux-ohos -Wl,--code-sign",
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-gcc"
+
+      # xgcc 的 startfile 查找（gcc.cc:8652）只搜 /usr/lib/，不走
+      # multiarch 子目录。libatomic 的 libtool 又过滤 -B。利用
+      # xgcc 已有的 -B build/gcc/ 路径，放 crt symlink 进去。
+      Pathname.glob(sysroot/"usr/lib/aarch64-linux-ohos/crt*.o").each do |f|
+        ln_sf f, buildpath/"build/gcc"/f.basename
+      end
 
       # Step 2 · 构建目标运行时库
       system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libgcc"
