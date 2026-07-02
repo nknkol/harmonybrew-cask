@@ -199,12 +199,11 @@ class Libgcc < Formula
 
     # xgcc 对 AArch64 默认生成 .eh_frame,"aw"（可写），但 OHOS sysroot
     # 的 crtbegin.o 使用 .eh_frame,"a"（只读），clang 汇编器拒绝标志变更。
-    # 根源：configure 检测到 lld 不支持 RO/RW 混合 → EH_TABLES_CAN_BE_
-    # READ_ONLY=0 → 走 else 分支 flags=SECTION_WRITE。改为强制只读。
-    # 注意行首是 TAB，必须包含在匹配模式中。
+    # 根源：EH_TABLES_CAN_BE_READ_ONLY=0 → else flags=SECTION_WRITE。
+    # 改为 flags=0，让 .eh_frame 只读（"a" 而非 "aw"）。
     inreplace "gcc/dwarf2out.cc",
-              "\tflags = SECTION_WRITE",
-              "\tflags = 0"
+              "flags = SECTION_WRITE;",
+              "flags = 0;"
 
     # ── 创建构建目录并执行三部曲 ────────────────────────────────
     mkdir "build" do
