@@ -204,6 +204,10 @@ class Libgcc < Formula
     inreplace "gcc/dwarf2out.cc",
               "flags = SECTION_WRITE;",
               "flags = 0;"
+    # 验证修改是否生效
+    unless File.read(buildpath/"gcc/dwarf2out.cc").include?("flags = 0;")
+      odie "dwarf2out.cc inreplace failed"
+    end
 
     # ── 创建构建目录并执行三部曲 ────────────────────────────────
     mkdir "build" do
