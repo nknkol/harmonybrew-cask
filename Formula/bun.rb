@@ -18,7 +18,6 @@ class Bun < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbun"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "PLACEHOLDER"
   end
 
   depends_on "cmake" => :build
