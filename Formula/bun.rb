@@ -24,6 +24,7 @@ class Bun < Formula
   depends_on "llvm@21" => :build
   depends_on "ninja" => :build
   depends_on "perl" => :build
+  depends_on "ruby" => :build
   depends_on "rust" => :build
   depends_on "icu4c@78"
 
@@ -68,13 +69,6 @@ class Bun < Formula
               'findTool({ names: ["strip"], required: true, hint: "Install binutils for your distro" })',
               'findTool({ names: ["llvm-strip"], required: true, hint: "Install binutils for your distro" })'
 
-    # Force CMAKE_SYSTEM_NAME=Linux so WebKit CMake doesn't reject HarmonyOS.
-    # (LD_PRELOAD of libuname.so crashes bun itself via seccomp; safer to
-    # fix the cmake invocation directly.)
-    inreplace "scripts/build/deps/webkit.ts",
-              "CMAKE_C_FLAGS: optFlagStr,",
-              "CMAKE_SYSTEM_NAME: \"Linux\",\n      CMAKE_C_FLAGS: optFlagStr,"
-
     # Bun.spawnSync uses memfd_create + fstat internally; HarmonyOS kernel
     # returns EACCES on fstat(memfd). Replace with async Bun.spawn.
     # TODO: upstream fix — bun should fall back to pipe when memfd fstat fails.
@@ -96,6 +90,12 @@ class Bun < Formula
     # typescript, mitata, react, prettier) do install successfully.
 
     fetch_webkit
+
+    # WebKit cmake doesn't recognize HarmonyOS; add it as Linux-like.
+    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
+              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
+              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
+
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
