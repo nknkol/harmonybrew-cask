@@ -62,6 +62,11 @@ class Bun < Formula
     # Use native CPU target for HarmonyOS
     inreplace "scripts/build/zig.ts", "-Dcpu=${zigCpu(cfg)}", "-Dcpu=native"
 
+    # HarmonyOS has llvm-strip but no GNU strip
+    inreplace "scripts/build/tools.ts",
+              'findTool({ names: ["strip"], required: true, hint: "Install binutils for your distro" })',
+              'findTool({ names: ["llvm-strip"], required: true, hint: "Install binutils for your distro" })'
+
     fetch_webkit
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
