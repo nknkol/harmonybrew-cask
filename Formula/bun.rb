@@ -23,6 +23,7 @@ class Bun < Formula
   depends_on "cmake" => :build
   depends_on "llvm@21" => :build
   depends_on "ninja" => :build
+  depends_on "perl" => :build
   depends_on "rust" => :build
   depends_on "icu4c@78"
 
