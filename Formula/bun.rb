@@ -60,7 +60,9 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    system "bun", "run", "build:release:local", "--canary=off"
+    # Bypass "bun run" — its readDirInfo fails on hmdfs.
+    # Equivalent to: bun run build:release:local --canary=off
+    system "bun", "scripts/build.ts", "--profile=release-local", "--build-dir=build/release-local", "--canary=off"
     bin.install "build/release-local/bun"
     bin.install_symlink bin/"bun" => "bunx"
 
