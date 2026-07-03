@@ -25,7 +25,6 @@ class Bun < Formula
   depends_on "ninja" => :build
   depends_on "perl" => :build
   depends_on "rust" => :build
-  depends_on "uname-is-linux" => :build
   depends_on "icu4c@78"
 
   fails_with :gcc do
@@ -69,6 +68,13 @@ class Bun < Formula
               'findTool({ names: ["strip"], required: true, hint: "Install binutils for your distro" })',
               'findTool({ names: ["llvm-strip"], required: true, hint: "Install binutils for your distro" })'
 
+    # Force CMAKE_SYSTEM_NAME=Linux so WebKit CMake doesn't reject HarmonyOS.
+    # (LD_PRELOAD of libuname.so crashes bun itself via seccomp; safer to
+    # fix the cmake invocation directly.)
+    inreplace "scripts/build/deps/webkit.ts",
+              "CMAKE_C_FLAGS: optFlagStr,",
+              "CMAKE_SYSTEM_NAME: \"Linux\",\n      CMAKE_C_FLAGS: optFlagStr,"
+
     # Bun.spawnSync uses memfd_create + fstat internally; HarmonyOS kernel
     # returns EACCES on fstat(memfd). Replace with async Bun.spawn.
     # TODO: upstream fix — bun should fall back to pipe when memfd fstat fails.
@@ -92,10 +98,6 @@ class Bun < Formula
     fetch_webkit
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
-
-    # Hook uname() → Linux so CMake / WebKit don't see "HarmonyOS" as unknown OS.
-    ENV.prepend "LD_PRELOAD",
-                "#{Formula["uname-is-linux"].opt_lib}/libuname.so"
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
