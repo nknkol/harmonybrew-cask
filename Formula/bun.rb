@@ -60,7 +60,8 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # Bypass "bun run" — its readDirInfo fails on hmdfs.
+    # Bypass "bun run" — it walks up directories to find project root,
+    # hitting /storage/Users/ which has no read permission on HarmonyOS.
     # Equivalent to: bun run build:release:local --canary=off
     system "bun", "scripts/build.ts", "--profile=release-local", "--build-dir=build/release-local", "--canary=off"
     bin.install "build/release-local/bun"
