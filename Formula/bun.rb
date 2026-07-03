@@ -36,6 +36,9 @@ class Bun < Formula
     # Fix bun run / bun build traversal failing when parent directories
     # have no read permission (e.g. /storage/Users/ on HarmonyOS).
     file "patches/bun/0001-fix-run-command-traversal.patch"
+    # Also fix the resolver's directory traversal (used by bun build / bun
+    # run subprocesses spawned during codegen).
+    file "patches/bun/0002-fix-resolver-traversal.patch"
   end
 
   resource "bootstrap" do
