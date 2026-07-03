@@ -25,6 +25,7 @@ class Bun < Formula
   depends_on "ninja" => :build
   depends_on "perl" => :build
   depends_on "rust" => :build
+  depends_on "uname-is-linux" => :build
   depends_on "icu4c@78"
 
   fails_with :gcc do
@@ -68,9 +69,33 @@ class Bun < Formula
               'findTool({ names: ["strip"], required: true, hint: "Install binutils for your distro" })',
               'findTool({ names: ["llvm-strip"], required: true, hint: "Install binutils for your distro" })'
 
+    # Bun.spawnSync uses memfd_create + fstat internally; HarmonyOS kernel
+    # returns EACCES on fstat(memfd). Replace with async Bun.spawn.
+    # TODO: upstream fix — bun should fall back to pipe when memfd fstat fails.
+    inreplace "src/codegen/bundle-modules.ts",
+              "const out = Bun.spawnSync({\n  cmd: config_cli,\n  cwd: process.cwd(),\n  env: process.env,\n  stdio: [\"pipe\", \"pipe\", \"pipe\"],\n});\nif (out.exitCode !== 0) {\n  console.error(out.stderr.toString());\n  process.exit(out.exitCode);\n}",
+              "const proc = Bun.spawn({\n  cmd: config_cli,\n  cwd: process.cwd(),\n  env: process.env,\n  stdio: [\"pipe\", \"pipe\", \"pipe\"],\n});\nconst exitCode = await proc.exited;\nif (exitCode !== 0) {\n  console.error(await new Response(proc.stderr).text());\n  process.exit(exitCode);\n}"
+
+    # Bun.spawnSync → Bun.spawn in bake-codegen.ts too
+    inreplace "src/codegen/bake-codegen.ts",
+              "function css(file: string, is_development: boolean): string {\n  const { success, stdout, stderr } = Bun.spawnSync({\n    cmd: [process.execPath, \"build\", file, \"--minify\"],\n    cwd: import.meta.dir,\n    stdio: [\"ignore\", \"pipe\", \"pipe\"],\n  });\n  if (!success) throw new Error(stderr.toString(\"utf-8\"));\n  return stdout.toString(\"utf-8\");\n}",
+              "async function css(file: string, is_development: boolean): Promise<string> {\n  const proc = Bun.spawn({\n    cmd: [process.execPath, \"build\", file, \"--minify\"],\n    cwd: import.meta.dir,\n    stdio: [\"ignore\", \"pipe\", \"pipe\"],\n  });\n  const stdout = await new Response(proc.stdout).text();\n  const stderr = await new Response(proc.stderr).text();\n  const exitCode = await proc.exited;\n  if (exitCode !== 0) throw new Error(stderr);\n  return stdout;\n}"
+    inreplace "src/codegen/bake-codegen.ts",
+              "OVERLAY_CSS: css(",
+              "OVERLAY_CSS: await css("
+
+    # hmdfs does not support hardlink(2). bun install tries hardlinks first
+    # and fails with EPERM. TODO: bun should fall back to symlink on EPERM.
+    # For now the build tolerates partial install — critical packages (esbuild,
+    # typescript, mitata, react, prettier) do install successfully.
+
     fetch_webkit
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
+
+    # Hook uname() → Linux so CMake / WebKit don't see "HarmonyOS" as unknown OS.
+    ENV.prepend "LD_PRELOAD",
+                "#{Formula["uname-is-linux"].opt_lib}/libuname.so"
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
