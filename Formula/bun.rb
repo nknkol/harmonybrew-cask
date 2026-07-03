@@ -30,6 +30,12 @@ class Bun < Formula
     cause "uses clang-specific flags"
   end
 
+  patch do
+    # Fix bun run / bun build traversal failing when parent directories
+    # have no read permission (e.g. /storage/Users/ on HarmonyOS).
+    file "patches/bun/0001-fix-run-command-traversal.patch"
+  end
+
   resource "bootstrap" do
     url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/bun-1.3.14-aarch64-musl.tar.gz"
     version "1.3.14"
