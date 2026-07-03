@@ -78,7 +78,7 @@ class Bun < Formula
         if OS.ohos?
           # Bootstrap from local repo: copy bun-1.3.14-aarch64-musl.codesing to bootstrap/bun,
           # then: tar -czf bootstrap/bun-1.3.14-aarch64-musl.tar.gz -C bootstrap bun
-          url "file://#{Pathname(__dir__).realpath.parent}/bootstrap/bun-1.3.14-aarch64-musl.tar.gz"
+          url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/bun-1.3.14-aarch64-musl.tar.gz"
           version "1.3.14"
           sha256 "787861e880501618f044445567c350277a09fd6403ae8be1b34c4c51ffb4f922"
         else
