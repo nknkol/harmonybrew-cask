@@ -1,5 +1,5 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..9343c6af1d 100644
+index 0c171c7ebb..1210659a85 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
 @@ -791,17 +791,27 @@ pub const RunCommand = struct {
@@ -21,7 +21,7 @@ index 0c171c7ebb..9343c6af1d 100644
 +            break :blk this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir) catch |err| {
 +                if (err == error.AccessDenied) {
 +                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
-+                    entry.status = .not_found;
++                    entry.status = .exists;
 +                    const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
 +                    di.abs_path = this_transpiler.fs.top_level_dir;
 +                    break :blk di;
@@ -33,7 +33,7 @@ index 0c171c7ebb..9343c6af1d 100644
 +                return err;
 +            } orelse {
 +                var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
-+                entry.status = .not_found;
++                entry.status = .exists;
 +                const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
 +                di.abs_path = this_transpiler.fs.top_level_dir;
 +                break :blk di;
