@@ -115,9 +115,11 @@ class Bun < Formula
               "const LINUX_NETDB_R = def1([]);"
 
     # rustc_wrapper uses #!/bin/bash which doesn't exist on HarmonyOS.
-    inreplace HOMEBREW_LIBRARY/"Homebrew/shims/shared/rustc_wrapper",
-              "#!/bin/bash",
-              "#!/usr/bin/env bash"
+    # (May already be fixed from a previous run — only inreplace if needed.)
+    wrapper = HOMEBREW_LIBRARY/"Homebrew/shims/shared/rustc_wrapper"
+    if File.read(wrapper).include?("#!/bin/bash")
+      inreplace wrapper, "#!/bin/bash", "#!/usr/bin/env bash"
+    end
 
     # mimalloc static.c compiled as C++; llvm@21 doesn't find libc++ headers.
     # Prepend the OHOS SDK libc++ include paths to the cflags array.
