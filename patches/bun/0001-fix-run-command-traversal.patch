@@ -1,5 +1,5 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..2ca66191bb 100644
+index 0c171c7ebb..e56bf5dd00 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
 @@ -791,17 +791,26 @@ pub const RunCommand = struct {
@@ -21,10 +21,10 @@ index 0c171c7ebb..2ca66191bb 100644
 +            break :blk this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir) catch |err| {
 +                if (err == error.AccessDenied) {
 +                    // Parent directories not readable (HarmonyOS sandbox).
-+                    // Treat as if there's no enclosing package.json.
++                    // Create an empty DirInfo instead of failing.
 +                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
 +                    entry.status = .not_found;
-+                    break :blk &entry.data;
++                    break :blk this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
 +                }
 +                if (!log_errors) return error.CouldntReadCurrentDirectory;
 +                ctx.log.print(Output.errorWriter()) catch {};
