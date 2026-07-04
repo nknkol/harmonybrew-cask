@@ -1,16 +1,8 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..d31a8b49d5 100644
+index 0c171c7ebb..2ca66191bb 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
-@@ -776,6 +776,7 @@ pub const RunCommand = struct {
-         log_errors: bool,
-         store_root_fd: bool,
-     ) !*DirInfo {
-+        _ = log_errors; // may be unused when AccessDenied caught below
-         const args = ctx.args;
-         this_transpiler.* = try transpiler.Transpiler.init(ctx.allocator, ctx.log, args, env);
-         this_transpiler.options.env.behavior = api.DotEnvBehavior.load_all;
-@@ -791,17 +792,17 @@ pub const RunCommand = struct {
+@@ -791,17 +791,26 @@ pub const RunCommand = struct {
  
          this_transpiler.configureLinker();
  
@@ -20,65 +12,31 @@ index 0c171c7ebb..d31a8b49d5 100644
 -            Output.prettyErrorln("<r><red>error<r><d>:<r> <b>{s}<r> loading directory {f}", .{ @errorName(err), bun.fmt.QuotedFormatter{ .text = this_transpiler.fs.top_level_dir } });
 -            Output.flush();
 -            return err;
-+        // On HarmonyOS, parent directories may be inaccessible.
-+        // Fall back gracefully instead of crashing.
-+        const root_dir_info = readDirInfoIgnoreError: {
-+            if (this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir)) |info| {
-+                break :readDirInfoIgnoreError info;
-+            } else |err| {
-+                if (err == error.AccessDenied) break :readDirInfoIgnoreError null;
-+                return err;
-+            }
-         } orelse {
+-        } orelse {
 -            ctx.log.print(Output.errorWriter()) catch {};
 -            Output.prettyErrorln("error loading current directory", .{});
 -            Output.flush();
 -            return error.CouldntReadCurrentDirectory;
-+            break :readDirInfoIgnoreError null;
++        const root_dir_info = blk: {
++            break :blk this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir) catch |err| {
++                if (err == error.AccessDenied) {
++                    // Parent directories not readable (HarmonyOS sandbox).
++                    // Treat as if there's no enclosing package.json.
++                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
++                    entry.status = .not_found;
++                    break :blk &entry.data;
++                }
++                if (!log_errors) return error.CouldntReadCurrentDirectory;
++                ctx.log.print(Output.errorWriter()) catch {};
++                Output.prettyErrorln("<r><red>error<r><d>:<r> <b>{s}<r> loading directory {f}", .{ @errorName(err), bun.fmt.QuotedFormatter{ .text = this_transpiler.fs.top_level_dir } });
++                Output.flush();
++                return err;
++            } orelse {
++                ctx.log.print(Output.errorWriter()) catch {};
++                Output.prettyErrorln("error loading current directory", .{});
++                Output.flush();
++                return error.CouldntReadCurrentDirectory;
++            };
          };
  
          this_transpiler.resolver.store_fd = false;
-@@ -848,26 +849,28 @@ pub const RunCommand = struct {
-             } else |_| {}
-         }
- 
--        if (root_dir_info.enclosing_package_json) |package_json| {
--            if (package_json.name.len > 0) {
--                if (this_transpiler.env.map.get(NpmArgs.package_name) == null) {
--                    this_transpiler.env.map.put(NpmArgs.package_name, package_json.name) catch unreachable;
-+        if (root_dir_info) |info| {
-+            if (info.enclosing_package_json) |package_json| {
-+                if (package_json.name.len > 0) {
-+                    if (this_transpiler.env.map.get(NpmArgs.package_name) == null) {
-+                        this_transpiler.env.map.put(NpmArgs.package_name, package_json.name) catch unreachable;
-+                    }
-                 }
--            }
- 
--            this_transpiler.env.map.putDefault("npm_package_json", package_json.source.path.text) catch unreachable;
-+                this_transpiler.env.map.putDefault("npm_package_json", package_json.source.path.text) catch unreachable;
- 
--            if (package_json.version.len > 0) {
--                if (this_transpiler.env.map.get(NpmArgs.package_version) == null) {
--                    this_transpiler.env.map.put(NpmArgs.package_version, package_json.version) catch unreachable;
-+                if (package_json.version.len > 0) {
-+                    if (this_transpiler.env.map.get(NpmArgs.package_version) == null) {
-+                        this_transpiler.env.map.put(NpmArgs.package_version, package_json.version) catch unreachable;
-+                    }
-                 }
--            }
- 
--            if (package_json.config) |config| {
--                try this_transpiler.env.map.ensureUnusedCapacity(config.count());
--                for (config.keys(), config.values()) |k, v| {
--                    const key = try bun.strings.concat(bun.default_allocator, &.{ "npm_package_config_", k });
--                    this_transpiler.env.map.putAssumeCapacity(key, v);
-+                if (package_json.config) |config| {
-+                    try this_transpiler.env.map.ensureUnusedCapacity(config.count());
-+                    for (config.keys(), config.values()) |k, v| {
-+                        const key = try bun.strings.concat(bun.default_allocator, &.{ "npm_package_config_", k });
-+                        this_transpiler.env.map.putAssumeCapacity(key, v);
-+                    }
-                 }
-             }
-         }
