@@ -108,11 +108,11 @@ class Bun < Formula
               'cflags: ["-DXXH_NAMESPACE=ZSTD_"]',
               'cflags: ["-DXXH_NAMESPACE=ZSTD_", "-D__ANDROID__"]'
 
-    # musl does not implement getservbyport_r / getservbyname_r (GNU extensions).
-    # Remove LINUX_NETDB_R so c-ares uses the standard non-_r variants.
+    # musl does not implement getservbyport_r / getservbyname_r (GNU).
+    # Keep def1 call but pass empty array so generated config omits them.
     inreplace "scripts/build/deps/cares.ts",
               "const LINUX_NETDB_R = def1([\n  \"HAVE_GETSERVBYPORT_R\", \"HAVE_GETSERVBYNAME_R\",\n]);",
-              "const LINUX_NETDB_R: Record<string, number> = {};"
+              "const LINUX_NETDB_R = def1([]);"
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
