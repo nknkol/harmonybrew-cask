@@ -102,11 +102,11 @@ class Bun < Formula
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
 
-    # musl does not implement qsort_r (GNU extension). Undefine _GNU_SOURCE
-    # so zstd cover.c uses the C90 qsort fallback instead.
+    # musl does not implement qsort_r (GNU extension). zstd_deps.h redefines
+    # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
     inreplace "scripts/build/deps/zstd.ts",
               'cflags: ["-DXXH_NAMESPACE=ZSTD_"]',
-              'cflags: ["-DXXH_NAMESPACE=ZSTD_", "-U_GNU_SOURCE"]'
+              'cflags: ["-DXXH_NAMESPACE=ZSTD_", "-D__ANDROID__"]'
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
