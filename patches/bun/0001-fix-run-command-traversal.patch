@@ -1,8 +1,8 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..e56bf5dd00 100644
+index 0c171c7ebb..513282e4f5 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
-@@ -791,17 +791,26 @@ pub const RunCommand = struct {
+@@ -791,17 +791,25 @@ pub const RunCommand = struct {
  
          this_transpiler.configureLinker();
  
@@ -20,8 +20,6 @@ index 0c171c7ebb..e56bf5dd00 100644
 +        const root_dir_info = blk: {
 +            break :blk this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir) catch |err| {
 +                if (err == error.AccessDenied) {
-+                    // Parent directories not readable (HarmonyOS sandbox).
-+                    // Create an empty DirInfo instead of failing.
 +                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
 +                    entry.status = .not_found;
 +                    break :blk this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
@@ -32,10 +30,11 @@ index 0c171c7ebb..e56bf5dd00 100644
 +                Output.flush();
 +                return err;
 +            } orelse {
-+                ctx.log.print(Output.errorWriter()) catch {};
-+                Output.prettyErrorln("error loading current directory", .{});
-+                Output.flush();
-+                return error.CouldntReadCurrentDirectory;
++                // DirInfo not found (e.g. parent dirs inaccessible on HarmonyOS).
++                // Create an empty DirInfo instead of failing.
++                var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
++                entry.status = .not_found;
++                break :blk this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
 +            };
          };
  
