@@ -1,0 +1,13 @@
+diff --git a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
+index 21752443b7..f23534128e 100644
+--- a/src/install/PackageInstall.zig
++++ b/src/install/PackageInstall.zig
+@@ -372,7 +372,7 @@ pub const PackageInstall = struct {
+     pub var supported_method: Method = if (Environment.isMac)
+         Method.clonefile
+     else
+-        Method.hardlink;
++        Method.symlink;  // hmdfs does not support hardlink
+ 
+     fn installWithClonefileEachDir(this: *@This(), destination_dir: std.fs.Dir) !Result {
+         var cached_package_dir = bun.openDir(this.cache_dir, this.cache_dir_subpath) catch |err| return Result.fail(err, .opening_cache_dir, @errorReturnTrace());
