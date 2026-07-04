@@ -102,6 +102,12 @@ class Bun < Formula
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
 
+    # musl does not implement qsort_r (GNU extension). Skip the _GNU_SOURCE
+    # branch so the C90 qsort fallback is used instead.
+    inreplace "vendor/zstd/lib/dictBuilder/cover.c",
+              "#elif defined(_GNU_SOURCE)",
+              "#elif defined(_GNU_SOURCE) && !defined(__MUSL__)"
+
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
