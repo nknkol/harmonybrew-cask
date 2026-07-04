@@ -20,6 +20,7 @@ class Bun < Formula
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbun"
   end
 
+  depends_on "bash" => :build
   depends_on "cmake" => :build
   depends_on "llvm@21" => :build
   depends_on "ninja" => :build
