@@ -123,8 +123,8 @@ class Bun < Formula
     # Prepend the OHOS SDK libc++ include paths to the cflags array.
     ohos_cxx = Formula["ohos-sdk"].opt_prefix/"native/llvm/include"
     inreplace "scripts/build/deps/mimalloc.ts",
-              "cflags: [",
-              "cflags: [\"-cxx-isystem#{ohos_cxx}/c++/v1\", \"-cxx-isystem#{ohos_cxx}/libcxx-ohos/include/c++/v1\", "
+              "cflags = [",
+              "cflags = [\"-cxx-isystem#{ohos_cxx}/c++/v1\", \"-cxx-isystem#{ohos_cxx}/libcxx-ohos/include/c++/v1\", "
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
