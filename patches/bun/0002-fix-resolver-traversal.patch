@@ -1,22 +1,66 @@
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c953035b..c4c2ce2e78 100644
+index 71c953035b..2c02ded4f0 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
-@@ -2916,7 +2916,7 @@ pub const Resolver = struct {
-                         r.dir_cache.markNotFound(queue_top.result);
-                         rfs.entries.markNotFound(cached_dir_entry_result);
-                         switch (@as(anyerror, err)) {
--                            error.ENOENT, error.FileNotFound => {},
-+                            error.ENOENT, error.FileNotFound, error.AccessDenied => {},
-                             else => {
-                                 if (comptime enable_logging) {
-                                     const pretty = queue_top.unsafe_path;
-@@ -3806,7 +3806,7 @@ pub const Resolver = struct {
+@@ -2795,8 +2795,14 @@ pub const Resolver = struct {
+                         bufs(.dir_entry_paths_to_resolve)[@as(usize, @intCast(i))].fd = top_entry.entries.fd;
+                     },
+                     .err => |err| {
+-                        debuglog("Failed to load DirEntry {s}  {s} - {s}", .{ top, @errorName(err.original_err), @errorName(err.canonical_error) });
+-                        break;
++                        // On HarmonyOS, parent dirs may be inaccessible.
++                        // Skip them instead of aborting the traversal.
++                        if (err.original_err == error.AccessDenied or err.canonical_error == error.AccessDenied) {
++                            // fall through, leave fd as .invalid
++                        } else {
++                            debuglog("Failed to load DirEntry {s}  {s} - {s}", .{ top, @errorName(err.original_err), @errorName(err.canonical_error) });
++                            break;
++                        }
+                     },
+                 }
+             }
+@@ -2866,7 +2872,7 @@ pub const Resolver = struct {
  
-         if (@as(Fs.FileSystem.RealFS.EntriesOption.Tag, dir_entry.*) == .err) {
-             switch (dir_entry.err.original_err) {
--                error.ENOENT, error.FileNotFound, error.ENOTDIR, error.NotDir => {},
-+                error.ENOENT, error.FileNotFound, error.ENOTDIR, error.NotDir, error.AccessDenied => {},
-                 else => {
-                     r.log.addErrorFmt(
-                         null,
+             const open_dir: FD = if (queue_top.fd.isValid())
+                 queue_top.fd
+-            else open_dir: {
++            else brk: {
+                 // This saves us N copies of .toPosixPath
+                 // which was likely the perf gain from resolving directories relative to the parent directory, anyway.
+                 const prev_char = path.ptr[queue_top.unsafe_path.len];
+@@ -2895,16 +2901,15 @@ pub const Resolver = struct {
+ 
+                 bun.fs.debug("open({s})", .{sentinel});
+ 
+-                break :open_dir open_req catch |err| switch (@as(anyerror, err)) {
+-                    // Ignore "ENOTDIR" here so that calling "ReadDirectory" on a file behaves
+-                    // as if there is nothing there at all instead of causing an error due to
+-                    // the directory actually being a file. This is a workaround for situations
+-                    // where people try to import from a path containing a file as a parent
+-                    // directory. The "pnpm" package manager generates a faulty "NODE_PATH"
+-                    // list which contains such paths and treating them as missing means we just
+-                    // ignore them during path resolution.
+-                    error.ENOTDIR, error.IsDir, error.NotDir => return null,
+-                    else => {
++                break :open_dir open_req catch |err| {
++                    if (err == error.AccessDenied or err == error.PermissionDenied) {
++                        // HarmonyOS: parent dir not readable — skip it, not fatal.
++                        break :brk .invalid_fd;
++                    }
++                    switch (err) {
++                        // Ignore "ENOTDIR"... (same comment as before)
++                        error.ENOTDIR, error.IsDir, error.NotDir => return null,
++                        else => {
+                         const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
+                         // If we don't properly cache not found, then we repeatedly attempt to open the same directories, which causes a perf trace that looks like this stupidity;
+                         //
+@@ -2936,7 +2941,8 @@ pub const Resolver = struct {
+                         }
+ 
+                         return null;
+-                    },
++                        },
++                    }
+                 };
+             };
+ 
