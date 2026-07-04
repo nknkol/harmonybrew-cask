@@ -122,11 +122,12 @@ class Bun < Formula
     end
 
     # mimalloc static.c compiled as C++; llvm@21 doesn't find libc++ headers.
-    # Prepend the OHOS SDK libc++ include paths to the cflags array.
+    # Follow libgcc pattern: add OHOS sysroot + libc++ include paths.
+    ohos_sysroot = Formula["ohos-sdk"].opt_prefix/"native/sysroot"
     ohos_cxx = Formula["ohos-sdk"].opt_prefix/"native/llvm/include"
     inreplace "scripts/build/deps/mimalloc.ts",
               "cflags = [",
-              "cflags = [\"-cxx-isystem#{ohos_cxx}/c++/v1\", \"-cxx-isystem#{ohos_cxx}/libcxx-ohos/include/c++/v1\", "
+              "cflags = [\"--sysroot=#{ohos_sysroot}\", \"-isystem#{ohos_cxx}/c++/v1\", \"-isystem#{ohos_cxx}/libcxx-ohos/include/c++/v1\", "
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
