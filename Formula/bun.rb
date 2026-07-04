@@ -94,7 +94,10 @@ class Bun < Formula
 
     fetch_webkit
 
-    # WebKit cmake doesn't recognize HarmonyOS; add it as Linux-like.
+    # WebKit cmake doesn't recognize HarmonyOS; treat as Linux-like UNIX.
+    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
+              "if (UNIX)",
+              "if (UNIX OR CMAKE_SYSTEM_NAME MATCHES \"HarmonyOS\")"
     inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
               'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
