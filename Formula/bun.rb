@@ -23,7 +23,6 @@ class Bun < Formula
   depends_on "cmake" => :build
   depends_on "llvm@21" => :build
   depends_on "ninja" => :build
-  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "perl" => :build
   depends_on "ruby" => :build
   depends_on "rust" => :build
@@ -131,18 +130,6 @@ class Bun < Formula
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
-
-    # Pre-install npm packages and sign native binaries.
-    # (HarmonyOS requires code signatures on all ELF binaries.)
-    system "bun", "install", "--frozen-lockfile"
-    sign_tool = Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
-    if File.exist?(sign_tool)
-      sign_elf = lambda do |path|
-        next unless path.file? && path.read(4) == "\x7fELF".b
-        system sign_tool, "sign", "-inFile", path.to_s, "-outFile", path.to_s, "-selfSign", "1"
-      end
-      Pathname.glob(buildpath/"node_modules/.bun/**/bin/*").each { |p| sign_elf.call(p) }
-    end
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
