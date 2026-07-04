@@ -1,5 +1,5 @@
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c953035b..02c71bd172 100644
+index 71c953035b..2ce06b966f 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
 @@ -2795,8 +2795,12 @@ pub const Resolver = struct {
@@ -17,12 +17,19 @@ index 71c953035b..02c71bd172 100644
                      },
                  }
              }
-@@ -2895,16 +2899,15 @@ pub const Resolver = struct {
+@@ -2895,49 +2899,36 @@ pub const Resolver = struct {
  
                  bun.fs.debug("open({s})", .{sentinel});
  
 -                break :open_dir open_req catch |err| switch (@as(anyerror, err)) {
--                    // Ignore "ENOTDIR" here so that calling "ReadDirectory" on a file behaves
++                if (open_req) |fd| {
++                    break :open_dir fd;
++                } else |err| {
++                    if (err == error.AccessDenied or err == error.PermissionDenied) {
++                        // HarmonyOS: parent dir not readable — skip, not fatal.
++                        break :open_dir FD.invalid;
++                    }
+                     // Ignore "ENOTDIR" here so that calling "ReadDirectory" on a file behaves
 -                    // as if there is nothing there at all instead of causing an error due to
 -                    // the directory actually being a file. This is a workaround for situations
 -                    // where people try to import from a path containing a file as a parent
@@ -31,25 +38,61 @@ index 71c953035b..02c71bd172 100644
 -                    // ignore them during path resolution.
 -                    error.ENOTDIR, error.IsDir, error.NotDir => return null,
 -                    else => {
-+                break :open_dir open_req catch |err| {
-+                    if (err == error.AccessDenied or err == error.PermissionDenied) {
-+                        // HarmonyOS: parent dir not readable — skip, not fatal.
-+                        break :open_dir FD.invalid;
-+                    }
-+                    return switch (@as(anyerror, err)) {
-+                        // Ignore "ENOTDIR" here ...
-+                        error.ENOTDIR, error.IsDir, error.NotDir => null,
-+                        else => {
-                         const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
-                         // If we don't properly cache not found, then we repeatedly attempt to open the same directories, which causes a perf trace that looks like this stupidity;
-                         //
-@@ -2936,7 +2939,8 @@ pub const Resolver = struct {
-                         }
- 
-                         return null;
+-                        const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
+-                        // If we don't properly cache not found, then we repeatedly attempt to open the same directories, which causes a perf trace that looks like this stupidity;
+-                        //
+-                        //   openat(dfd: CWD, filename: "node_modules/react", flags: RDONLY|DIRECTORY) = -1 ENOENT (No such file or directory)
+-                        //   openat(dfd: CWD, filename: "node_modules/react/", flags: RDONLY|CLOEXEC|DIRECTORY) = -1 ENOENT (No such file or directory)
+-                        //   openat(dfd: CWD, filename: "node_modules/react", flags: RDONLY|CLOEXEC|DIRECTORY) = -1 ENOENT (No such file or directory)
+-                        //   openat(dfd: CWD, filename: "node_modules/react", flags: RDONLY|CLOEXEC|DIRECTORY) = -1 ENOENT (No such file or directory)
+-                        //
+-                        r.dir_cache.markNotFound(queue_top.result);
+-                        rfs.entries.markNotFound(cached_dir_entry_result);
+-                        switch (@as(anyerror, err)) {
+-                            error.ENOENT, error.FileNotFound => {},
+-                            else => {
+-                                if (comptime enable_logging) {
+-                                    const pretty = queue_top.unsafe_path;
+-
+-                                    r.log.addErrorFmt(
+-                                        null,
+-                                        logger.Loc{},
+-                                        r.allocator,
+-                                        "Cannot read directory \"{s}\": {s}",
+-                                        .{
+-                                            pretty,
+-                                            @errorName(err),
+-                                        },
+-                                    ) catch {};
+-                                }
+-                            },
+-                        }
+-
+-                        return null;
 -                    },
+-                };
++                    // as if there is nothing there at all.
++                    if (err == error.ENOTDIR or err == error.IsDir or err == error.NotDir) return null;
++                    const cached_dir_entry_result = rfs.entries.getOrPut(queue_top.unsafe_path) catch unreachable;
++                    r.dir_cache.markNotFound(queue_top.result);
++                    rfs.entries.markNotFound(cached_dir_entry_result);
++                    switch (@as(anyerror, err)) {
++                        error.ENOENT, error.FileNotFound => {},
++                        else => {
++                            if (comptime enable_logging) {
++                                const pretty = queue_top.unsafe_path;
++                                r.log.addErrorFmt(
++                                    null,
++                                    logger.Loc{},
++                                    r.allocator,
++                                    "Cannot read directory \"{s}\": {s}",
++                                    .{ pretty, @errorName(err) },
++                                ) catch {};
++                            }
 +                        },
-+                    };
-                 };
++                    }
++                    return null;
++                }
              };
  
+             if (!queue_top.fd.isValid()) {
