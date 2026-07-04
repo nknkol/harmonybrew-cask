@@ -1,5 +1,5 @@
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c953035b..8ca6e8dfc2 100644
+index 71c953035b..f8018a424a 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
 @@ -2795,8 +2795,12 @@ pub const Resolver = struct {
@@ -26,6 +26,15 @@ index 71c953035b..8ca6e8dfc2 100644
                  const prev_char = path.ptr[queue_top.unsafe_path.len];
                  path.ptr[queue_top.unsafe_path.len] = 0;
                  defer path.ptr[queue_top.unsafe_path.len] = prev_char;
+@@ -2881,7 +2883,7 @@ pub const Resolver = struct {
+                     ) catch |err| break :open_req err;
+                     break :open_req FD.fromStdDir(dir_result);
+                 } else if (comptime Environment.isWindows) open_req: {
+-                    const dirfd_result = bun.sys.openDirAtWindowsA(bun.invalid_fd, sentinel, .{
++                    const dirfd_result = bun.sys.openDirAtWindowsA(bunFD.invalid, sentinel, .{
+                         .iterable = true,
+                         .no_follow = !follow_symlinks,
+                         .read_only = true,
 @@ -2895,49 +2897,39 @@ pub const Resolver = struct {
  
                  bun.fs.debug("open({s})", .{sentinel});
@@ -79,7 +88,7 @@ index 71c953035b..8ca6e8dfc2 100644
 +                    break :open_dir fd;
 +                } else |err| {
 +                    if (err == error.AccessDenied or err == error.PermissionDenied) {
-+                        break :open_dir .invalid_fd;
++                        break :open_dir FD.invalid;
 +                    }
 +                    switch (err) {
 +                        error.ENOTDIR, error.IsDir, error.NotDir => return null,
@@ -109,3 +118,12 @@ index 71c953035b..8ca6e8dfc2 100644
              };
  
              if (!queue_top.fd.isValid()) {
+@@ -4223,7 +4215,7 @@ pub const Resolver = struct {
+                     while (current.extends.len > 0) {
+                         const ts_dir_name = Dirname.dirname(current.abs_path);
+                         const abs_path = ResolvePath.joinAbsStringBuf(ts_dir_name, bufs(.tsconfig_path_abs), &[_]string{ ts_dir_name, current.extends }, .auto);
+-                        const parent_config_maybe = r.parseTSConfig(abs_path, bun.invalid_fd) catch |err| {
++                        const parent_config_maybe = r.parseTSConfig(abs_path, bunFD.invalid) catch |err| {
+                             r.log.addDebugFmt(null, logger.Loc.Empty, r.allocator, "{s} loading tsconfig.json extends {f}", .{
+                                 @errorName(err),
+                                 bun.fmt.QuotedFormatter{
