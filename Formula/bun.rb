@@ -121,13 +121,11 @@ class Bun < Formula
       inreplace wrapper, "#!/bin/bash", "#!/usr/bin/env bash"
     end
 
-    # mimalloc static.c compiled as C++; llvm@21 doesn't find libc++ headers.
-    # Follow libgcc pattern: add OHOS sysroot + libc++ include paths.
-    ohos_sysroot = Formula["ohos-sdk"].opt_prefix/"native/sysroot"
-    ohos_cxx = Formula["ohos-sdk"].opt_prefix/"native/llvm/include"
+    # mimalloc static.c compiled as C++; llvm@21's libc++ stddef.h wrapper
+    # fails to define size_t (missing __need_size_t). Compile as C instead.
     inreplace "scripts/build/deps/mimalloc.ts",
-              "cflags = [",
-              "cflags = [\"--sysroot=#{ohos_sysroot}\", \"-isystem#{ohos_cxx}/c++/v1\", \"-isystem#{ohos_cxx}/libcxx-ohos/include/c++/v1\", "
+              "lang: \"cxx\"",
+              "lang: \"c\""
 
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
