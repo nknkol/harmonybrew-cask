@@ -1,8 +1,8 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..513282e4f5 100644
+index 0c171c7ebb..9343c6af1d 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
-@@ -791,17 +791,25 @@ pub const RunCommand = struct {
+@@ -791,17 +791,27 @@ pub const RunCommand = struct {
  
          this_transpiler.configureLinker();
  
@@ -22,7 +22,9 @@ index 0c171c7ebb..513282e4f5 100644
 +                if (err == error.AccessDenied) {
 +                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
 +                    entry.status = .not_found;
-+                    break :blk this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
++                    const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
++                    di.abs_path = this_transpiler.fs.top_level_dir;
++                    break :blk di;
 +                }
 +                if (!log_errors) return error.CouldntReadCurrentDirectory;
 +                ctx.log.print(Output.errorWriter()) catch {};
@@ -30,11 +32,11 @@ index 0c171c7ebb..513282e4f5 100644
 +                Output.flush();
 +                return err;
 +            } orelse {
-+                // DirInfo not found (e.g. parent dirs inaccessible on HarmonyOS).
-+                // Create an empty DirInfo instead of failing.
 +                var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
 +                entry.status = .not_found;
-+                break :blk this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
++                const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
++                di.abs_path = this_transpiler.fs.top_level_dir;
++                break :blk di;
 +            };
          };
  
