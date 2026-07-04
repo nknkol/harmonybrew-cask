@@ -1,8 +1,16 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..0d890935c6 100644
+index 0c171c7ebb..b0be3d4c1f 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
-@@ -791,17 +791,14 @@ pub const RunCommand = struct {
+@@ -773,6 +773,7 @@ pub const RunCommand = struct {
+         log_errors: bool,
+         store_root_fd: bool,
+     ) !*DirInfo {
++        _ = log_errors; // may be unused when AccessDenied is caught below
+         const args = ctx.args;
+         this_transpiler.* = try transpiler.Transpiler.init(ctx.allocator, ctx.log, args, env);
+         this_transpiler.options.env.behavior = api.DotEnvBehavior.load_all;
+@@ -788,17 +789,14 @@ pub const RunCommand = struct {
  
          this_transpiler.configureLinker();
  
@@ -17,18 +25,21 @@ index 0c171c7ebb..0d890935c6 100644
 -            Output.prettyErrorln("error loading current directory", .{});
 -            Output.flush();
 -            return error.CouldntReadCurrentDirectory;
-+        // Fall back gracefully when parent directories are inaccessible
-+        // (e.g. HarmonyOS sandbox blocks /storage/Users/).
++        // On HarmonyOS, parent directories may be inaccessible.
++        // Fall back gracefully instead of crashing.
 +        const root_dir_info = readDirInfoIgnoreError: {
 +            if (this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir)) |info| {
 +                break :readDirInfoIgnoreError info;
-+            } else |_| {
-+                break :readDirInfoIgnoreError null;
++            } else |err| {
++                if (err == error.AccessDenied) break :readDirInfoIgnoreError null;
++                return err;
 +            }
++        } orelse {
++            break :readDirInfoIgnoreError null;
          };
  
          this_transpiler.resolver.store_fd = false;
-@@ -848,26 +845,28 @@ pub const RunCommand = struct {
+@@ -848,26 +846,28 @@ pub const RunCommand = struct {
              } else |_| {}
          }
  
