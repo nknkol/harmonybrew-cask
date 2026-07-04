@@ -1,8 +1,8 @@
 diff --git a/src/cli/run_command.zig b/src/cli/run_command.zig
-index 0c171c7ebb..1210659a85 100644
+index 0c171c7ebb..b207e9fa0d 100644
 --- a/src/cli/run_command.zig
 +++ b/src/cli/run_command.zig
-@@ -791,17 +791,27 @@ pub const RunCommand = struct {
+@@ -791,18 +791,16 @@ pub const RunCommand = struct {
  
          this_transpiler.configureLinker();
  
@@ -17,27 +17,16 @@ index 0c171c7ebb..1210659a85 100644
 -            Output.prettyErrorln("error loading current directory", .{});
 -            Output.flush();
 -            return error.CouldntReadCurrentDirectory;
-+        const root_dir_info = blk: {
-+            break :blk this_transpiler.resolver.readDirInfo(this_transpiler.fs.top_level_dir) catch |err| {
-+                if (err == error.AccessDenied) {
-+                    var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
-+                    entry.status = .exists;
-+                    const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
-+                    di.abs_path = this_transpiler.fs.top_level_dir;
-+                    break :blk di;
-+                }
-+                if (!log_errors) return error.CouldntReadCurrentDirectory;
-+                ctx.log.print(Output.errorWriter()) catch {};
-+                Output.prettyErrorln("<r><red>error<r><d>:<r> <b>{s}<r> loading directory {f}", .{ @errorName(err), bun.fmt.QuotedFormatter{ .text = this_transpiler.fs.top_level_dir } });
-+                Output.flush();
-+                return err;
-+            } orelse {
-+                var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
-+                entry.status = .exists;
-+                const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
-+                di.abs_path = this_transpiler.fs.top_level_dir;
-+                break :blk di;
-+            };
++        const root_dir_info = this_transpiler.resolver.readDirInfoIgnoreError(this_transpiler.fs.top_level_dir) orelse blk: {
++            // Parent directories inaccessible (HarmonyOS sandbox).
++            // Create a minimal DirInfo for the current directory.
++            var entry = try this_transpiler.resolver.dir_cache.getOrPut(this_transpiler.fs.top_level_dir);
++            entry.status = .exists;
++            const di = this_transpiler.resolver.dir_cache.put(&entry, .{}) catch unreachable;
++            di.abs_path = this_transpiler.fs.top_level_dir;
++            break :blk di;
          };
++        _ = log_errors; // unused now
  
          this_transpiler.resolver.store_fd = false;
+ 
