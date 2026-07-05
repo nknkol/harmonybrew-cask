@@ -123,6 +123,11 @@ class LlvmAT21 < Formula
       "-DCMAKE_C_FLAGS=--sysroot=#{ohos_sysroot}",
       "-DCMAKE_CXX_FLAGS=--sysroot=#{ohos_sysroot} -stdlib=libc++ -D_LIBCPP_HAS_MUSL_LIBC -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE",
       "-DCMAKE_SYSROOT=#{ohos_sysroot}"
+    # cmake sets _LIBCPP_HAS_MUSL_LIBC=0 in __config_site despite our flag.
+    # Force it to 1 so musl code paths (no _l locale functions) are used.
+    inreplace buildpath/"build-runtimes/include/c++/v1/__config_site",
+              "#define _LIBCPP_HAS_MUSL_LIBC 0",
+              "#define _LIBCPP_HAS_MUSL_LIBC 1"
     system "ninja", "-C", "build-runtimes", "install"
 
   end
