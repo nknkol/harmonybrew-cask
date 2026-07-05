@@ -83,13 +83,18 @@ class LlvmAT21 < Formula
     # (Runtime bootstrapping with HOMEBREW_CC/CXX causes header mismatch.)
     ENV.delete "CC"
     ENV.delete "CXX"
+    ohos_llvm_lib = ohos/"llvm/lib/aarch64-linux-ohos"
+    runtime_ldflags = "-L#{Formula["libgcc"].opt_lib} " \
+                       "-L#{ohos_llvm_lib} " \
+                       "-lc++ -Wl,--code-sign"
     system "cmake", "-S", "runtimes", "-B", "build-runtimes", "-G", "Ninja",
       "-DCMAKE_INSTALL_PREFIX=#{prefix}",
       "-DCMAKE_C_COMPILER=#{prefix}/bin/clang",
       "-DCMAKE_CXX_COMPILER=#{prefix}/bin/clang++",
       "-DCMAKE_CXX_FLAGS=-stdlib=libc++",
-      "-DCMAKE_EXE_LINKER_FLAGS=-L#{Formula["libgcc"].opt_lib} -lc++ -Wl,--code-sign",
-      "-DCMAKE_SHARED_LINKER_FLAGS=-L#{Formula["libgcc"].opt_lib} -lc++ -Wl,--code-sign",
+      "-DCMAKE_EXE_LINKER_FLAGS=#{runtime_ldflags}",
+      "-DCMAKE_SHARED_LINKER_FLAGS=#{runtime_ldflags}",
+      "-DCMAKE_MODULE_LINKER_FLAGS=#{runtime_ldflags}",
       "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-ohos",
       "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi",
       "-DLIBCXXABI_USE_LLVM_UNWINDER=OFF",
