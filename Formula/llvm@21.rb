@@ -46,7 +46,6 @@ class LlvmAT21 < Formula
 
     ohos = Formula["ohos-sdk"].opt_prefix/"native"
     ohos_sysroot = ohos/"sysroot"
-    ohos_llvm_lib = ohos/"llvm/lib/aarch64-linux-ohos"
     zlib_root = Formula["zlib"].opt_prefix
 
     system "cmake", "-S", "llvm", "-B", "build", "-G", "Ninja",
@@ -69,7 +68,7 @@ class LlvmAT21 < Formula
       "-DLLVM_ENABLE_LIBPFM=OFF",
       "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
       "-DLLVM_ENABLE_PROJECTS=clang;lld",
-      "-DLLVM_ENABLE_RUNTIMES=compiler-rt",
+      "-DLLVM_ENABLE_RUNTIMES=compiler-rt;libcxx;libcxxabi;libunwind",
       "-DCOMPILER_RT_BUILD_SANITIZERS=OFF",
       "-DCOMPILER_RT_BUILD_XRAY=OFF",
       "-DCOMPILER_RT_BUILD_LIBFUZZER=OFF",
@@ -84,15 +83,6 @@ class LlvmAT21 < Formula
     default_runtime_dir = clang_runtime_lib/"aarch64-unknown-linux-ohos"
     ohos_runtime_dir = clang_runtime_lib/"aarch64-linux-ohos"
     ln_s default_runtime_dir.basename, ohos_runtime_dir unless ohos_runtime_dir.exist?
-
-    ohos_llvm_lib.glob("libunwind.*").each do |f|
-      ln_s f, lib/f.basename
-      ln_s f, default_runtime_dir/f.basename
-    end
-    ohos_llvm_lib.glob("libc++*").each do |f|
-      ln_s f, lib/f.basename
-      ln_s f, default_runtime_dir/f.basename
-    end
 
   end
 
