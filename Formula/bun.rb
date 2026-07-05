@@ -22,7 +22,6 @@ class Bun < Formula
 
   depends_on "bash" => :build
   depends_on "cmake" => :build
-  depends_on "libgcc" => :build
   depends_on "llvm@21" => :build
   depends_on "ninja" => :build
   depends_on "perl" => :build
@@ -132,8 +131,10 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # WebKit C++ compilation needs <expected> from libgcc
-    ENV.append "CXXFLAGS", "-isystem#{Formula["libgcc"].opt_prefix}/include/c++/16"
+    # OHOS SDK libc++ lacks C++23 <expected>. Force WebKit to C++20.
+    inreplace "scripts/build/deps/webkit.ts",
+              "PORT: \"JSCOnly\"",
+              "CMAKE_CXX_STANDARD: \"20\",\n      PORT: \"JSCOnly\""
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
