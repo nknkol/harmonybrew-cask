@@ -68,10 +68,7 @@ class LlvmAT21 < Formula
       "-DLLVM_ENABLE_LIBPFM=OFF",
       "-DLLVM_TARGETS_TO_BUILD=AArch64;X86",
       "-DLLVM_ENABLE_PROJECTS=clang;lld",
-      "-DLLVM_ENABLE_RUNTIMES=compiler-rt;libcxx;libcxxabi",
-      "-DLIBCXXABI_USE_LLVM_UNWINDER=OFF",
-      "-DLIBCXXABI_ENABLE_SHARED=OFF",
-      "-DLIBCXX_ENABLE_SHARED=OFF",
+      "-DLLVM_ENABLE_RUNTIMES=compiler-rt",
       "-DCOMPILER_RT_BUILD_SANITIZERS=OFF",
       "-DCOMPILER_RT_BUILD_XRAY=OFF",
       "-DCOMPILER_RT_BUILD_LIBFUZZER=OFF",
@@ -81,6 +78,27 @@ class LlvmAT21 < Formula
 
     system "ninja", "-C", "build"
     system "cmake", "--install", "build", "--prefix", prefix
+
+    # Stage 2: build libcxx + libcxxabi using the just-installed clang.
+    # (Runtime bootstrapping with HOMEBREW_CC/CXX causes header mismatch.)
+    ENV.delete "CC"
+    ENV.delete "CXX"
+    system "cmake", "-S", "runtimes", "-B", "build-runtimes", "-G", "Ninja",
+      "-DCMAKE_INSTALL_PREFIX=#{prefix}",
+      "-DCMAKE_C_COMPILER=#{prefix}/bin/clang",
+      "-DCMAKE_CXX_COMPILER=#{prefix}/bin/clang++",
+      "-DCMAKE_CXX_FLAGS=-stdlib=libc++",
+      "-DCMAKE_EXE_LINKER_FLAGS=-lc++ -Wl,--code-sign",
+      "-DCMAKE_SHARED_LINKER_FLAGS=-lc++ -Wl,--code-sign",
+      "-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-ohos",
+      "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi",
+      "-DLIBCXXABI_USE_LLVM_UNWINDER=OFF",
+      "-DLIBCXXABI_ENABLE_SHARED=OFF",
+      "-DLIBCXX_ENABLE_SHARED=OFF",
+      "-DDEFAULT_SYSROOT=#{ohos_sysroot}",
+      "-DCMAKE_C_COMPILER_TARGET=aarch64-unknown-linux-ohos",
+      "-DCMAKE_CXX_COMPILER_TARGET=aarch64-unknown-linux-ohos"
+    system "ninja", "-C", "build-runtimes", "install"
 
     clang_runtime_lib = lib/"clang/#{version.major}/lib"
     default_runtime_dir = clang_runtime_lib/"aarch64-unknown-linux-ohos"
