@@ -116,6 +116,7 @@ class LlvmAT21 < Formula
       "-DLIBCXXABI_USE_LLVM_UNWINDER=OFF",
       "-DLIBCXXABI_ENABLE_SHARED=OFF",
       "-DLIBCXX_ENABLE_SHARED=OFF",
+      "-DLIBCXX_PROVIDES_DEFAULT_RUNE_TABLE=ON",
       "-DDEFAULT_SYSROOT=#{ohos_sysroot}",
       "-DCMAKE_C_COMPILER_TARGET=aarch64-unknown-linux-ohos",
       "-DCMAKE_CXX_COMPILER_TARGET=aarch64-unknown-linux-ohos"
