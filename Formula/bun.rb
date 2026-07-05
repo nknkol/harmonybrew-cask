@@ -132,12 +132,14 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # Use libgcc's C++ headers (GCC 16 supports C++23) and link its
-    # static runtime: -static-libstdc++ -static-libgcc -l:libatomic.a.
+    # WebKit cmake sub-build doesn't inherit shell CXXFLAGS. Hook into
+    # webkit.ts: CMAKE_CXX_FLAGS directly.
+    inreplace "scripts/build/deps/webkit.ts",
+              "CMAKE_CXX_FLAGS: cxxOptFlagStr,",
+              "CMAKE_CXX_FLAGS: cxxOptFlagStr + \" -isystem#{Formula["libgcc"].opt_prefix}/include/c++/16 -isystem#{Formula["libgcc"].opt_prefix}/include/c++/16/aarch64-unknown-linux-musl\","
+
+    # Link against libgcc's static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
-    ENV.prepend "CXXFLAGS",
-      "-isystem#{libgcc_prefix}/include/c++/16 " \
-      "-isystem#{libgcc_prefix}/include/c++/16/aarch64-unknown-linux-musl"
     ENV.append "LDFLAGS",
       "-static-libstdc++ -static-libgcc -l:libatomic.a " \
       "-L#{libgcc_prefix}/lib/gcc/aarch64-unknown-linux-musl/16"
