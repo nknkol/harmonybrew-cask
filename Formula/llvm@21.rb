@@ -79,6 +79,22 @@ class LlvmAT21 < Formula
     system "ninja", "-C", "build"
     system "cmake", "--install", "build", "--prefix", prefix
 
+    # cmake --install skips compiler-rt runtimes. Install them manually.
+    build_runtime_lib = buildpath/"build/lib/clang"/version.major/"lib"/"aarch64-unknown-linux-ohos"
+    target_runtime_lib = lib/"clang"/version.major/"lib"/"aarch64-unknown-linux-ohos"
+    target_runtime_lib.mkpath
+    build_runtime_lib.each_child { |f| cp f, target_runtime_lib/f.basename }
+
+    # Copy crt objects from libgcc into the runtime dir (not in sysroot).
+    libgcc_lib = Formula["libgcc"].opt_lib
+    %w[crtbeginS.o crtendS.o crtbegin.o crtend.o].each do |crt|
+      cp libgcc_lib/crt, target_runtime_lib/crt
+    end
+
+    # Symlink for clang's runtime dir lookup (some paths use aarch64-linux-ohos).
+    ohos_runtime_dir = lib/"clang"/version.major/"lib"/"aarch64-linux-ohos"
+    ln_s target_runtime_lib.basename, ohos_runtime_dir unless ohos_runtime_dir.exist?
+
     # Stage 2: build libcxx + libcxxabi using the just-installed clang.
     # (Runtime bootstrapping with HOMEBREW_CC/CXX causes header mismatch.)
     ENV.delete "CC"
@@ -104,11 +120,6 @@ class LlvmAT21 < Formula
       "-DCMAKE_C_COMPILER_TARGET=aarch64-unknown-linux-ohos",
       "-DCMAKE_CXX_COMPILER_TARGET=aarch64-unknown-linux-ohos"
     system "ninja", "-C", "build-runtimes", "install"
-
-    clang_runtime_lib = lib/"clang/#{version.major}/lib"
-    default_runtime_dir = clang_runtime_lib/"aarch64-unknown-linux-ohos"
-    ohos_runtime_dir = clang_runtime_lib/"aarch64-linux-ohos"
-    ln_s default_runtime_dir.basename, ohos_runtime_dir unless ohos_runtime_dir.exist?
 
   end
 
