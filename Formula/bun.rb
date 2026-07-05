@@ -132,17 +132,17 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # WebKit cmake sub-build doesn't inherit shell CXXFLAGS. Hook into
-    # webkit.ts: CMAKE_CXX_FLAGS directly.
-    inreplace "scripts/build/deps/webkit.ts",
-              "CMAKE_CXX_FLAGS: cxxOptFlagStr,",
-              "CMAKE_CXX_FLAGS: cxxOptFlagStr + \" -isystem#{Formula["libgcc"].opt_prefix}/include/c++/16 -isystem#{Formula["libgcc"].opt_prefix}/include/c++/16/aarch64-unknown-linux-musl\","
-
-    # Link against libgcc's static runtime.
+    # Link against libgcc static runtime (needed regardless of C++ standard).
     libgcc_prefix = Formula["libgcc"].opt_prefix
     ENV.append "LDFLAGS",
       "-static-libstdc++ -static-libgcc -l:libatomic.a " \
       "-L#{libgcc_prefix}/lib/gcc/aarch64-unknown-linux-musl/16"
+
+    # WebKit's OptionsCommon.cmake sets C++23 which requires <expected>.
+    # OHOS SDK libc++ is C++17. Downgrade to C++20 (no <expected> needed).
+    inreplace "vendor/WebKit/Source/cmake/OptionsCommon.cmake",
+              "set(CMAKE_CXX_STANDARD 23)",
+              "set(CMAKE_CXX_STANDARD 20)"
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
