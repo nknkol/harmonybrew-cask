@@ -121,7 +121,7 @@ class LlvmAT21 < Formula
       "-DCMAKE_C_COMPILER_TARGET=aarch64-unknown-linux-ohos",
       "-DCMAKE_CXX_COMPILER_TARGET=aarch64-unknown-linux-ohos",
       "-DCMAKE_C_FLAGS=--sysroot=#{ohos_sysroot}",
-      "-DCMAKE_CXX_FLAGS=--sysroot=#{ohos_sysroot} -stdlib=libc++ -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE",
+      "-DCMAKE_CXX_FLAGS=--sysroot=#{ohos_sysroot} -stdlib=libc++ -D_LIBCPP_HAS_MUSL_LIBC -D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE",
       "-DCMAKE_SYSROOT=#{ohos_sysroot}"
     system "ninja", "-C", "build-runtimes", "install"
 
