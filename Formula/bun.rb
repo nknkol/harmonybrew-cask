@@ -96,13 +96,6 @@ class Bun < Formula
 
     fetch_webkit
 
-    # C++23 requires prior declaration for qualified friend declarations.
-    # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` without
-    # a forward declaration — add one before the namespace block.
-    inreplace "vendor/WebKit/Source/JavaScriptCore/bytecode/ArithProfile.h",
-              "namespace JSC {",
-              "namespace JSC { class LLIntOffsetsExtractor; } // forward for friend\nnamespace JSC {"
-
     # musl does not implement qsort_r (GNU extension). zstd_deps.h redefines
     # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
     inreplace "scripts/build/deps/zstd.ts",
