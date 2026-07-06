@@ -138,6 +138,12 @@ class Bun < Formula
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
     ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
+    # WebKit codegen scripts use #!/bin/bash; HarmonyOS has no /bin/bash.
+    # Replace with /usr/bin/env bash which resolves via PATH.
+    Dir.glob("vendor/WebKit/**/*.{sh,pl,py}").each do |f|
+      inreplace f, "#!/bin/bash", "#!/usr/bin/env bash" rescue nil
+    end
+
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
     ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
