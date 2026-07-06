@@ -134,9 +134,11 @@ class Bun < Formula
     # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # Force llvm@21's clang++ (C++23) instead of OHOS SDK's (C++17).
-    # Must be prepended BEFORE shims in PATH for bun's configure to see it.
-    ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
+    # Force llvm@21 clang++ (C++23). Must be before shims in PATH.
+    # Also inject its C++ header path (missing from clang's default config).
+    llvm21 = Formula["llvm@21"]
+    ENV.prepend_path "PATH", llvm21.opt_bin.to_s
+    ENV.append "CXXFLAGS", "-cxx-isystem#{llvm21.opt_include}/c++/v1"
 
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
