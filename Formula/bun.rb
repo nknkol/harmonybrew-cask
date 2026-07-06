@@ -90,9 +90,9 @@ class Bun < Formula
               "OVERLAY_CSS: await css("
 
     # hmdfs does not support hardlink(2). bun install tries hardlinks first
-    # and fails with EPERM. TODO: bun should fall back to symlink on EPERM.
-    # For now the build tolerates partial install — critical packages (esbuild,
-    # typescript, mitata, react, prettier) do install successfully.
+    # and fails with EPERM. Force symlink/copy mode for all bun operations.
+    ENV["BUN_INSTALL_USE_HARD_LINKS"] = "0"
+    ENV["BUN_CONFIG_USE_HARD_LINKS"] = "0"
 
     fetch_webkit
 
