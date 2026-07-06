@@ -144,11 +144,6 @@ class Bun < Formula
       inreplace f, "#!/bin/bash", "#!/usr/bin/env bash" rescue nil
     end
 
-    # bun's package cache on hmdfs can corrupt tarballs via hardlink write.
-    # Put cache under build dir (same fs, but bundler resolves same-fs).
-    ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
-    FileUtils.mkdir_p ENV["BUN_INSTALL_CACHE_DIR"]
-
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
     ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
