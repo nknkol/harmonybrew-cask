@@ -144,9 +144,9 @@ class Bun < Formula
       inreplace f, "#!/bin/bash", "#!/usr/bin/env bash" rescue nil
     end
 
-    # bun's package cache on hmdfs corrupts tarballs via hardlink write.
-    # Redirect to /dev/shm (tmpfs) which supports hardlinks correctly.
-    ENV["BUN_INSTALL_CACHE_DIR"] = "/dev/shm/bun-cache"
+    # bun's package cache on hmdfs can corrupt tarballs via hardlink write.
+    # Put cache under build dir (same fs, but bundler resolves same-fs).
+    ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
     FileUtils.mkdir_p ENV["BUN_INSTALL_CACHE_DIR"]
 
     # Link against libgcc + OHOS SDK static runtime.
