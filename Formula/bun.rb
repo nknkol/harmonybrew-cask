@@ -140,8 +140,13 @@ class Bun < Formula
 
     # WebKit codegen scripts use #!/bin/bash; HarmonyOS has no /bin/bash.
     # Replace with /usr/bin/env bash which resolves via PATH.
+    # Two passes: .sh/.pl/.py glob, then extensionless scripts in scripts dirs.
     Dir.glob("vendor/WebKit/**/*.{sh,pl,py}").each do |f|
       next unless File.read(f, 20)&.start_with?("#!/bin/bash")
+      inreplace f, "#!/bin/bash", "#!/usr/bin/env bash"
+    end
+    Dir.glob("vendor/WebKit/Source/*/Scripts/*").each do |f|
+      next unless File.file?(f) && File.read(f, 20)&.start_with?("#!/bin/bash")
       inreplace f, "#!/bin/bash", "#!/usr/bin/env bash"
     end
 
