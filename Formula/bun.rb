@@ -147,6 +147,7 @@ class Bun < Formula
     # bun's package cache on hmdfs corrupts tarballs via hardlink write.
     # Redirect to /dev/shm (tmpfs) which supports hardlinks correctly.
     ENV["BUN_INSTALL_CACHE_DIR"] = "/dev/shm/bun-cache"
+    FileUtils.mkdir_p ENV["BUN_INSTALL_CACHE_DIR"]
 
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
