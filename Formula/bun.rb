@@ -130,7 +130,12 @@ class Bun < Formula
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
     ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
-    # WebKit codegen scripts use #!/bin/bash; HarmonyOS has no /bin/bash.
+    # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` (qualified)
+    # which requires a prior declaration in C++23. Every other header uses
+    # unqualified `friend class LLIntOffsetsExtractor`. Fix consistency.
+    inreplace "vendor/WebKit/Source/JavaScriptCore/bytecode/ArithProfile.h",
+              "friend class JSC::LLIntOffsetsExtractor;",
+              "friend class LLIntOffsetsExtractor;"
     # Replace with /usr/bin/env bash which resolves via PATH.
     # Two passes: .sh/.pl/.py glob, then extensionless scripts in scripts dirs.
     Dir.glob("vendor/WebKit/**/*.{sh,pl,py}").each do |f|
