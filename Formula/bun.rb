@@ -137,6 +137,11 @@ class Bun < Formula
     ENV["HOMEBREW_CC"] = llvm21.opt_bin/"clang"
     ENV["HOMEBREW_CXX"] = llvm21.opt_bin/"clang++"
 
+    # WebKit cmake hardcodes compiler path. Override to llvm@21.
+    inreplace "scripts/build/deps/webkit.ts",
+              "CMAKE_C_COMPILER: cc,",
+              "CMAKE_C_COMPILER: cc,\n      CMAKE_CXX_COMPILER: \"#{llvm21.opt_bin}/clang++\","
+
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
     ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
