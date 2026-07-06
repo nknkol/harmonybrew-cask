@@ -130,10 +130,16 @@ class LlvmAT21 < Formula
               "#define _LIBCPP_HAS_MUSL_LIBC 1"
     system "ninja", "-C", "build-runtimes", "install"
 
-    # Symlink libunwind from OHOS SDK so clang finds it without extra -L.
-    %w[libunwind.a libunwind.so].each do |lib|
-      src = ohos/"llvm/lib/aarch64-linux-ohos"/lib
-      ln_s src, lib/lib if src.exist? && !(lib/lib).exist?
+    # Stage 2 installs libc++.a to lib/ but linker searches runtime dir.
+    # Also symlink libunwind from OHOS SDK.
+    runtime_dir = lib/"clang"/version.major/"lib"/"aarch64-unknown-linux-ohos"
+    %w[libc++.a libc++abi.a libc++experimental.a].each do |libname|
+      ln_s lib/libname, runtime_dir/libname unless (runtime_dir/libname).exist?
+    end
+    %w[libunwind.a libunwind.so].each do |libname|
+      src = ohos/"llvm/lib/aarch64-linux-ohos"/libname
+      ln_s src, lib/libname if src.exist? && !(lib/libname).exist?
+      ln_s src, runtime_dir/libname if src.exist? && !(runtime_dir/libname).exist?
     end
 
   end
