@@ -141,7 +141,8 @@ class Bun < Formula
     # WebKit codegen scripts use #!/bin/bash; HarmonyOS has no /bin/bash.
     # Replace with /usr/bin/env bash which resolves via PATH.
     Dir.glob("vendor/WebKit/**/*.{sh,pl,py}").each do |f|
-      inreplace f, "#!/bin/bash", "#!/usr/bin/env bash" rescue nil
+      next unless File.read(f, 20)&.start_with?("#!/bin/bash")
+      inreplace f, "#!/bin/bash", "#!/usr/bin/env bash"
     end
 
     # Link against libgcc + OHOS SDK static runtime.
