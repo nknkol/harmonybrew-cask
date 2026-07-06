@@ -130,6 +130,12 @@ class LlvmAT21 < Formula
               "#define _LIBCPP_HAS_MUSL_LIBC 1"
     system "ninja", "-C", "build-runtimes", "install"
 
+    # Symlink libunwind from OHOS SDK so clang finds it without extra -L.
+    %w[libunwind.a libunwind.so].each do |lib|
+      src = ohos/"llvm/lib/aarch64-linux-ohos"/lib
+      ln_s src, lib/lib if src.exist? && !(lib/lib).exist?
+    end
+
   end
 
   def caveats
