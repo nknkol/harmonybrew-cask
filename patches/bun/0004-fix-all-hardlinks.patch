@@ -1,0 +1,37 @@
+diff -ruN a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
+--- a/src/install/PackageInstall.zig	2026-07-07 03:12:42.331097970 +0800
++++ b/src/install/PackageInstall.zig	2026-07-07 03:13:06.619097813 +0800
+@@ -866,7 +866,7 @@
+ 
+     fn installWithHardlink(this: *@This(), dest_dir: std.fs.Dir) !Result {
+         var state = InstallDirState{};
+-        const res = this.initInstallDir(&state, dest_dir, .hardlink);
++        const res = this.initInstallDir(&state, dest_dir, .symlink) // hmdfs: avoid hardlink;
+         if (res.isFail()) return res;
+         defer state.deinit();
+ 
+diff -ruN a/src/install/isolated_install/Installer.zig b/src/install/isolated_install/Installer.zig
+--- a/src/install/isolated_install/Installer.zig	2026-07-07 03:12:42.355103126 +0800
++++ b/src/install/isolated_install/Installer.zig	2026-07-07 03:12:48.755103126 +0800
+@@ -778,8 +778,8 @@
+                     backend: switch (installer.supported_backend.load(.monotonic)) {
+                         .clonefile => {
+                             if (comptime !Environment.isMac) {
+-                                installer.supported_backend.store(.hardlink, .monotonic);
+-                                continue :backend .hardlink;
++                                installer.supported_backend.store(.symlink, .monotonic);
++                                continue :backend .symlink;
+                             }
+ 
+                             if (installer.manager.options.log_level.isVerbose()) {
+@@ -809,8 +809,8 @@
+                                             continue :backend .copyfile;
+                                         },
+                                         .OPNOTSUPP => {
+-                                            installer.supported_backend.store(.hardlink, .monotonic);
+-                                            continue :backend .hardlink;
++                                            installer.supported_backend.store(.symlink, .monotonic);
++                                            continue :backend .symlink;
+                                         },
+                                         else => {
+                                             return .failure(.{ .link_package = err });
