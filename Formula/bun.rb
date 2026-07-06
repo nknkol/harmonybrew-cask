@@ -96,12 +96,12 @@ class Bun < Formula
 
     fetch_webkit
 
-    # WebKit uses `friend class JSC::LLIntOffsetsExtractor` which is valid
-    # C++17/C++20 (implicit forward declaration) but not C++23 (requires
-    # prior declaration). llvm@21 defaults to C++23 — downgrade for WebKit.
-    inreplace "scripts/build/deps/webkit.ts",
-              /(build_dependencies\.push\("cmake"\))/,
-              '\1; cmake_configure_args.push("-DCMAKE_CXX_STANDARD=20")'
+    # C++23 requires prior declaration for qualified friend declarations.
+    # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` without
+    # a forward declaration — add one before the namespace block.
+    inreplace "vendor/WebKit/Source/JavaScriptCore/bytecode/ArithProfile.h",
+              "namespace JSC {",
+              "namespace JSC { class LLIntOffsetsExtractor; } // forward for friend\nnamespace JSC {"
 
     # musl does not implement qsort_r (GNU extension). zstd_deps.h redefines
     # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
