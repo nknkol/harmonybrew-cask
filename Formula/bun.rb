@@ -96,13 +96,12 @@ class Bun < Formula
 
     fetch_webkit
 
-    # WebKit cmake doesn't recognize HarmonyOS; treat as Linux-like UNIX.
-    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
-              "if (UNIX)",
-              "if (UNIX OR CMAKE_SYSTEM_NAME MATCHES \"HarmonyOS\")"
-    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
-              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
-              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
+    # WebKit uses `friend class JSC::LLIntOffsetsExtractor` which is valid
+    # C++17/C++20 (implicit forward declaration) but not C++23 (requires
+    # prior declaration). llvm@21 defaults to C++23 — downgrade for WebKit.
+    inreplace "scripts/build/deps/webkit.ts",
+              /(build_dependencies\.push\("cmake"\))/,
+              '\1; cmake_configure_args.push("-DCMAKE_CXX_STANDARD=20")'
 
     # musl does not implement qsort_r (GNU extension). zstd_deps.h redefines
     # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
