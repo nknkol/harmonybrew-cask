@@ -130,17 +130,13 @@ class Bun < Formula
               "lang: \"c\""
 
     resource("bootstrap").stage("bootstrap")
+    # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
+    # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
     # Force llvm@21's clang++ (C++23) instead of OHOS SDK's (C++17).
-    llvm21 = Formula["llvm@21"]
-    ENV["HOMEBREW_CC"] = llvm21.opt_bin/"clang"
-    ENV["HOMEBREW_CXX"] = llvm21.opt_bin/"clang++"
-
-    # WebKit cmake hardcodes compiler path. Override to llvm@21.
-    inreplace "scripts/build/deps/webkit.ts",
-              "CMAKE_C_COMPILER: cc,",
-              "CMAKE_C_COMPILER: cc,\n      CMAKE_CXX_COMPILER: \"#{llvm21.opt_bin}/clang++\","
+    # Must be prepended BEFORE shims in PATH for bun's configure to see it.
+    ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
