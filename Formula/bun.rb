@@ -133,8 +133,9 @@ class Bun < Formula
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
     # Force llvm@21's clang++ (C++23) instead of OHOS SDK's (C++17).
-    ENV["CC"] = Formula["llvm@21"].opt_bin/"clang"
-    ENV["CXX"] = Formula["llvm@21"].opt_bin/"clang++"
+    llvm21 = Formula["llvm@21"]
+    ENV["HOMEBREW_CC"] = (llvm21/"bin"/"clang").to_s
+    ENV["HOMEBREW_CXX"] = (llvm21/"bin"/"clang++").to_s
 
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
