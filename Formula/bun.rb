@@ -132,11 +132,13 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
-    # Link against libgcc static runtime (needed regardless of C++ standard).
+    # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
+    ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
     ENV.append "LDFLAGS",
       "-static-libstdc++ -static-libgcc -l:libatomic.a " \
-      "-L#{libgcc_prefix}/lib/gcc/aarch64-unknown-linux-musl/16"
+      "-L#{libgcc_prefix}/lib/gcc/aarch64-unknown-linux-musl/16 " \
+      "-L#{ohos_lib}"
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
