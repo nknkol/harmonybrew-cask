@@ -135,10 +135,11 @@ class Bun < Formula
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
     # Force llvm@21 clang++ (C++23). Must be before shims in PATH.
-    # Also inject its C++ header path (missing from clang's default config).
+    # clang doesn't auto-detect our C++ headers — bind -cxx-isystem to CXX.
     llvm21 = Formula["llvm@21"]
     ENV.prepend_path "PATH", llvm21.opt_bin.to_s
-    ENV.append "CXXFLAGS", "-cxx-isystem#{llvm21.opt_include}/c++/v1"
+    ENV["CXX"] = "#{llvm21.opt_bin}/clang++ -cxx-isystem#{llvm21.opt_include}/c++/v1"
+    ENV["CC"]  = "#{llvm21.opt_bin}/clang"
 
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
