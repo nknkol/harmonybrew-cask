@@ -132,6 +132,10 @@ class Bun < Formula
     resource("bootstrap").stage("bootstrap")
     ENV.prepend_path "PATH", buildpath/"bootstrap"
 
+    # Force llvm@21's clang++ (C++23) instead of OHOS SDK's (C++17).
+    ENV["CC"] = Formula["llvm@21"].opt_bin/"clang"
+    ENV["CXX"] = Formula["llvm@21"].opt_bin/"clang++"
+
     # Link against libgcc + OHOS SDK static runtime.
     libgcc_prefix = Formula["libgcc"].opt_prefix
     ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
