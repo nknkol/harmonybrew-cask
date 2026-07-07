@@ -128,6 +128,11 @@ class Bun < Formula
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
     ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
+    # WebKit cmake doesn't recognize HarmonyOS; treat as Linux-like.
+    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
+              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
+              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
+
     # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` (qualified)
     # which requires a prior declaration in C++23. Every other header uses
     # unqualified `friend class LLIntOffsetsExtractor`. Fix consistency.
