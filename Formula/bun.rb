@@ -94,11 +94,22 @@ class Bun < Formula
 
     fetch_webkit
 
-    # `bun install --frozen-lockfile` downloads tarballs to hmdfs, which
-    # intermittently corrupts writes. Remove frozen flag to skip the check.
-    inreplace "scripts/build/codegen.ts",
-              "install --frozen-lockfile",
-              "install"
+    # esbuild from npm is not code-signed → code=126 on HarmonyOS.
+    # Create a wrapper that signs then execs, and point configure.ts to it.
+    esbuild_wrapper = buildpath/"scripts/esbuild-ohos"
+    esbuild_wrapper.write <<~SH
+      #!/usr/bin/env bash
+      REAL="#{buildpath}/node_modules/.bun/@esbuild+linux-arm64@0.21.5/node_modules/@esbuild/linux-arm64/bin/esbuild"
+      SIGNED="$REAL.signed"
+      if [ ! -f "$SIGNED" ] && [ -f "$REAL" ]; then
+        binary-sign-tool-fix sign -selfSign 1 -inFile "$REAL" -outFile "$SIGNED" 2>/dev/null
+      fi
+      exec "${SIGNED:-$REAL}" "$@"
+    SH
+    esbuild_wrapper.chmod 0755
+    inreplace "scripts/build/configure.ts",
+              'node_modules", ".bin", host.os === "windows" ? "esbuild.exe" : "esbuild"',
+              'scripts", "esbuild-ohos"'
     # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
     inreplace "scripts/build/deps/zstd.ts",
               'cflags: ["-DXXH_NAMESPACE=ZSTD_"]',
