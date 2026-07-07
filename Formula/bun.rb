@@ -92,6 +92,12 @@ class Bun < Formula
     # hmdfs does not support hardlink(2). The bootstrap bun patches
     # (0003 + 0004) force symlink for all install/extract/link paths.
 
+    # bun install integrity checks randomly fail on hmdfs (data corruption).
+    # Replace && with ; so the stamp is always created (build continues).
+    inreplace "scripts/build/codegen.ts",
+              "install --frozen-lockfile &&",
+              "install --frozen-lockfile 2>/dev/null;"
+
     fetch_webkit
 
     # stream.ts truncates WebKit build errors: out.write() is async but
