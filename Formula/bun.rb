@@ -94,7 +94,11 @@ class Bun < Formula
 
     fetch_webkit
 
-    # esbuild from npm is not code-signed → code=126 on HarmonyOS.
+    # stream.ts truncates WebKit build errors: out.write() is async but
+    # process.exit() kills the buffer. Replace with writeSync.
+    inreplace "scripts/build/stream.ts",
+              "out.write(lead + text);",
+              "writeSync(outFd, lead + text);"
     # Create a wrapper that signs the real binary before exec.
     esbuild_wrapper = buildpath/"scripts/esbuild-ohos"
     esbuild_wrapper.write <<~SH
