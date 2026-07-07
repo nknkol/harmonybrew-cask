@@ -100,15 +100,14 @@ class Bun < Formula
     esbuild_wrapper.write <<~SH
       #!/usr/bin/env bash
       set -e
-      # Find the real esbuild binary under .bun cache
       REAL=$(find "#{buildpath}/node_modules/.bun" -path "*/@esbuild/linux-arm64/bin/esbuild" -type f 2>/dev/null | head -1)
-      if [ ! -f "$REAL" ]; then echo "esbuild not found" >&2; exit 1; fi
-      SIGNED="$REAL.signed"
-      if [ ! -f "$SIGNED" ]; then
-        binary-sign-tool-fix sign -selfSign 1 -inFile "$REAL" -outFile "$SIGNED" 2>/dev/null || true
-        [ -f "$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
+      if [ ! -f "\$REAL" ]; then echo "esbuild not found" >&2; exit 1; fi
+      SIGNED="\$REAL.signed"
+      if [ ! -f "\$SIGNED" ]; then
+        binary-sign-tool-fix sign -selfSign 1 -inFile "\$REAL" -outFile "\$SIGNED" 2>/dev/null || true
+        [ -f "\$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
       fi
-      exec "$SIGNED" "$@"
+      exec "\$SIGNED" "\$@"
     SH
     esbuild_wrapper.chmod 0755
     inreplace "scripts/build/configure.ts",
