@@ -118,7 +118,7 @@ class Bun < Formula
         "\$BTS" sign -selfSign 1 -inFile "\$REAL" -outFile "\$SIGNED" 2>/dev/null || true
         [ -f "\$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
       fi
-      exec "\$SIGNED" "\$@"
+      exec "\$SIGNED" --preserve-symlinks "\$@"
     SH
     esbuild_wrapper.chmod 0755
     inreplace "scripts/build/configure.ts",
