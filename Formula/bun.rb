@@ -89,10 +89,8 @@ class Bun < Formula
               "OVERLAY_CSS: css(",
               "OVERLAY_CSS: await css("
 
-    # hmdfs does not support hardlink(2). bun install tries hardlinks first
-    # and fails with EPERM. Force symlink/copy mode for all bun operations.
-    ENV["BUN_INSTALL_USE_HARD_LINKS"] = "0"
-    ENV["BUN_CONFIG_USE_HARD_LINKS"] = "0"
+    # hmdfs does not support hardlink(2). The bootstrap bun patches
+    # (0003 + 0004) force symlink for all install/extract/link paths.
 
     fetch_webkit
 
