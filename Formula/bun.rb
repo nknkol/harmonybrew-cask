@@ -95,11 +95,12 @@ class Bun < Formula
     # are relative — raw esbuild can resolve them without bun's context.
     ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
 
-    # bun install integrity checks randomly fail on hmdfs (data corruption).
-    # Replace && with ; so the stamp is always created (build continues).
+    # --frozen-lockfile forces bun to reuse stale hoisting decisions from
+    # a lockfile generated on another platform, skipping nested symlink
+    # creation for transitive deps. Remove it so bun creates fresh links.
     inreplace "scripts/build/codegen.ts",
-              "install --frozen-lockfile &&",
-              "install --frozen-lockfile 2>/dev/null;"
+              "install --frozen-lockfile",
+              "install"
 
     fetch_webkit
 
@@ -113,6 +114,7 @@ class Bun < Formula
     esbuild_wrapper.write <<~SH
       #!/usr/bin/env bash
       set -e
+      BUN="#{buildpath}/bootstrap/bun"
       PROJECT_ROOT="#{buildpath}"
       BTS="#{HOMEBREW_PREFIX}/bin/binary-sign-tool-fix"
       REAL=$(find "#{buildpath}/node_modules/.bun" -path "*/@esbuild/linux-arm64/bin/esbuild" -type f 2>/dev/null | head -1)
@@ -122,8 +124,7 @@ class Bun < Formula
         "\$BTS" sign -selfSign 1 -inFile "\$REAL" -outFile "\$SIGNED" 2>/dev/null || true
         [ -f "\$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
       fi
-      export NODE_PATH="\$PROJECT_ROOT/node_modules"
-      exec "\$SIGNED" --preserve-symlinks "\$@"
+      exec "\$BUN" run "\$SIGNED" "\$@"
     SH
     esbuild_wrapper.chmod 0755
     inreplace "scripts/build/configure.ts",
