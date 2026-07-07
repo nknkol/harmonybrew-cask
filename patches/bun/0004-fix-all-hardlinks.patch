@@ -1,12 +1,12 @@
 diff -ruN a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
 --- a/src/install/PackageInstall.zig	2026-07-07 03:12:42.331097970 +0800
-+++ b/src/install/PackageInstall.zig	2026-07-07 03:13:06.619097813 +0800
++++ b/src/install/PackageInstall.zig	2026-07-07 10:44:13.593127344 +0800
 @@ -866,7 +866,7 @@
  
      fn installWithHardlink(this: *@This(), dest_dir: std.fs.Dir) !Result {
          var state = InstallDirState{};
 -        const res = this.initInstallDir(&state, dest_dir, .hardlink);
-+        const res = this.initInstallDir(&state, dest_dir, .symlink) // hmdfs: avoid hardlink;
++        const res = this.initInstallDir(&state, dest_dir, .symlink);
          if (res.isFail()) return res;
          defer state.deinit();
  
