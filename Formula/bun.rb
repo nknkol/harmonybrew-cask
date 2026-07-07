@@ -91,6 +91,9 @@ class Bun < Formula
 
     # hmdfs does not support hardlink(2). The bootstrap bun patches
     # (0003 + 0004) force symlink for all install/extract/link paths.
+    # Also redirect bun's global cache into the build tree so symlinks
+    # are relative — raw esbuild can resolve them without bun's context.
+    ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
 
     # bun install integrity checks randomly fail on hmdfs (data corruption).
     # Replace && with ; so the stamp is always created (build continues).
