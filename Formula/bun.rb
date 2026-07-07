@@ -94,7 +94,11 @@ class Bun < Formula
 
     fetch_webkit
 
-    # musl does not implement qsort_r (GNU extension). zstd_deps.h redefines
+    # `bun install --frozen-lockfile` downloads tarballs to hmdfs, which
+    # intermittently corrupts writes. Remove frozen flag to skip the check.
+    inreplace "scripts/build/codegen.ts",
+              "install --frozen-lockfile",
+              "install"
     # _GNU_SOURCE unconditionally — but skips it on Android. Use that path.
     inreplace "scripts/build/deps/zstd.ts",
               'cflags: ["-DXXH_NAMESPACE=ZSTD_"]',
