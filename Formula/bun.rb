@@ -28,7 +28,6 @@ class Bun < Formula
   depends_on "perl" => :build
   depends_on "ruby" => :build
   depends_on "rust" => :build
-  depends_on "uname-is-linux" => :build
   depends_on "icu4c@78"
 
   fails_with :gcc do
@@ -124,9 +123,6 @@ class Bun < Formula
     # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
     # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
     ENV.prepend_path "PATH", buildpath/"bootstrap"
-
-    # uname-is-linux: inject LD_PRELOAD so cmake sees Linux, not HarmonyOS.
-    ENV.prepend "LD_PRELOAD", Formula["uname-is-linux"].opt_lib/"libuname.so"
 
     # Force llvm@21 clang++ (C++23). Must be before shims in PATH.
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
