@@ -170,7 +170,7 @@ class Bun < Formula
     # CMAKE_SYSTEM_PROCESSOR=aarch64, and all platform detection works.
     inreplace "scripts/build/deps/webkit.ts",
               'ENABLE_FTL_JIT: "ON",',
-              "ENABLE_FTL_JIT: \"ON\",\n      CMAKE_SYSTEM_NAME: \"Linux\","
+              "ENABLE_FTL_JIT: \"ON\",\n      CMAKE_SYSTEM_NAME: \"Linux\",\n      CMAKE_SYSTEM_PROCESSOR: \"aarch64\","
 
     # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` (qualified)
     # which requires a prior declaration in C++23. Every other header uses
