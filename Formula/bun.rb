@@ -163,18 +163,14 @@ class Bun < Formula
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
     ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
-    # cmake on HarmonyOS reports CMAKE_SYSTEM_PROCESSOR=unknown, which
-    # disables CPU detection → JIT=OFF → DFG=OFF → AbstractHeapKind missing.
-    # Bypass detection entirely: force WTF_CPU_ARM64=1 directly.
+    # cmake doesn't recognize HarmonyOS natively → CMAKE_SYSTEM_NAME stays
+    # "HarmonyOS", UNIX=FALSE. That breaks every `if (UNIX)` check across
+    # WebKit's cmake files (Socket.cmake picks Windows sources, options
+    # default to C_LOOP, etc.). Force Linux so cmake sets UNIX=1,
+    # CMAKE_SYSTEM_PROCESSOR=aarch64, and all platform detection works.
     inreplace "scripts/build/deps/webkit.ts",
               'ENABLE_FTL_JIT: "ON",',
-              "ENABLE_FTL_JIT: \"ON\",\n      WTF_CPU_ARM64: \"1\","
-    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
-              "if (UNIX)",
-              "if (UNIX OR CMAKE_SYSTEM_NAME MATCHES \"HarmonyOS\")"
-    inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
-              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")',
-              'elseif (CMAKE_SYSTEM_NAME MATCHES "Linux" OR CMAKE_SYSTEM_NAME MATCHES "HarmonyOS")'
+              "ENABLE_FTL_JIT: \"ON\",\n      CMAKE_SYSTEM_NAME: \"Linux\","
 
     # ArithProfile.h uses `friend class JSC::LLIntOffsetsExtractor` (qualified)
     # which requires a prior declaration in C++23. Every other header uses
