@@ -165,10 +165,10 @@ class Bun < Formula
 
     # cmake on HarmonyOS reports CMAKE_SYSTEM_PROCESSOR=unknown, which
     # disables CPU detection → JIT=OFF → DFG=OFF → AbstractHeapKind missing.
-    # Fix 1: force aarch64 CPU. Fix 2-3: treat HarmonyOS as Linux+UNIX.
+    # Bypass detection entirely: force WTF_CPU_ARM64=1 directly.
     inreplace "scripts/build/deps/webkit.ts",
               'ENABLE_FTL_JIT: "ON",',
-              "ENABLE_FTL_JIT: \"ON\",\n      CMAKE_SYSTEM_PROCESSOR: \"aarch64\","
+              "ENABLE_FTL_JIT: \"ON\",\n      WTF_CPU_ARM64: \"1\","
     inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
               "if (UNIX)",
               "if (UNIX OR CMAKE_SYSTEM_NAME MATCHES \"HarmonyOS\")"
