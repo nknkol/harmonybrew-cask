@@ -163,8 +163,12 @@ class Bun < Formula
     # clang doesn't auto-detect our C++ headers; clang++.cfg handles that.
     ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin.to_s
 
-    # WebKit cmake doesn't recognize HarmonyOS — force it into the
-    # UNIX → Linux path so JIT=ON and C_LOOP=OFF (matching arm64 Linux).
+    # cmake on HarmonyOS reports CMAKE_SYSTEM_PROCESSOR=unknown, which
+    # disables CPU detection → JIT=OFF → DFG=OFF → AbstractHeapKind missing.
+    # Fix 1: force aarch64 CPU. Fix 2-3: treat HarmonyOS as Linux+UNIX.
+    inreplace "scripts/build/deps/webkit.ts",
+              'ENABLE_FTL_JIT: "ON",',
+              "ENABLE_FTL_JIT: \"ON\",\n      CMAKE_SYSTEM_PROCESSOR: \"aarch64\","
     inreplace "vendor/WebKit/Source/cmake/WebKitCommon.cmake",
               "if (UNIX)",
               "if (UNIX OR CMAKE_SYSTEM_NAME MATCHES \"HarmonyOS\")"
