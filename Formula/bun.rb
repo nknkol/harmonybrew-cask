@@ -94,6 +94,9 @@ class Bun < Formula
     # Also redirect bun's global cache into the build tree so symlinks
     # are relative — raw esbuild can resolve them without bun's context.
     ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
+    # Also redirect bun's global cache into the build tree so symlinks
+    # are relative — raw esbuild can resolve them without bun's context.
+    ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
 
     # --frozen-lockfile forces bun to reuse stale hoisting decisions from
     # a lockfile generated on another platform, skipping nested symlink
