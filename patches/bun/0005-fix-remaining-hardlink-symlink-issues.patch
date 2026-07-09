@@ -1,27 +1,6 @@
-diff -ruN a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
---- a/src/install/PackageInstall.zig	2026-07-09 17:52:20.278056875 +0800
-+++ b/src/install/PackageInstall.zig	2026-07-09 17:52:52.830057656 +0800
-@@ -954,7 +954,7 @@
-                 if (err == error.FailedToCopyFile) {
-                     return Result.fail(err, .copying_files, @errorReturnTrace());
-                 }
--            } else if (err == error.NotSameFileSystem or err == error.ENXIO) {
-+            } else if (err == error.NotSameFileSystem or err == error.ENXIO or err == error.NotSupported) { // hmdfs: hardlink/symlink ENOSYS
-                 return err;
-             }
- 
-@@ -1095,7 +1095,7 @@
-                 if (err == error.FailedToCopyFile) {
-                     return Result.fail(err, .copying_files, @errorReturnTrace());
-                 }
--            } else if (err == error.NotSameFileSystem or err == error.ENXIO) {
-+            } else if (err == error.NotSameFileSystem or err == error.ENXIO or err == error.NotSupported) { // hmdfs: hardlink/symlink ENOSYS
-                 return err;
-             }
-             return Result.fail(err, .copying_files, @errorReturnTrace());
 diff -ruN a/src/install/TarballStream.zig b/src/install/TarballStream.zig
---- a/src/install/TarballStream.zig	2026-07-09 17:52:20.546056719 +0800
-+++ b/src/install/TarballStream.zig	2026-07-09 17:54:53.270059531 +0800
+--- a/src/install/TarballStream.zig	2026-07-09 21:36:28.338978906 +0800
++++ b/src/install/TarballStream.zig	2026-07-09 21:37:18.334978281 +0800
 @@ -693,7 +693,7 @@
      bun.sys.symlinkat(target, dest_fd, path).unwrap() catch |err| switch (err) {
          error.EPERM, error.ENOENT => {
@@ -32,46 +11,50 @@ diff -ruN a/src/install/TarballStream.zig b/src/install/TarballStream.zig
          else => {},
      };
 diff -ruN a/src/install/isolated_install/Installer.zig b/src/install/isolated_install/Installer.zig
---- a/src/install/isolated_install/Installer.zig	2026-07-09 17:52:20.666059844 +0800
-+++ b/src/install/isolated_install/Installer.zig	2026-07-09 17:52:52.830057656 +0800
-@@ -617,7 +617,7 @@
+--- a/src/install/isolated_install/Installer.zig	2026-07-09 21:36:28.119350625 +0800
++++ b/src/install/isolated_install/Installer.zig	2026-07-09 21:37:18.334978281 +0800
+@@ -617,7 +617,8 @@
                                      switch (try hardlinker.link()) {
                                          .result => {},
                                          .err => |err| {
 -                                            if (err.getErrno() == .XDEV) {
-+                                            if (err.getErrno() == .XDEV or err.getErrno() == .ENOSYS or err.getErrno() == .EPERM) { // hmdfs: hardlink not supported
++                                            // hmdfs: hardlink unsupported — fall back to copy
++                                            if (err.getErrno() != .NOENT and err.getErrno() != .EXIST) {
                                                  continue :backend .copyfile;
                                              }
  
-@@ -854,7 +854,7 @@
+@@ -854,7 +855,8 @@
                              switch (try hardlinker.link()) {
                                  .result => {},
                                  .err => |err| {
 -                                    if (err.getErrno() == .XDEV) {
-+                                    if (err.getErrno() == .XDEV or err.getErrno() == .ENOSYS or err.getErrno() == .EPERM) { // hmdfs: hardlink not supported
++                                    // hmdfs: hardlink unsupported — fall back to copy
++                                            if (err.getErrno() != .NOENT and err.getErrno() != .EXIST) {
                                          installer.supported_backend.store(.copyfile, .monotonic);
                                          continue :backend .copyfile;
                                      }
 diff -ruN a/src/install/isolated_install/Symlinker.zig b/src/install/isolated_install/Symlinker.zig
---- a/src/install/isolated_install/Symlinker.zig	2026-07-09 17:52:20.794062187 +0800
-+++ b/src/install/isolated_install/Symlinker.zig	2026-07-09 17:54:19.650059375 +0800
-@@ -54,6 +54,13 @@
+--- a/src/install/isolated_install/Symlinker.zig	2026-07-09 21:36:28.170979844 +0800
++++ b/src/install/isolated_install/Symlinker.zig	2026-07-09 21:37:18.334978281 +0800
+@@ -54,7 +54,14 @@
                              FD.cwd().deleteTree(this.dest.sliceZ()) catch {};
                              return this.symlink();
                          },
-+                        .ENOSYS, .EPERM => {
+-                        else => .initErr(symlink_err1),
++                        // hmdfs: retry on any unsupported error
++                        else => {
 +                            const dest_parent = this.dest.dirname() orelse {
 +                                return .initErr(symlink_err1);
 +                            };
 +                            FD.cwd().makePath(u8, dest_parent) catch {};
 +                            return this.symlink();
 +                        },
-                         else => .initErr(symlink_err1),
                      },
                  };
+             },
 diff -ruN a/src/install/npm.zig b/src/install/npm.zig
---- a/src/install/npm.zig	2026-07-09 17:52:20.394059531 +0800
-+++ b/src/install/npm.zig	2026-07-09 17:54:53.270059531 +0800
+--- a/src/install/npm.zig	2026-07-09 21:36:28.266977812 +0800
++++ b/src/install/npm.zig	2026-07-09 21:37:18.334978281 +0800
 @@ -1103,14 +1103,9 @@
                  try bun.sys.renameat(bun.FD.cwd(), path_to_use_for_opening_file, bun.FD.cwd(), cache_path_abs).unwrap();
              } else if (Environment.isLinux and is_using_o_tmpfile) {
@@ -84,9 +67,38 @@ diff -ruN a/src/install/npm.zig b/src/install/npm.zig
 -
 -                    // There is no attempt #3. This is a cache, so it's not essential.
 -                };
-+                // On hmdfs, linkatTmpfile uses hardlinks (not supported).
++                // On hmdfs linkatTmpfile uses hardlinks (unsupported).
 +                // Skip — cache is non-essential; renameat fallback below works.
 +                bun.sys.linkatTmpfile(file.handle, cache_dir, outpath).unwrap() catch {};
              } else {
                  defer file.close();
                  // Attempt #1. Rename the file.
+diff -ruN a/src/jsc/bindings/c-bindings.cpp b/src/jsc/bindings/c-bindings.cpp
+--- a/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:11:39.442061562 +0800
++++ b/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:16:39.022060781 +0800
+@@ -226,7 +226,11 @@
+ // close_range is glibc > 2.33, which is very new
+ extern "C" ssize_t bun_close_range(unsigned int start, unsigned int end, unsigned int flags)
+ {
+-    return syscall(__NR_close_range, start, end, flags);
++    // OHOS kernel sends SIGSYS for unsupported syscalls instead of
++    // returning ENOSYS. Skip the call and let the fallback loop handle it.
++    // (callers already have a closeRangeLoop fallback path.)
++    errno = ENOSYS;
++    return -1;
+ }
+ #else // OS(FREEBSD)
+ // FreeBSD 12.2+ libc has close_range; 14.0+ supports CLOSE_RANGE_CLOEXEC
+@@ -519,8 +523,10 @@
+ extern "C" void bun_initialize_process()
+ {
+     // Disable printf() buffering. We buffer it ourselves.
+-    setvbuf(stdout, nullptr, _IONBF, 0);
+-    setvbuf(stderr, nullptr, _IONBF, 0);
++    // OHOS musl aborts on setvbuf(stdout/stderr, nullptr, _IONBF, 0).
++    // Bun uses its own buffered output, not printf, so this is safe.
++    // setvbuf(stdout, nullptr, _IONBF, 0);
++    // setvbuf(stderr, nullptr, _IONBF, 0);
+ 
+ #if OS(LINUX)
+     // Prevent leaking inherited file descriptors on Linux
