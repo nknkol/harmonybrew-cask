@@ -73,32 +73,3 @@ diff -ruN a/src/install/npm.zig b/src/install/npm.zig
              } else {
                  defer file.close();
                  // Attempt #1. Rename the file.
-diff -ruN a/src/jsc/bindings/c-bindings.cpp b/src/jsc/bindings/c-bindings.cpp
---- a/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:11:39.442061562 +0800
-+++ b/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:16:39.022060781 +0800
-@@ -226,7 +226,11 @@
- // close_range is glibc > 2.33, which is very new
- extern "C" ssize_t bun_close_range(unsigned int start, unsigned int end, unsigned int flags)
- {
--    return syscall(__NR_close_range, start, end, flags);
-+    // OHOS kernel sends SIGSYS for unsupported syscalls instead of
-+    // returning ENOSYS. Skip the call and let the fallback loop handle it.
-+    // (callers already have a closeRangeLoop fallback path.)
-+    errno = ENOSYS;
-+    return -1;
- }
- #else // OS(FREEBSD)
- // FreeBSD 12.2+ libc has close_range; 14.0+ supports CLOSE_RANGE_CLOEXEC
-@@ -519,8 +523,10 @@
- extern "C" void bun_initialize_process()
- {
-     // Disable printf() buffering. We buffer it ourselves.
--    setvbuf(stdout, nullptr, _IONBF, 0);
--    setvbuf(stderr, nullptr, _IONBF, 0);
-+    // OHOS musl aborts on setvbuf(stdout/stderr, nullptr, _IONBF, 0).
-+    // Bun uses its own buffered output, not printf, so this is safe.
-+    // setvbuf(stdout, nullptr, _IONBF, 0);
-+    // setvbuf(stderr, nullptr, _IONBF, 0);
- 
- #if OS(LINUX)
-     // Prevent leaking inherited file descriptors on Linux
