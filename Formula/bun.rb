@@ -89,22 +89,18 @@ class Bun < Formula
               "OVERLAY_CSS: css(",
               "OVERLAY_CSS: await css("
 
-    # bun install can exit non-zero due to integrity/extraction flakiness.
-    # WebKit and workspace links are proven to work. Let the stamp always
-    # exist so ninja proceeds to esbuild and final link.
-    inreplace "scripts/build/codegen.ts",
-              "install &&",
-              "install;"
+    # hmdfs does not support hardlink(2). The bootstrap bun patches
+    # (0003 + 0004) force symlink for all install/extract/link paths.
     # Also redirect bun's global cache into the build tree so symlinks
     # are relative — raw esbuild can resolve them without bun's context.
     ENV["BUN_INSTALL_CACHE_DIR"] = (buildpath/".bun-cache").to_s
 
-    # --frozen-lockfile forces bun to reuse stale hoisting decisions from
-    # a lockfile generated on another platform, skipping nested symlink
-    # creation for transitive deps. Remove it so bun creates fresh links.
+    # bun install can exit non-zero due to integrity/extraction flakiness.
+    # Keep --frozen-lockfile (lockfile isn't corrupted, our earlier test
+    # confirmed). Just change && to ; so stamp is always created.
     inreplace "scripts/build/codegen.ts",
-              "install --frozen-lockfile",
-              "install"
+              "install --frozen-lockfile &&",
+              "install --frozen-lockfile;"
 
     fetch_webkit
 
