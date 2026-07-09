@@ -1,0 +1,34 @@
+diff -ruN a/src/jsc/bindings/c-bindings.cpp b/src/jsc/bindings/c-bindings.cpp
+--- a/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:11:39.442061562 +0800
++++ b/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:12:11.474057344 +0800
+@@ -226,7 +226,14 @@
+ // close_range is glibc > 2.33, which is very new
+ extern "C" ssize_t bun_close_range(unsigned int start, unsigned int end, unsigned int flags)
+ {
++#if defined(__OHOS__)
++    // HarmonyOS kernel does not implement close_range(2).
++    // Return ENOSYS so callers fall back to the closeRangeLoop.
++    errno = ENOSYS;
++    return -1;
++#else
+     return syscall(__NR_close_range, start, end, flags);
++#endif
+ }
+ #else // OS(FREEBSD)
+ // FreeBSD 12.2+ libc has close_range; 14.0+ supports CLOSE_RANGE_CLOEXEC
+@@ -519,8 +526,13 @@
+ extern "C" void bun_initialize_process()
+ {
+     // Disable printf() buffering. We buffer it ourselves.
+-    setvbuf(stdout, nullptr, _IONBF, 0);
+-    setvbuf(stderr, nullptr, _IONBF, 0);
++    // OHOS musl aborts on setvbuf(..., nullptr, _IONBF, 0) — use a
++    // small static buffer instead. Only needed for printf/wprintf
++    // writing to buffered stdout/stderr after fork, which Bun avoids.
++    static char stdout_buf[BUFSIZ];
++    static char stderr_buf[BUFSIZ];
++    setvbuf(stdout, stdout_buf, _IONBF, sizeof(stdout_buf));
++    setvbuf(stderr, stderr_buf, _IONBF, sizeof(stderr_buf));
+ 
+ #if OS(LINUX)
+     // Prevent leaking inherited file descriptors on Linux
