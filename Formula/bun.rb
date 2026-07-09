@@ -46,7 +46,7 @@ class Bun < Formula
   resource "bootstrap" do
     url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/bun-1.3.14-aarch64-musl.tar.gz"
     version "1.3.14"
-    sha256 "ebe64d320c1233e42033c26fa00648c40050d4f30b7a7179cf4781be476018aa"
+    sha256 "0adba421e83ada13642918ee10bc5a5fe3e846df6c18b1261857becb2e945c5b"
   end
 
   def fetch_webkit
