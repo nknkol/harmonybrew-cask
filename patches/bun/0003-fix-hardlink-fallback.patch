@@ -12,7 +12,18 @@ diff -ruN a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
          var cached_package_dir = bun.openDir(this.cache_dir, this.cache_dir_subpath) catch |err| return Result.fail(err, .opening_cache_dir, @errorReturnTrace());
 diff -ruN a/src/resolver/resolver.zig b/src/resolver/resolver.zig
 --- a/src/resolver/resolver.zig	2026-07-10 23:00:04.196815469 +0800
-+++ b/src/resolver/resolver.zig	2026-07-11 00:11:18.309569844 +0800
++++ b/src/resolver/resolver.zig	2026-07-11 00:19:17.289566407 +0800
+@@ -1076,8 +1076,8 @@
+ 
+             if (dir.getEntries(r.generation)) |entries| {
+                 if (entries.get(path.name.filename)) |query| {
+-                    const symlink_path = query.entry.symlink(&r.fs.fs, r.store_fd);
+-                    if (symlink_path.len > 0) {
++                    const symlink_path = if (!dir.isInsideNodeModules()) query.entry.symlink(&r.fs.fs, r.store_fd) else &.{};
++                    if (symlink_path.len > 0) { // hmdfs: skip symlink follow inside node_modules
+                         path.setRealpath(symlink_path);
+                         if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
+ 
 @@ -4114,7 +4114,7 @@
              info.package_json_for_dependencies = info.package_json_for_dependencies orelse parent_.package_json_for_dependencies;
  
