@@ -110,15 +110,19 @@ class Bun < Formula
     esbuild_wrapper.write <<~SH
       #!/usr/bin/env bash
       set -e
-      BUN="#{buildpath}/bootstrap/bun"
-      PROJECT_ROOT="#{buildpath}"
       BTS="#{HOMEBREW_PREFIX}/bin/binary-sign-tool-fix"
       REAL=$(find "#{buildpath}/node_modules/.bun" -path "*/@esbuild/linux-arm64/bin/esbuild" -type f 2>/dev/null | head -1)
       if [ ! -f "\$REAL" ]; then echo "esbuild not found" >&2; exit 1; fi
       SIGNED="\$REAL.signed"
+      LOCK="\$REAL.signed.lock"
       if [ ! -f "\$SIGNED" ]; then
-        "\$BTS" sign -selfSign 1 -inFile "\$REAL" -outFile "\$SIGNED" 2>/dev/null || true
-        [ -f "\$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
+        exec 9>"\$LOCK"
+        flock 9
+        if [ ! -f "\$SIGNED" ]; then
+          "\$BTS" sign -selfSign 1 -inFile "\$REAL" -outFile "\$SIGNED" 2>/dev/null || true
+          [ -f "\$SIGNED" ] || { echo "esbuild sign failed" >&2; exit 1; }
+        fi
+        exec 9>&-
       fi
       exec "\$SIGNED" --preserve-symlinks "\$@"
     SH
