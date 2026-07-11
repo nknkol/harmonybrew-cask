@@ -1,0 +1,93 @@
+--- a/src/cli/run_command.zig
++++ b/src/cli/run_command.zig
+@@ -600,22 +600,25 @@
+         this_transpiler.configureLinker();
+     }
+
+-    pub const bun_node_dir = switch (Environment.os) {
+-        // This path is almost always a path to a user directory. So it cannot be inlined like
+-        // our uses of /tmp. You can use one of these functions instead:
+-        // - bun.windows.GetTempPathW (native)
+-        // - bun.fs.FileSystem.RealFS.platformTempDir (any platform)
+-        .windows => @compileError("Do not use RunCommand.bun_node_dir on Windows"),
+-
+-        .mac => "/private/tmp",
+-        else => if (Environment.isAndroid) "/data/local/tmp" else "/tmp",
+-    } ++ if (!Environment.isDebug)
+-        "/bun-node" ++ if (Environment.git_sha_short.len > 0) "-" ++ Environment.git_sha_short else ""
++    pub const bun_node_dir_name = "bun-node" ++ if (!Environment.isDebug)
++        if (Environment.git_sha_short.len > 0) "-" ++ Environment.git_sha_short else ""
+     else
+-        "/bun-node-debug";
++        "-debug";
++
++    fn bunNodeDirBuf(buf: []u8) [:0]const u8 {
++        return bun.path.joinAbsStringBufZ(
++            bun.fs.FileSystem.RealFS.tmpdirPath(),
++            buf,
++            &.{bun_node_dir_name},
++            .auto,
++        );
++    }
+
+     pub fn bunNodeFileUtf8(allocator: std.mem.Allocator) ![:0]const u8 {
+-        if (!Environment.isWindows) return bun_node_dir;
++        if (!Environment.isWindows) {
++            var dir_buf: bun.PathBuffer = undefined;
++            return try allocator.dupeZ(u8, bunNodeDirBuf(&dir_buf));
++        }
+         var temp_path_buffer: bun.WPathBuffer = undefined;
+         var target_path_buffer: bun.PathBuffer = undefined;
+         const len = bun.windows.GetTempPathW(
+@@ -669,10 +672,14 @@
+             }
+
+             if (Environment.isDebug) {
+-                std.fs.deleteTreeAbsolute(bun_node_dir) catch {};
++                var bun_node_dir_buf: bun.PathBuffer = undefined;
++                std.fs.deleteTreeAbsolute(bunNodeDirBuf(&bun_node_dir_buf)) catch {};
+             }
+-            const paths = .{ bun_node_dir ++ "/node", bun_node_dir ++ "/bun" };
+-            inline for (paths) |path| {
++            inline for (.{ "node", "bun" }) |name| {
++                var bun_node_dir_buf: bun.PathBuffer = undefined;
++                const bun_node_dir_path = bunNodeDirBuf(&bun_node_dir_buf);
++                var path_buf: bun.PathBuffer = undefined;
++                const path = bun.path.joinAbsStringBufZ(bun_node_dir_path, &path_buf, &.{name}, .auto);
+                 var retried = false;
+                 while (true) {
+                     inner: {
+@@ -681,7 +688,7 @@
+                             if (retried)
+                                 return;
+
+-                            std.fs.makeDirAbsoluteZ(bun_node_dir) catch {};
++                            std.fs.makeDirAbsoluteZ(bun_node_dir_path) catch {};
+
+                             retried = true;
+                             continue;
+@@ -697,7 +704,9 @@
+             // The reason for the extra delim is because we are going to append the system PATH
+             // later on. this is done by the caller, and explains why we are adding bun_node_dir
+             // to the end of the path slice rather than the start.
+-            try PATH.appendSlice(bun_node_dir ++ .{std.fs.path.delimiter});
++            var bun_node_dir_buf: bun.PathBuffer = undefined;
++            try PATH.appendSlice(bunNodeDirBuf(&bun_node_dir_buf));
++            try PATH.append(std.fs.path.delimiter);
+         } else if (Environment.isWindows) {
+             var target_path_buffer: bun.WPathBuffer = undefined;
+
+--- a/src/install/PackageManager.zig
++++ b/src/install/PackageManager.zig
+@@ -638,7 +638,10 @@
+                             break;
+                         }
+                     },
+-                    error.AccessDenied => {
++                    error.AccessDenied, error.PermissionDenied => {
++                        if (!strings.eqlLong(this_cwd, original_cwd, true)) {
++                            break;
++                        }
+                         Output.err("EACCES", "Permission denied while opening \"{s}\"", .{
+                             package_json_path,
+                         });

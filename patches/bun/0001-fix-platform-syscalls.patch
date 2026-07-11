@@ -1,6 +1,5 @@
-diff -ruN a/src/jsc/bindings/c-bindings.cpp b/src/jsc/bindings/c-bindings.cpp
---- a/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:11:39.442061562 +0800
-+++ b/src/jsc/bindings/c-bindings.cpp	2026-07-09 18:16:39.022060781 +0800
+--- a/src/jsc/bindings/c-bindings.cpp
++++ b/src/jsc/bindings/c-bindings.cpp
 @@ -226,7 +226,11 @@
  // close_range is glibc > 2.33, which is very new
  extern "C" ssize_t bun_close_range(unsigned int start, unsigned int end, unsigned int flags)
