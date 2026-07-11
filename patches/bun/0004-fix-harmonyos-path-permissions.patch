@@ -52,8 +52,8 @@
 +            inline for (.{ "node", "bun" }) |name| {
 +                var bun_node_dir_buf: bun.PathBuffer = undefined;
 +                const bun_node_dir_path = bunNodeDirBuf(&bun_node_dir_buf);
-+                var path_buf: bun.PathBuffer = undefined;
-+                const path = bun.path.joinAbsStringBufZ(bun_node_dir_path, &path_buf, &.{name}, .auto);
++                var bun_node_path_buf: bun.PathBuffer = undefined;
++                const path = bun.path.joinAbsStringBufZ(bun_node_dir_path, &bun_node_path_buf, &.{name}, .auto);
                  var retried = false;
                  while (true) {
                      inner: {

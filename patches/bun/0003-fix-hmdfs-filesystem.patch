@@ -110,7 +110,7 @@
  const default_allocator = bun.default_allocator;
  const strings = bun.strings;
 +
-+fn shouldExposeSymlinkTarget(path: string, kind: Entry.Kind) bool {
++fn shouldExposeSymlinkTarget(path: string, kind: DirEntry.Entry.Kind) bool {
 +    if (kind != .file) return true;
 +    if (!strings.pathContainsNodeModulesFolder(path)) return true;
 +
