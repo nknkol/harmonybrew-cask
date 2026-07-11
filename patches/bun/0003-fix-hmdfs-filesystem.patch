@@ -1,6 +1,8 @@
+diff --git a/src/cli/create_command.zig b/src/cli/create_command.zig
+index 414e782..ca72b31 100644
 --- a/src/cli/create_command.zig
 +++ b/src/cli/create_command.zig
-@@ -631,7 +631,9 @@
+@@ -631,7 +631,9 @@ pub const CreateCommand = struct {
              if (comptime Environment.isWindows) {
                  parent_dir.copyFile("gitignore", parent_dir, ".gitignore", .{}) catch {};
              } else {
@@ -9,22 +11,87 @@
 +                    parent_dir.copyFile("gitignore", parent_dir, ".gitignore", .{}) catch {};
 +                };
              }
-
+ 
              std.posix.unlinkat(
+diff --git a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
+index 2175244..e66ba8e 100644
 --- a/src/install/PackageInstall.zig
 +++ b/src/install/PackageInstall.zig
-@@ -372,7 +372,7 @@
-     pub var supported_method: Method = if (Environment.isMac)
-         Method.clonefile
-     else
--        Method.hardlink;
-+        Method.symlink; // hmdfs does not support hardlink
-
-     fn installWithClonefileEachDir(this: *@This(), destination_dir: std.fs.Dir) !Result {
-         var cached_package_dir = bun.openDir(this.cache_dir, this.cache_dir_subpath) catch |err| return Result.fail(err, .opening_cache_dir, @errorReturnTrace());
+@@ -49,6 +49,11 @@ pub const PackageInstall = struct {
+         /// On Linux, fast.
+         hardlink,
+ 
++        /// Internal fallback for filesystems that reject hardlinks.
++        /// The files are symlinks on disk, but semantically they replace
++        /// hardlinks and should preserve the node_modules logical path.
++        hardlink_fallback_symlink,
++
+         /// Slowest if single-threaded
+         /// Note that copyfile does technically support recursion
+         /// But I suspect it is slower in practice than manually doing it because:
+@@ -1104,6 +1109,27 @@ pub const PackageInstall = struct {
+         return .success;
+     }
+ 
++    fn installWithHardlinkFallbackSymlink(this: *@This(), dest_dir: std.fs.Dir) Result {
++        return this.installWithSymlink(dest_dir) catch |err| {
++            return switch (err) {
++                error.FileNotFound => Result.fail(err, .opening_cache_dir, @errorReturnTrace()),
++                else => Result.fail(err, .copying_files, @errorReturnTrace()),
++            };
++        };
++    }
++
++    fn shouldFallbackHardlinkToSymlink(err: anyerror) bool {
++        return switch (err) {
++            error.NotSameFileSystem,
++            error.ENXIO,
++            error.AccessDenied,
++            error.PermissionDenied,
++            error.NotSupported,
++            => true,
++            else => false,
++        };
++    }
++
+     pub fn uninstall(this: *@This(), destination_dir: std.fs.Dir) void {
+         destination_dir.deleteTree(bun.span(this.destination_dir_subpath)) catch {};
+     }
+@@ -1446,13 +1472,12 @@ pub const PackageInstall = struct {
+             .hardlink => {
+                 if (this.installWithHardlink(destination_dir)) |result| {
+                     return result;
+-                } else |err| outer: {
+-                    if (comptime !Environment.isWindows) {
+-                        if (err == error.NotSameFileSystem) {
+-                            supported_method = .copyfile;
+-                            supported_method_to_use = .copyfile;
+-                            break :outer;
+-                        }
++                } else |err| {
++                    if (comptime !Environment.isWindows) fallback: {
++                        if (!shouldFallbackHardlinkToSymlink(err)) break :fallback;
++
++                        supported_method = .hardlink_fallback_symlink;
++                        return this.installWithHardlinkFallbackSymlink(destination_dir);
+                     }
+ 
+                     return switch (err) {
+@@ -1461,6 +1486,9 @@ pub const PackageInstall = struct {
+                     };
+                 }
+             },
++            .hardlink_fallback_symlink => {
++                return this.installWithHardlinkFallbackSymlink(destination_dir);
++            },
+             .symlink => {
+                 return this.installWithSymlink(destination_dir) catch |err| {
+                     return switch (err) {
+diff --git a/src/install/isolated_install/Installer.zig b/src/install/isolated_install/Installer.zig
+index 81535f7..287d2bb 100644
 --- a/src/install/isolated_install/Installer.zig
 +++ b/src/install/isolated_install/Installer.zig
-@@ -617,7 +617,7 @@
+@@ -617,7 +617,7 @@ pub const Installer = struct {
                                      switch (try hardlinker.link()) {
                                          .result => {},
                                          .err => |err| {
@@ -32,8 +99,8 @@
 +                                            if (err.getErrno() != .NOENT and err.getErrno() != .EXIST) {
                                                  continue :backend .copyfile;
                                              }
-
-@@ -778,8 +778,8 @@
+ 
+@@ -778,8 +778,8 @@ pub const Installer = struct {
                      backend: switch (installer.supported_backend.load(.monotonic)) {
                          .clonefile => {
                              if (comptime !Environment.isMac) {
@@ -42,9 +109,9 @@
 +                                installer.supported_backend.store(.copyfile, .monotonic);
 +                                continue :backend .copyfile;
                              }
-
+ 
                              if (installer.manager.options.log_level.isVerbose()) {
-@@ -809,8 +809,8 @@
+@@ -809,8 +809,8 @@ pub const Installer = struct {
                                              continue :backend .copyfile;
                                          },
                                          .OPNOTSUPP => {
@@ -55,7 +122,7 @@
                                          },
                                          else => {
                                              return .failure(.{ .link_package = err });
-@@ -854,7 +854,7 @@
+@@ -854,7 +854,7 @@ pub const Installer = struct {
                              switch (try hardlinker.link()) {
                                  .result => {},
                                  .err => |err| {
@@ -64,19 +131,21 @@
                                          installer.supported_backend.store(.copyfile, .monotonic);
                                          continue :backend .copyfile;
                                      }
+diff --git a/src/install/npm.zig b/src/install/npm.zig
+index c65a70d..053cf84 100644
 --- a/src/install/npm.zig
 +++ b/src/install/npm.zig
-@@ -1044,7 +1044,8 @@
+@@ -1044,7 +1044,8 @@ pub const PackageManifest = struct {
              else
                  tmp_path;
-
+ 
 -            var is_using_o_tmpfile = if (Environment.isLinux) false;
 +            var is_using_o_tmpfile = false;
 +            const use_o_tmpfile = false; // hmdfs: O_TMPFILE opens, but linkatTmpfile cannot publish it.
              const file = brk: {
                  const flags = bun.O.WRONLY;
                  const mask = if (Environment.isPosix) 0o664 else 0;
-@@ -1052,7 +1053,7 @@
+@@ -1052,7 +1053,7 @@ pub const PackageManifest = struct {
                  // Do our best to use O_TMPFILE, so that if this process is interrupted, we don't leave a temporary file behind.
                  // O_TMPFILE is Linux-only. Not all filesystems support O_TMPFILE.
                  // https://manpages.debian.org/testing/manpages-dev/openat.2.en.html#O_TMPFILE
@@ -85,35 +154,114 @@
                      switch (bun.sys.File.openat(cache_dir, ".", flags | bun.O.TMPFILE, mask)) {
                          .err => {
                              const warner = struct {
+diff --git a/src/resolver/fs.zig b/src/resolver/fs.zig
+index cb2762f..206a506 100644
 --- a/src/resolver/fs.zig
 +++ b/src/resolver/fs.zig
-@@ -1352,7 +1352,7 @@
-             } else {
+@@ -171,6 +171,7 @@ pub const FileSystem = struct {
+                             existing.cache.kind = found_kind orelse .file;
+ 
+                             existing.cache.symlink = PathString.empty;
++                            existing.cache.symlink_kind = .none;
+                         }
+                         break :brk existing;
+                     }
+@@ -369,12 +370,19 @@ pub const FileSystem = struct {
+ 
+         pub const Cache = struct {
+             symlink: PathString = PathString.empty,
++            symlink_kind: SymlinkKind = .none,
+             /// Too much code expects this to be 0
+             /// don't make it bun.invalid_fd
+             fd: FD = .invalid,
+             kind: Kind = .file,
+         };
+ 
++        pub const SymlinkKind = enum {
++            none,
++            real,
++            hardlink_fallback,
++        };
++
+         pub const Kind = enum {
+             dir,
+             file,
+@@ -1353,7 +1361,10 @@ pub const FileSystem = struct {
                  cache.kind = .file;
              }
--            if (symlink.len > 0) {
-+            if (symlink.len > 0 and shouldExposeSymlinkTarget(absolute_path, cache.kind == .file)) {
-                 cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
+             if (symlink.len > 0) {
+-                cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                cache.symlink_kind = classifySymlink(absolute_path, symlink, cache.kind == .file);
++                if (cache.symlink_kind != .none) {
++                    cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                }
              }
-
-@@ -1480,7 +1480,7 @@
-             } else {
+ 
+             return cache;
+@@ -1481,7 +1492,10 @@ pub const FileSystem = struct {
                  cache.kind = .file;
              }
--            if (symlink.len > 0) {
-+            if (symlink.len > 0 and shouldExposeSymlinkTarget(entry_path, cache.kind == .file)) {
-                 cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
+             if (symlink.len > 0) {
+-                cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                cache.symlink_kind = classifySymlink(entry_path, symlink, cache.kind == .file);
++                if (cache.symlink_kind != .none) {
++                    cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                }
              }
-
-@@ -2061,3 +2061,11 @@
+ 
+             return cache;
+@@ -2061,3 +2075,16 @@ const WPathBuffer = bun.WPathBuffer;
  const allocators = bun.allocators;
  const default_allocator = bun.default_allocator;
  const strings = bun.strings;
 +
-+fn shouldExposeSymlinkTarget(path: string, is_file: bool) bool {
-+    if (!is_file) return true;
-+    if (!strings.pathContainsNodeModulesFolder(path)) return true;
++fn classifySymlink(path: string, target: string, is_file: bool) FileSystem.Entry.SymlinkKind {
++    if (!is_file) return .real;
++    if (!strings.pathContainsNodeModulesFolder(path)) return .real;
 +
 +    const node_bin_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
-+    return strings.indexOf(path, node_bin_segment) != null;
++    if (strings.indexOf(path, node_bin_segment) != null) return .real;
++
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    if (strings.indexOf(target, bun_install_cache_segment) != null) return .hardlink_fallback;
++
++    return .real;
 +}
+diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
+index 71c9530..7b8b9ec 100644
+--- a/src/resolver/resolver.zig
++++ b/src/resolver/resolver.zig
+@@ -1077,14 +1077,15 @@ pub const Resolver = struct {
+             if (dir.getEntries(r.generation)) |entries| {
+                 if (entries.get(path.name.filename)) |query| {
+                     const symlink_path = query.entry.symlink(&r.fs.fs, r.store_fd);
+-                    if (symlink_path.len > 0) {
++                    const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback;
++                    if (symlink_path.len > 0 and !preserve_logical_path) {
+                         path.setRealpath(symlink_path);
+                         if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
+ 
+                         if (r.debug_logs) |*debug| {
+                             debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ path.text, symlink_path });
+                         }
+-                    } else if (dir.abs_real_path.len > 0) {
++                    } else if (!preserve_logical_path and dir.abs_real_path.len > 0) {
+                         // When the directory is a symlink, we don't need to call getFdPath.
+                         var parts = [_]string{ dir.abs_real_path, query.entry.base() };
+                         var buf: bun.PathBuffer = undefined;
+@@ -4121,12 +4113,13 @@ pub const Resolver = struct {
+                         const entry = lookup.entry;
+ 
+                         var symlink = entry.symlink(rfs, r.store_fd);
+-                        if (symlink.len > 0) {
++                        const preserve_logical_path = entry.cache.symlink_kind == .hardlink_fallback;
++                        if (symlink.len > 0 and !preserve_logical_path) {
+                             if (r.debug_logs) |*logs| {
+                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
+                             }
+                             info.abs_real_path = symlink;
+-                        } else if (parent_.abs_real_path.len > 0) {
++                        } else if (!preserve_logical_path and parent_.abs_real_path.len > 0) {
+                             // this might leak a little i'm not sure
+                             const parts = [_]string{ parent.?.abs_real_path, base };
+                             symlink = r.fs.dirname_store.append(string, r.fs.absBuf(&parts, bufs(.dir_info_uncached_filename))) catch unreachable;
