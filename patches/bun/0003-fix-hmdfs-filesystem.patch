@@ -210,17 +210,16 @@ index cb2762f..206a506 100644
              }
  
              return cache;
-@@ -2061,3 +2075,16 @@ const WPathBuffer = bun.WPathBuffer;
+@@ -2061,3 +2075,15 @@ const WPathBuffer = bun.WPathBuffer;
  const allocators = bun.allocators;
  const default_allocator = bun.default_allocator;
  const strings = bun.strings;
 +
 +fn classifySymlink(path: string, target: string, is_file: bool) FileSystem.Entry.SymlinkKind {
 +    if (!is_file) return .real;
-+    if (!strings.pathContainsNodeModulesFolder(path)) return .real;
 +
-+    const node_bin_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
-+    if (strings.indexOf(path, node_bin_segment) != null) return .real;
++    const bin_segment = std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
++    if (strings.indexOf(path, bin_segment) != null) return .real;
 +
 +    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
 +    if (strings.indexOf(target, bun_install_cache_segment) != null) return .hardlink_fallback;
