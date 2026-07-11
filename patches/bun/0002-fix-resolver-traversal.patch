@@ -1,8 +1,6 @@
-diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c953035b..2ce06b966f 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
-@@ -2795,8 +2795,12 @@ pub const Resolver = struct {
+@@ -2795,8 +2795,12 @@
                          bufs(.dir_entry_paths_to_resolve)[@as(usize, @intCast(i))].fd = top_entry.entries.fd;
                      },
                      .err => |err| {
@@ -17,7 +15,7 @@ index 71c953035b..2ce06b966f 100644
                      },
                  }
              }
-@@ -2895,49 +2899,36 @@ pub const Resolver = struct {
+@@ -2895,49 +2899,36 @@
  
                  bun.fs.debug("open({s})", .{sentinel});
  
