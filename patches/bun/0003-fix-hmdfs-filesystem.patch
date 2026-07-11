@@ -92,7 +92,7 @@
                  cache.kind = .file;
              }
 -            if (symlink.len > 0) {
-+            if (symlink.len > 0 and shouldExposeSymlinkTarget(absolute_path, cache.kind)) {
++            if (symlink.len > 0 and shouldExposeSymlinkTarget(absolute_path, cache.kind == .file)) {
                  cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
              }
 
@@ -101,7 +101,7 @@
                  cache.kind = .file;
              }
 -            if (symlink.len > 0) {
-+            if (symlink.len > 0 and shouldExposeSymlinkTarget(entry_path, cache.kind)) {
++            if (symlink.len > 0 and shouldExposeSymlinkTarget(entry_path, cache.kind == .file)) {
                  cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
              }
 
@@ -110,8 +110,8 @@
  const default_allocator = bun.default_allocator;
  const strings = bun.strings;
 +
-+fn shouldExposeSymlinkTarget(path: string, kind: DirEntry.Entry.Kind) bool {
-+    if (kind != .file) return true;
++fn shouldExposeSymlinkTarget(path: string, is_file: bool) bool {
++    if (!is_file) return true;
 +    if (!strings.pathContainsNodeModulesFolder(path)) return true;
 +
 +    const node_bin_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
