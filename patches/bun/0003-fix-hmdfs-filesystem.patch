@@ -14,7 +14,7 @@ index 414e782..ca72b31 100644
  
              std.posix.unlinkat(
 diff --git a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
-index 2175244..4e3d8a6 100644
+index 2175244..1c705d6 100644
 --- a/src/install/PackageInstall.zig
 +++ b/src/install/PackageInstall.zig
 @@ -49,6 +49,11 @@ pub const PackageInstall = struct {
@@ -29,6 +29,15 @@ index 2175244..4e3d8a6 100644
          /// Slowest if single-threaded
          /// Note that copyfile does technically support recursion
          /// But I suspect it is slower in practice than manually doing it because:
+@@ -954,7 +959,7 @@ pub const PackageInstall = struct {
+                 if (err == error.FailedToCopyFile) {
+                     return Result.fail(err, .copying_files, @errorReturnTrace());
+                 }
+-            } else if (err == error.NotSameFileSystem or err == error.ENXIO) {
++            } else if (shouldFallbackHardlinkToSymlink(err)) {
+                 return err;
+             }
+ 
 @@ -1104,6 +1109,35 @@ pub const PackageInstall = struct {
          return .success;
      }
