@@ -90,12 +90,11 @@ class Bun < Formula
 
     # hmdfs does not support hardlink(2). The bootstrap bun patches
 
-    # bun install can exit non-zero due to integrity/extraction flakiness.
-    # Keep --frozen-lockfile (lockfile isn't corrupted, our earlier test
-    # confirmed). Just change && to ; so stamp is always created.
+    # bun install can hit transient tarball integrity/extraction failures on
+    # HarmonyOS. Retry, but only stamp success after a completed install.
     inreplace "scripts/build/codegen.ts",
-              "install --frozen-lockfile &&",
-              "install --frozen-lockfile;"
+              ': `cd $dir && ${bun} install --frozen-lockfile && ${touch} $stamp`,',
+              ': `cd $dir && (${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile) && ${touch} $stamp`,'
 
     fetch_webkit
 
