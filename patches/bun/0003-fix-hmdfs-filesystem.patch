@@ -14,7 +14,7 @@ index 414e782..ca72b31 100644
  
              std.posix.unlinkat(
 diff --git a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
-index 2175244..e66ba8e 100644
+index 2175244..4e3d8a6 100644
 --- a/src/install/PackageInstall.zig
 +++ b/src/install/PackageInstall.zig
 @@ -49,6 +49,11 @@ pub const PackageInstall = struct {
@@ -29,17 +29,25 @@ index 2175244..e66ba8e 100644
          /// Slowest if single-threaded
          /// Note that copyfile does technically support recursion
          /// But I suspect it is slower in practice than manually doing it because:
-@@ -1104,6 +1109,27 @@ pub const PackageInstall = struct {
+@@ -1104,6 +1109,35 @@ pub const PackageInstall = struct {
          return .success;
      }
  
 +    fn installWithHardlinkFallbackSymlink(this: *@This(), dest_dir: std.fs.Dir) Result {
-+        return this.installWithSymlink(dest_dir) catch |err| {
-+            return switch (err) {
-+                error.FileNotFound => Result.fail(err, .opening_cache_dir, @errorReturnTrace()),
-+                else => Result.fail(err, .copying_files, @errorReturnTrace()),
-+            };
++        const symlink_result = this.installWithSymlink(dest_dir) catch |err| {
++            if (err == error.FileNotFound) {
++                return Result.fail(err, .opening_cache_dir, @errorReturnTrace());
++            }
++
++            if (!strings.eqlComptime(this.destination_dir_subpath, ".")) this.uninstall(dest_dir);
++            return this.installWithCopyfile(dest_dir);
 +        };
++
++        if (!symlink_result.isFail()) return symlink_result;
++        if (symlink_result.failure.step == .opening_cache_dir) return symlink_result;
++
++        if (!strings.eqlComptime(this.destination_dir_subpath, ".")) this.uninstall(dest_dir);
++        return this.installWithCopyfile(dest_dir);
 +    }
 +
 +    fn shouldFallbackHardlinkToSymlink(err: anyerror) bool {
@@ -57,7 +65,7 @@ index 2175244..e66ba8e 100644
      pub fn uninstall(this: *@This(), destination_dir: std.fs.Dir) void {
          destination_dir.deleteTree(bun.span(this.destination_dir_subpath)) catch {};
      }
-@@ -1446,13 +1472,12 @@ pub const PackageInstall = struct {
+@@ -1446,13 +1480,12 @@ pub const PackageInstall = struct {
              .hardlink => {
                  if (this.installWithHardlink(destination_dir)) |result| {
                      return result;
@@ -77,7 +85,7 @@ index 2175244..e66ba8e 100644
                      }
  
                      return switch (err) {
-@@ -1461,6 +1486,9 @@ pub const PackageInstall = struct {
+@@ -1461,6 +1494,9 @@ pub const PackageInstall = struct {
                      };
                  }
              },
@@ -155,7 +163,7 @@ index c65a70d..053cf84 100644
                          .err => {
                              const warner = struct {
 diff --git a/src/resolver/fs.zig b/src/resolver/fs.zig
-index cb2762f..206a506 100644
+index cb2762f..749e6d8 100644
 --- a/src/resolver/fs.zig
 +++ b/src/resolver/fs.zig
 @@ -171,6 +171,7 @@ pub const FileSystem = struct {
@@ -227,7 +235,7 @@ index cb2762f..206a506 100644
 +    return .real;
 +}
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c9530..7b8b9ec 100644
+index 71c9530..4f252b4 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
 @@ -1077,14 +1077,15 @@ pub const Resolver = struct {
@@ -248,7 +256,7 @@ index 71c9530..7b8b9ec 100644
                          // When the directory is a symlink, we don't need to call getFdPath.
                          var parts = [_]string{ dir.abs_real_path, query.entry.base() };
                          var buf: bun.PathBuffer = undefined;
-@@ -4121,12 +4113,13 @@ pub const Resolver = struct {
+@@ -4121,12 +4122,13 @@ pub const Resolver = struct {
                          const entry = lookup.entry;
  
                          var symlink = entry.symlink(rfs, r.store_fd);
