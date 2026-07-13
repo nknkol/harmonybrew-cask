@@ -97,7 +97,7 @@ index c65a70d..053cf84 100644
                          .err => {
                              const warner = struct {
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c9530..2bff4b3 100644
+index 71c9530..e51d975 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
 @@ -1078,7 +1078,9 @@ pub const Resolver = struct {
@@ -105,18 +105,57 @@ index 71c9530..2bff4b3 100644
                      const symlink_path = query.entry.symlink(&r.fs.fs, r.store_fd);
                      if (symlink_path.len > 0) {
 -                        path.setRealpath(symlink_path);
-+                        if (!isBunInstallCacheFileSymlink(path.text, symlink_path)) {
++                        if (!shouldPreserveBunInstallSymlink(path.text, symlink_path)) {
 +                            path.setRealpath(symlink_path);
 +                        }
                          if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
  
                          if (r.debug_logs) |*debug| {
-@@ -4386,3 +4388,14 @@ const strings = bun.strings;
+@@ -1115,10 +1117,12 @@ pub const Resolver = struct {
+                         if (r.debug_logs) |*debug| {
+                             debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ symlink, path.text });
+                         }
+-                        query.entry.cache.symlink = PathString.init(symlink);
+                         if (!result.file_fd.isValid() and store_fd) result.file_fd = query.entry.cache.fd;
+ 
+-                        path.setRealpath(symlink);
++                        if (!shouldPreserveBunInstallSymlink(path.text, symlink)) {
++                            query.entry.cache.symlink = PathString.init(symlink);
++                            path.setRealpath(symlink);
++                        }
+                     }
+                 }
+             }
+@@ -4125,7 +4129,9 @@ pub const Resolver = struct {
+                             if (r.debug_logs) |*logs| {
+                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
+                             }
+-                            info.abs_real_path = symlink;
++                            if (!shouldPreserveBunInstallSymlink(path, symlink)) {
++                                info.abs_real_path = symlink;
++                            }
+                         } else if (parent_.abs_real_path.len > 0) {
+                             // this might leak a little i'm not sure
+                             const parts = [_]string{ parent.?.abs_real_path, base };
+@@ -4134,8 +4140,10 @@ pub const Resolver = struct {
+                             if (r.debug_logs) |*logs| {
+                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
+                             }
+-                            lookup.entry.cache.symlink = PathString.init(symlink);
+-                            info.abs_real_path = symlink;
++                            if (!shouldPreserveBunInstallSymlink(path, symlink)) {
++                                lookup.entry.cache.symlink = PathString.init(symlink);
++                                info.abs_real_path = symlink;
++                            }
+                         }
+                     }
+                 }
+@@ -4386,3 +4394,14 @@ const strings = bun.strings;
  
  const logger = bun.logger;
  const Msg = logger.Msg;
 +
-+fn isBunInstallCacheFileSymlink(path: string, target: string) bool {
++fn shouldPreserveBunInstallSymlink(path: string, target: string) bool {
 +    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
 +    if (strings.indexOf(path, node_modules_segment) == null) return false;
 +
