@@ -40,7 +40,6 @@ class Bun < Formula
     file "patches/bun/0002-fix-resolver-traversal.patch"
     file "patches/bun/0003-fix-hmdfs-filesystem.patch"
     file "patches/bun/0004-fix-harmonyos-path-permissions.patch"
-    file "patches/bun/0005-debug-cache-resolver.patch"
   end
 
   resource "bootstrap" do
