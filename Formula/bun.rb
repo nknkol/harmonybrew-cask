@@ -40,6 +40,7 @@ class Bun < Formula
     file "patches/bun/0002-fix-resolver-traversal.patch"
     file "patches/bun/0003-fix-hmdfs-filesystem.patch"
     file "patches/bun/0004-fix-harmonyos-path-permissions.patch"
+    file "patches/bun/0005-debug-cache-resolver.patch"
   end
 
   resource "bootstrap" do
@@ -159,6 +160,7 @@ class Bun < Formula
               "lang: \"c\""
 
     resource("bootstrap").stage("bootstrap")
+    ENV["BUN_HARMONY_DEBUG_RESOLVER"] = "1"
     # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
     # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
     ENV.prepend_path "PATH", buildpath/"bootstrap"

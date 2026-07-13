@@ -1,0 +1,120 @@
+diff --git a/src/bundler/bundle_v2.zig b/src/bundler/bundle_v2.zig
+index d12d0998a2..94bc9b9afc 100644
+--- a/src/bundler/bundle_v2.zig
++++ b/src/bundler/bundle_v2.zig
+@@ -2903,6 +2903,7 @@ pub const BundleV2 = struct {
+         const source = ctx.source;
+         const loader = ctx.loader;
+         const source_dir = source.path.sourceDir();
++        harmonyDebugBundlerSource(source.path, source_dir, ctx.target);
+         var estimated_resolve_queue_count: usize = 0;
+         for (ctx.import_records.slice()) |*import_record| {
+             if (import_record.flags.is_internal) {
+@@ -2932,6 +2933,8 @@ pub const BundleV2 = struct {
+                 import_record.original_path = import_record.path.text;
+             }
+ 
++            harmonyDebugBundlerImport(source.path, source_dir, import_record.path.text, import_record.kind, ctx.target);
++
+             if (
+             // Don't resolve TypeScript types
+             import_record.flags.is_unused or
+@@ -4493,6 +4496,33 @@ pub const Graph = @import("./Graph.zig");
+ 
+ const string = []const u8;
+ 
++fn harmonyDebugBundlerSource(path: Fs.Path, source_dir: string, target: options.Target) void {
++    if (!harmonyDebugIsEnabled() or !harmonyDebugIsBunInstallCachePath(path.text)) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] bundler.source source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" target={s}\n",
++        .{ path.text, path.pretty, source_dir, @tagName(target) },
++    );
++}
++
++fn harmonyDebugBundlerImport(path: Fs.Path, source_dir: string, import_path: string, import_kind: ImportKind, target: options.Target) void {
++    if (!harmonyDebugIsEnabled() or !harmonyDebugIsBunInstallCachePath(path.text) or !isPackagePath(import_path)) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] bundler.resolve_from_cache source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s}\n",
++        .{ path.text, path.pretty, source_dir, import_path, @tagName(import_kind), @tagName(target) },
++    );
++}
++
++fn harmonyDebugIsEnabled() bool {
++    return bun.getenvTruthy("BUN_HARMONY_DEBUG_RESOLVER");
++}
++
++fn harmonyDebugIsBunInstallCachePath(path: string) bool {
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, bun_install_cache_segment) != null;
++}
++
+ // C++ binding for lazy metafile getter (defined in BundlerMetafile.cpp)
+ // Uses jsc.conv (SYSV_ABI on Windows x64) for proper calling convention
+ // Sets up metafile object with { json: <lazy parsed>, markdown?: string }
+diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
+index 806785b5d4..5c8700dfe6 100644
+--- a/src/resolver/resolver.zig
++++ b/src/resolver/resolver.zig
+@@ -1081,6 +1081,7 @@ pub const Resolver = struct {
+                     const logical_path = r.fs.absBuf(&[_]string{ query.entry.dir, query.entry.base() }, &logical_path_buf);
+                     const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback or
+                         shouldPreserveBunInstallCacheSymlink(logical_path, symlink_path, query.entry.cache.kind == .file);
++                    harmonyDebugSymlinkDecision("finalize.file", logical_path, symlink_path, @tagName(query.entry.cache.symlink_kind), preserve_logical_path);
+                     if (symlink_path.len > 0 and !preserve_logical_path) {
+                         path.setRealpath(symlink_path);
+                         if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
+@@ -1094,7 +1095,9 @@ pub const Resolver = struct {
+                         var buf: bun.PathBuffer = undefined;
+ 
+                         const out = r.fs.absBuf(&parts, &buf);
+-                        if (preserve_logical_path or shouldPreserveBunInstallCacheSymlink(logical_path, out, query.entry.cache.kind == .file)) {
++                        const preserve_parent_realpath = preserve_logical_path or shouldPreserveBunInstallCacheSymlink(logical_path, out, query.entry.cache.kind == .file);
++                        harmonyDebugSymlinkDecision("finalize.parent_realpath", logical_path, out, @tagName(query.entry.cache.symlink_kind), preserve_parent_realpath);
++                        if (preserve_parent_realpath) {
+                             continue;
+                         }
+ 
+@@ -4120,6 +4123,7 @@ pub const Resolver = struct {
+ 
+                         var symlink = entry.symlink(rfs, r.store_fd);
+                         const preserve_logical_path = entry.cache.symlink_kind == .hardlink_fallback;
++                        harmonyDebugSymlinkDecision("dirinfo.entry", path, symlink, @tagName(entry.cache.symlink_kind), preserve_logical_path);
+                         if (symlink.len > 0 and !preserve_logical_path) {
+                             if (r.debug_logs) |*logs| {
+                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
+@@ -4129,6 +4133,7 @@ pub const Resolver = struct {
+                             // this might leak a little i'm not sure
+                             const parts = [_]string{ parent.?.abs_real_path, base };
+                             symlink = r.fs.dirname_store.append(string, r.fs.absBuf(&parts, bufs(.dir_info_uncached_filename))) catch unreachable;
++                            harmonyDebugSymlinkDecision("dirinfo.parent_realpath", path, symlink, @tagName(entry.cache.symlink_kind), false);
+ 
+                             if (r.debug_logs) |*logs| {
+                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
+@@ -4352,6 +4357,25 @@ fn pathContainsNodeModulesSegment(path: string) bool {
+         std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
+ }
+ 
++fn harmonyDebugSymlinkDecision(comptime label: string, logical_path: string, target_path: string, symlink_kind: string, preserve: bool) void {
++    if (!bun.getenvTruthy("BUN_HARMONY_DEBUG_RESOLVER")) return;
++    if (!harmonyDebugShouldLogSymlink(logical_path, target_path)) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] resolver.{s} logical=\"{s}\" target=\"{s}\" symlink_kind={s} preserve={}\n",
++        .{ label, logical_path, target_path, symlink_kind, preserve },
++    );
++}
++
++fn harmonyDebugShouldLogSymlink(logical_path: string, target_path: string) bool {
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    if (strings.indexOf(logical_path, bun_install_cache_segment) == null and
++        strings.indexOf(target_path, bun_install_cache_segment) == null)
++        return false;
++
++    return pathContainsNodeModulesSegment(logical_path) or pathContainsNodeModulesSegment(target_path);
++}
++
+ pub const RootPathPair = struct {
+     base_path: string,
+     package_json: *const PackageJSON,
