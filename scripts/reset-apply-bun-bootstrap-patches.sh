@@ -9,9 +9,11 @@ PATCHES="
 0002-fix-resolver-traversal.patch
 0003-fix-hmdfs-filesystem.patch
 0004-fix-harmonyos-path-permissions.patch
+0005-debug-cache-resolver.patch
 "
 
 FILES="
+src/bundler/bundle_v2.zig
 src/jsc/bindings/c-bindings.cpp
 src/resolver/resolver.zig
 src/cli/create_command.zig
