@@ -98,6 +98,12 @@ class Bun < Formula
 
     fetch_webkit
 
+    # CMake 4.4 rejects the old WebKit condition when _linked_into is empty
+    # because it expands to `WTF STREQUAL` and `NOT IN_LIST ...`.
+    inreplace "vendor/WebKit/Source/cmake/WebKitMacros.cmake",
+              "if ((NOT _linked_into) OR (${framework} STREQUAL ${_linked_into}) OR (NOT ${_linked_into} IN_LIST ${_target}_FRAMEWORKS))",
+              "if ((NOT _linked_into) OR (\"${framework}\" STREQUAL \"${_linked_into}\") OR (NOT \"${_linked_into}\" IN_LIST ${_target}_FRAMEWORKS))"
+
     # stream.ts truncates WebKit build errors: out.write() is async but
     # process.exit() kills the buffer. Replace with writeSync.
     inreplace "scripts/build/stream.ts",
