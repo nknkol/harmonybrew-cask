@@ -97,7 +97,7 @@ index c65a70d..053cf84 100644
                          .err => {
                              const warner = struct {
 diff --git a/src/resolver/fs.zig b/src/resolver/fs.zig
-index cb2762f..3ef238c 100644
+index cb2762f..08eb861 100644
 --- a/src/resolver/fs.zig
 +++ b/src/resolver/fs.zig
 @@ -171,6 +171,7 @@ pub const FileSystem = struct {
@@ -188,28 +188,33 @@ index cb2762f..3ef238c 100644
 +        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
 +}
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c9530..9df06da 100644
+index 71c9530..a4f831f 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
-@@ -1077,14 +1077,15 @@ pub const Resolver = struct {
+@@ -1077,7 +1077,11 @@ pub const Resolver = struct {
              if (dir.getEntries(r.generation)) |entries| {
                  if (entries.get(path.name.filename)) |query| {
                      const symlink_path = query.entry.symlink(&r.fs.fs, r.store_fd);
 -                    if (symlink_path.len > 0) {
-+                    const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback;
++                    var logical_path_buf: bun.PathBuffer = undefined;
++                    const logical_path = r.fs.absBuf(&[_]string{ query.entry.dir, query.entry.base() }, &logical_path_buf);
++                    const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback or
++                        shouldPreserveBunInstallCacheSymlink(logical_path, symlink_path, query.entry.cache.kind == .file);
 +                    if (symlink_path.len > 0 and !preserve_logical_path) {
                          path.setRealpath(symlink_path);
                          if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
 
-                         if (r.debug_logs) |*debug| {
-                             debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ path.text, symlink_path });
-                         }
--                    } else if (dir.abs_real_path.len > 0) {
-+                    } else if (!preserve_logical_path and dir.abs_real_path.len > 0) {
-                         // When the directory is a symlink, we don't need to call getFdPath.
-                         var parts = [_]string{ dir.abs_real_path, query.entry.base() };
+@@ -1090,6 +1094,9 @@ pub const Resolver = struct {
                          var buf: bun.PathBuffer = undefined;
-@@ -1115,9 +1116,9 @@ pub const Resolver = struct {
+
+                         const out = r.fs.absBuf(&parts, &buf);
++                        if (preserve_logical_path or shouldPreserveBunInstallCacheSymlink(logical_path, out, query.entry.cache.kind == .file)) {
++                            continue;
++                        }
+
+                         const store_fd = r.store_fd;
+
+@@ -1115,9 +1122,9 @@ pub const Resolver = struct {
                          if (r.debug_logs) |*debug| {
                              debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ symlink, path.text });
                          }
@@ -220,7 +225,7 @@ index 71c9530..9df06da 100644
                          path.setRealpath(symlink);
                      }
                  }
-@@ -4121,12 +4122,13 @@ pub const Resolver = struct {
+@@ -4121,12 +4128,13 @@ pub const Resolver = struct {
                          const entry = lookup.entry;
 
                          var symlink = entry.symlink(rfs, r.store_fd);
@@ -236,3 +241,29 @@ index 71c9530..9df06da 100644
                              // this might leak a little i'm not sure
                              const parts = [_]string{ parent.?.abs_real_path, base };
                              symlink = r.fs.dirname_store.append(string, r.fs.absBuf(&parts, bufs(.dir_info_uncached_filename))) catch unreachable;
+@@ -4334,6 +4342,25 @@ pub const Dirname = struct {
+     }
+ };
+
++fn shouldPreserveBunInstallCacheSymlink(logical_path: string, target_path: string, is_file: bool) bool {
++    if (!is_file or target_path.len == 0) return false;
++    if (!pathContainsNodeModulesSegment(logical_path)) return false;
++
++    const node_bin_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
++    if (strings.indexOf(logical_path, node_bin_segment) != null or
++        std.mem.startsWith(u8, logical_path, "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str))
++        return false;
++
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    return strings.indexOf(target_path, bun_install_cache_segment) != null;
++}
++
++fn pathContainsNodeModulesSegment(path: string) bool {
++    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, node_modules_segment) != null or
++        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
++}
++
+ pub const RootPathPair = struct {
+     base_path: string,
+     package_json: *const PackageJSON,
