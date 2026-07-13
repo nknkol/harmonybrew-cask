@@ -11,14 +11,14 @@ index 414e782..ca72b31 100644
 +                    parent_dir.copyFile("gitignore", parent_dir, ".gitignore", .{}) catch {};
 +                };
              }
- 
+
              std.posix.unlinkat(
 diff --git a/src/install/PackageInstall.zig b/src/install/PackageInstall.zig
 index 2175244..63ab15b 100644
 --- a/src/install/PackageInstall.zig
 +++ b/src/install/PackageInstall.zig
 @@ -371,8 +371,10 @@ pub const PackageInstall = struct {
- 
+
      pub var supported_method: Method = if (Environment.isMac)
          Method.clonefile
 +    else if (Environment.isWindows)
@@ -26,7 +26,7 @@ index 2175244..63ab15b 100644
      else
 -        Method.hardlink;
 +        Method.symlink;
- 
+
      fn installWithClonefileEachDir(this: *@This(), destination_dir: std.fs.Dir) !Result {
          var cached_package_dir = bun.openDir(this.cache_dir, this.cache_dir_subpath) catch |err| return Result.fail(err, .opening_cache_dir, @errorReturnTrace());
 diff --git a/src/install/isolated_install/Installer.zig b/src/install/isolated_install/Installer.zig
@@ -41,7 +41,7 @@ index 81535f7..287d2bb 100644
 +                                            if (err.getErrno() != .NOENT and err.getErrno() != .EXIST) {
                                                  continue :backend .copyfile;
                                              }
- 
+
 @@ -778,8 +778,8 @@ pub const Installer = struct {
                      backend: switch (installer.supported_backend.load(.monotonic)) {
                          .clonefile => {
@@ -51,7 +51,7 @@ index 81535f7..287d2bb 100644
 +                                installer.supported_backend.store(.copyfile, .monotonic);
 +                                continue :backend .copyfile;
                              }
- 
+
                              if (installer.manager.options.log_level.isVerbose()) {
 @@ -809,8 +809,8 @@ pub const Installer = struct {
                                              continue :backend .copyfile;
@@ -80,7 +80,7 @@ index c65a70d..053cf84 100644
 @@ -1044,7 +1044,8 @@ pub const PackageManifest = struct {
              else
                  tmp_path;
- 
+
 -            var is_using_o_tmpfile = if (Environment.isLinux) false;
 +            var is_using_o_tmpfile = false;
 +            const use_o_tmpfile = false; // hmdfs: O_TMPFILE opens, but linkatTmpfile cannot publish it.
@@ -96,72 +96,143 @@ index c65a70d..053cf84 100644
                      switch (bun.sys.File.openat(cache_dir, ".", flags | bun.O.TMPFILE, mask)) {
                          .err => {
                              const warner = struct {
+diff --git a/src/resolver/fs.zig b/src/resolver/fs.zig
+index cb2762f..3ef238c 100644
+--- a/src/resolver/fs.zig
++++ b/src/resolver/fs.zig
+@@ -171,6 +171,7 @@ pub const FileSystem = struct {
+                             existing.cache.kind = found_kind orelse .file;
+
+                             existing.cache.symlink = PathString.empty;
++                            existing.cache.symlink_kind = .none;
+                         }
+                         break :brk existing;
+                     }
+@@ -367,8 +368,15 @@ pub const FileSystem = struct {
+             allocator.destroy(e);
+         }
+
++        pub const SymlinkKind = enum {
++            none,
++            real,
++            hardlink_fallback,
++        };
++
+         pub const Cache = struct {
+             symlink: PathString = PathString.empty,
++            symlink_kind: SymlinkKind = .none,
+             /// Too much code expects this to be 0
+             /// don't make it bun.invalid_fd
+             fd: FD = .invalid,
+@@ -1353,7 +1361,10 @@ pub const FileSystem = struct {
+                 cache.kind = .file;
+             }
+             if (symlink.len > 0) {
+-                cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                cache.symlink_kind = classifySymlink(absolute_path, symlink, cache.kind == .file);
++                if (cache.symlink_kind != .hardlink_fallback) {
++                    cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                }
+             }
+
+             return cache;
+@@ -1440,7 +1451,12 @@ pub const FileSystem = struct {
+                 const buf2 = bun.path_buffer_pool.get();
+                 defer bun.path_buffer_pool.put(buf2);
+                 switch (bun.sys.getFdPath(.fromNative(handle), buf2)) {
+-                    .result => |real| cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, real)),
++                    .result => |real| {
++                        cache.symlink_kind = classifySymlink(absolute_path_c, real, cache.kind == .file);
++                        if (cache.symlink_kind != .hardlink_fallback) {
++                            cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, real));
++                        }
++                    },
+                     .err => {},
+                 }
+                 return cache;
+@@ -1481,7 +1497,10 @@ pub const FileSystem = struct {
+                 cache.kind = .file;
+             }
+             if (symlink.len > 0) {
+-                cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                cache.symlink_kind = classifySymlink(absolute_path_c, symlink, cache.kind == .file);
++                if (cache.symlink_kind != .hardlink_fallback) {
++                    cache.symlink = PathString.init(try FilenameStore.instance.append([]const u8, symlink));
++                }
+             }
+
+             return cache;
+@@ -2061,3 +2080,24 @@ const WPathBuffer = bun.WPathBuffer;
+ const allocators = bun.allocators;
+ const default_allocator = bun.default_allocator;
+ const strings = bun.strings;
++
++fn classifySymlink(path: string, target: string, is_file: bool) FileSystem.DirEntry.Entry.SymlinkKind {
++    if (!is_file) return .real;
++    if (!pathContainsNodeModulesSegment(path)) return .real;
++
++    const node_bin_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
++    if (strings.indexOf(path, node_bin_segment) != null or
++        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str))
++        return .real;
++
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    if (strings.indexOf(target, bun_install_cache_segment) != null) return .hardlink_fallback;
++
++    return .real;
++}
++
++fn pathContainsNodeModulesSegment(path: string) bool {
++    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, node_modules_segment) != null or
++        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
++}
 diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 71c9530..e51d975 100644
+index 71c9530..9df06da 100644
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
-@@ -1078,7 +1078,9 @@ pub const Resolver = struct {
+@@ -1077,14 +1077,15 @@ pub const Resolver = struct {
+             if (dir.getEntries(r.generation)) |entries| {
                  if (entries.get(path.name.filename)) |query| {
                      const symlink_path = query.entry.symlink(&r.fs.fs, r.store_fd);
-                     if (symlink_path.len > 0) {
--                        path.setRealpath(symlink_path);
-+                        if (!shouldPreserveBunInstallSymlink(path.text, symlink_path)) {
-+                            path.setRealpath(symlink_path);
-+                        }
+-                    if (symlink_path.len > 0) {
++                    const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback;
++                    if (symlink_path.len > 0 and !preserve_logical_path) {
+                         path.setRealpath(symlink_path);
                          if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
- 
+
                          if (r.debug_logs) |*debug| {
-@@ -1115,10 +1117,12 @@ pub const Resolver = struct {
+                             debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ path.text, symlink_path });
+                         }
+-                    } else if (dir.abs_real_path.len > 0) {
++                    } else if (!preserve_logical_path and dir.abs_real_path.len > 0) {
+                         // When the directory is a symlink, we don't need to call getFdPath.
+                         var parts = [_]string{ dir.abs_real_path, query.entry.base() };
+                         var buf: bun.PathBuffer = undefined;
+@@ -1115,9 +1116,9 @@ pub const Resolver = struct {
                          if (r.debug_logs) |*debug| {
                              debug.addNoteFmt("Resolved symlink \"{s}\" to \"{s}\"", .{ symlink, path.text });
                          }
 -                        query.entry.cache.symlink = PathString.init(symlink);
                          if (!result.file_fd.isValid() and store_fd) result.file_fd = query.entry.cache.fd;
- 
--                        path.setRealpath(symlink);
-+                        if (!shouldPreserveBunInstallSymlink(path.text, symlink)) {
-+                            query.entry.cache.symlink = PathString.init(symlink);
-+                            path.setRealpath(symlink);
-+                        }
+
++                        query.entry.cache.symlink = PathString.init(symlink);
+                         path.setRealpath(symlink);
                      }
                  }
-             }
-@@ -4125,7 +4129,9 @@ pub const Resolver = struct {
+@@ -4121,12 +4122,13 @@ pub const Resolver = struct {
+                         const entry = lookup.entry;
+
+                         var symlink = entry.symlink(rfs, r.store_fd);
+-                        if (symlink.len > 0) {
++                        const preserve_logical_path = entry.cache.symlink_kind == .hardlink_fallback;
++                        if (symlink.len > 0 and !preserve_logical_path) {
                              if (r.debug_logs) |*logs| {
                                  logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
                              }
--                            info.abs_real_path = symlink;
-+                            if (!shouldPreserveBunInstallSymlink(path, symlink)) {
-+                                info.abs_real_path = symlink;
-+                            }
-                         } else if (parent_.abs_real_path.len > 0) {
+                             info.abs_real_path = symlink;
+-                        } else if (parent_.abs_real_path.len > 0) {
++                        } else if (!preserve_logical_path and parent_.abs_real_path.len > 0) {
                              // this might leak a little i'm not sure
                              const parts = [_]string{ parent.?.abs_real_path, base };
-@@ -4134,8 +4140,10 @@ pub const Resolver = struct {
-                             if (r.debug_logs) |*logs| {
-                                 logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
-                             }
--                            lookup.entry.cache.symlink = PathString.init(symlink);
--                            info.abs_real_path = symlink;
-+                            if (!shouldPreserveBunInstallSymlink(path, symlink)) {
-+                                lookup.entry.cache.symlink = PathString.init(symlink);
-+                                info.abs_real_path = symlink;
-+                            }
-                         }
-                     }
-                 }
-@@ -4386,3 +4394,14 @@ const strings = bun.strings;
- 
- const logger = bun.logger;
- const Msg = logger.Msg;
-+
-+fn shouldPreserveBunInstallSymlink(path: string, target: string) bool {
-+    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
-+    if (strings.indexOf(path, node_modules_segment) == null) return false;
-+
-+    const bin_segment = std.fs.path.sep_str ++ ".bin" ++ std.fs.path.sep_str;
-+    if (strings.indexOf(path, bin_segment) != null) return false;
-+
-+    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
-+    return strings.indexOf(target, bun_install_cache_segment) != null;
-+}
+                             symlink = r.fs.dirname_store.append(string, r.fs.absBuf(&parts, bufs(.dir_info_uncached_filename))) catch unreachable;
