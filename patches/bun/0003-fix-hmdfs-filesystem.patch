@@ -167,7 +167,7 @@ index cb2762f..3ef238c 100644
  const default_allocator = bun.default_allocator;
  const strings = bun.strings;
 +
-+fn classifySymlink(path: string, target: string, is_file: bool) FileSystem.DirEntry.Entry.SymlinkKind {
++fn classifySymlink(path: string, target: string, is_file: bool) FileSystem.Entry.SymlinkKind {
 +    if (!is_file) return .real;
 +    if (!pathContainsNodeModulesSegment(path)) return .real;
 +
