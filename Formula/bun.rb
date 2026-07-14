@@ -21,6 +21,7 @@ class Bun < Formula
   end
 
   depends_on "bash" => :build
+  depends_on "binary-sign-tool" => :build
   depends_on "cmake" => :build
   depends_on "libgcc" => :build
   depends_on "llvm@21" => :build
@@ -62,11 +63,63 @@ class Bun < Formula
   end
 
   def install
+    ohos_sign_tool = Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+
     # Avoid `rustup` dependency by removing usage of nightly Rust features
     inreplace "scripts/build/deps/lolhtml.ts", "if (cfg.release && canBuildStdImmediateAbort)", "if (false)"
 
     # Use native CPU target for HarmonyOS
     inreplace "scripts/build/zig.ts", "-Dcpu=${zigCpu(cfg)}", "-Dcpu=native"
+
+    sign_elf_script = buildpath/"scripts/sign-ohos-elf"
+    sign_elf_script.write <<~SH
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      BTS="#{ohos_sign_tool}"
+
+      is_elf() {
+        [ -f "$1" ] || return 1
+        [ "$(dd if="$1" bs=4 count=1 2>/dev/null)" = "$(printf '\\177ELF')" ]
+      }
+
+      sign_one() {
+        local file="$1"
+        local signed="${file}.signed.$$"
+
+        is_elf "$file" || return 0
+        case "$file" in
+          *.o|*.a|*.rlib) return 0 ;;
+        esac
+
+        if "$BTS" display-sign -inFile "$file" 2>/dev/null | grep -q "code signature is self-sign"; then
+          return 0
+        fi
+
+        rm -f "$signed"
+        "$BTS" sign -selfSign 1 -inFile "$file" -outFile "$signed" >/dev/null
+        chmod 0755 "$signed"
+        mv -f "$signed" "$file"
+      }
+
+      for root in "$@"; do
+        [ -e "$root" ] || continue
+        if [ -f "$root" ]; then
+          sign_one "$root"
+          continue
+        fi
+
+        find "$root" -type f ! -name '*.o' ! -name '*.a' ! -name '*.rlib' -print0 |
+          while IFS= read -r -d '' file; do
+            sign_one "$file"
+          done
+      done
+    SH
+    sign_elf_script.chmod 0755
+
+    inreplace "scripts/build/zig.ts",
+              "  // ─── Write stamp ───\n  await writeFile(stampPath, commit + \"\\n\");",
+              "  const ohosSignElf = process.env.BUN_OHOS_SIGN_ELF;\n  if (ohosSignElf) {\n    const proc = Bun.spawn({ cmd: [ohosSignElf, dest], stdout: \"inherit\", stderr: \"inherit\" });\n    const exitCode = await proc.exited;\n    assert(exitCode === 0, `HarmonyOS ELF signing failed for ${dest}`);\n  }\n\n  // ─── Write stamp ───\n  await writeFile(stampPath, commit + \"\\n\");"
 
     # HarmonyOS has llvm-strip but no GNU strip
     inreplace "scripts/build/tools.ts",
@@ -94,7 +147,11 @@ class Bun < Formula
     # HarmonyOS. Retry, but only stamp success after a completed install.
     inreplace "scripts/build/codegen.ts",
               ': `cd $dir && ${bun} install --frozen-lockfile && ${touch} $stamp`,',
-              ': `cd $dir && (${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile) && ${touch} $stamp`,'
+              ': `cd $dir && (${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile) && "' +
+                sign_elf_script.to_s +
+                '" "' +
+                (buildpath/".brew_home/.bun/install/cache").to_s +
+                '" "$dir/node_modules" && ${touch} $stamp`,'
 
     fetch_webkit
 
@@ -195,6 +252,7 @@ class Bun < Formula
               EOS
 
     resource("bootstrap").stage("bootstrap")
+    ENV["BUN_OHOS_SIGN_ELF"] = sign_elf_script.to_s
     ENV["BUN_HARMONY_DEBUG_RESOLVER"] = "1"
     # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
     # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
