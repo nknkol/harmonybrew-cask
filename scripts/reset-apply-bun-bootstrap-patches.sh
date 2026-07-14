@@ -14,6 +14,8 @@ PATCHES="
 
 FILES="
 src/bundler/bundle_v2.zig
+src/bundler/linker.zig
+src/node-fallbacks/build-fallbacks.ts
 src/jsc/bindings/c-bindings.cpp
 src/resolver/resolver.zig
 src/cli/create_command.zig
