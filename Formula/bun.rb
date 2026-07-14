@@ -78,6 +78,63 @@ class Bun < Formula
               "  assert(existsSync(resolve(dest, \"lib\")), `zig lib/ dir not found`, {\n    hint: \"Archive may be incomplete\",\n  });",
               "  assert(existsSync(resolve(dest, \"lib\")), `zig lib/ dir not found`, {\n    hint: \"Archive may be incomplete\",\n  });\n\n  const ohosSignTool = process.env.BUN_OHOS_SIGN_TOOL;\n  if (ohosSignTool) {\n    for (const exe of [zigExe, resolve(dest, \"zls\")]) {\n      if (!existsSync(exe)) continue;\n      const signed = `${exe}.signed`;\n      await rm(signed, { force: true });\n      const proc = Bun.spawn({\n        cmd: [ohosSignTool, \"sign\", \"-selfSign\", \"1\", \"-inFile\", exe, \"-outFile\", signed],\n        stdout: \"inherit\",\n        stderr: \"inherit\",\n      });\n      const exitCode = await proc.exited;\n      assert(exitCode === 0 && existsSync(signed), `HarmonyOS ELF signing failed for ${exe}`);\n      await chmod(signed, 0o755);\n      await rename(signed, exe);\n    }\n  }"
 
+    zig_wrapper = buildpath/"scripts/zig-ohos"
+    zig_wrapper.write <<~SH
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      SIGN_TOOL="${BUN_OHOS_SIGN_TOOL:-#{ohos_sign_tool}}"
+
+      cache="${ZIG_LOCAL_CACHE_DIR:-}"
+      if [ -z "$cache" ]; then
+        prev=""
+        for arg in "$@"; do
+          if [ "$prev" = "--cache-dir" ]; then
+            cache="$arg"
+            break
+          fi
+          prev="$arg"
+        done
+      fi
+
+      attempts=0
+      while true; do
+        if "$@"; then
+          exit 0
+        fi
+        status=$?
+        attempts=$((attempts + 1))
+
+        signed_any=0
+        if [ -n "$cache" ] && [ -d "$cache" ]; then
+          while IFS= read -r exe; do
+            [ -f "$exe" ] || continue
+            if "$SIGN_TOOL" display-sign -inFile "$exe" 2>&1 | grep -q "code signature is not found"; then
+              signed="$exe.signed"
+              rm -f "$signed"
+              "$SIGN_TOOL" sign -selfSign 1 -inFile "$exe" -outFile "$signed"
+              [ -f "$signed" ] || { echo "zig build runner sign failed: $exe" >&2; exit 1; }
+              chmod 0755 "$signed"
+              mv "$signed" "$exe"
+              signed_any=1
+              echo "[zig-ohos] signed build runner $exe" >&2
+            fi
+          done < <(find "$cache" -path "*/o/*/build" -type f 2>/dev/null)
+        fi
+
+        if [ "$signed_any" != "1" ] || [ "$attempts" -ge 5 ]; then
+          exit "$status"
+        fi
+      done
+    SH
+    zig_wrapper.chmod 0755
+    inreplace "scripts/build/zig.ts",
+              'command: `${stream} ${consoleMode ? "--console" : "--zig-progress"} --env=ZIG_LOCAL_CACHE_DIR=$zig_local_cache --env=ZIG_GLOBAL_CACHE_DIR=$zig_global_cache${parallelSema} $zig build $step $args`,',
+              "command: `${stream} ${consoleMode ? \"--console\" : \"--zig-progress\"} --env=ZIG_LOCAL_CACHE_DIR=$zig_local_cache --env=ZIG_GLOBAL_CACHE_DIR=$zig_global_cache${parallelSema} #{zig_wrapper} $zig build $step $args`,"
+    inreplace "scripts/build/zig.ts",
+              'command: `${stream} --console --stamp=$out --env=ZIG_LOCAL_CACHE_DIR=$zig_local_cache --env=ZIG_GLOBAL_CACHE_DIR=$zig_global_cache${parallelSema} $zig build $step $args`,',
+              "command: `${stream} --console --stamp=$out --env=ZIG_LOCAL_CACHE_DIR=$zig_local_cache --env=ZIG_GLOBAL_CACHE_DIR=$zig_global_cache${parallelSema} #{zig_wrapper} $zig build $step $args`,"
+
     # HarmonyOS has llvm-strip but no GNU strip
     inreplace "scripts/build/tools.ts",
               'findTool({ names: ["strip"], required: true, hint: "Install binutils for your distro" })',
