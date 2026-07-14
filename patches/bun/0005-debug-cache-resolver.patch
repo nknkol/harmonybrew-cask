@@ -1,8 +1,6 @@
-diff --git a/src/bundler/bundle_v2.zig b/src/bundler/bundle_v2.zig
-index d12d0998a2..94bc9b9afc 100644
 --- a/src/bundler/bundle_v2.zig
 +++ b/src/bundler/bundle_v2.zig
-@@ -548,6 +548,7 @@ pub const BundleV2 = struct {
+@@ -549,11 +549,13 @@
          const transpiler = this.transpilerForTarget(target);
          const source_dir = Fs.PathName.init(import_record.source_file).dirWithTrailingSlash();
  
@@ -10,7 +8,13 @@ index d12d0998a2..94bc9b9afc 100644
          // Check the FileMap first for in-memory files
          if (this.file_map) |file_map| {
              if (file_map.resolve(import_record.source_file, import_record.specifier)) |_file_map_result| {
-@@ -621,6 +622,18 @@ pub const BundleV2 = struct {
+                 var file_map_result = _file_map_result;
+                 var path_primary = file_map_result.path_pair.primary;
++                harmonyDebugRunResolver("runResolver.filemap", import_record.source_file, source_dir, path_primary.text, path_primary.pretty, import_record.specifier, import_record.kind, target);
+                 const entry = bun.handleOom(this.pathToSourceIndexMap(target).getOrPut(this.allocator(), path_primary.text));
+                 if (!entry.found_existing) {
+                     const loader: Loader = brk: {
+@@ -622,6 +624,18 @@
              var record: *ImportRecord = &this.graph.ast.items(.import_records)[import_record.importer_source_index].slice()[import_record.import_record_index];
              source = &this.graph.input_files.items(.source)[import_record.importer_source_index];
              handles_import_errors = record.flags.handles_import_errors;
@@ -29,10 +33,14 @@ index d12d0998a2..94bc9b9afc 100644
  
              // Disable failing packages from being printed.
              // This may cause broken code to write.
-@@ -695,6 +708,16 @@ pub const BundleV2 = struct {
+@@ -693,8 +707,20 @@
+         };
+ 
          if (resolve_result.flags.is_external) {
++            harmonyDebugRunResolver("runResolver.external", import_record.source_file, Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(), path.text, path.pretty, import_record.specifier, import_record.kind, target);
              return;
          }
++        harmonyDebugRunResolver("runResolver.resolved.raw", import_record.source_file, Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(), path.text, path.pretty, import_record.specifier, import_record.kind, target);
 +        harmonyDebugRunResolver(
 +            "runResolver.resolved",
 +            import_record.source_file,
@@ -46,42 +54,169 @@ index d12d0998a2..94bc9b9afc 100644
  
          if (path.pretty.ptr == path.text.ptr) {
              // TODO: outbase
-@@ -2903,6 +2926,7 @@ pub const BundleV2 = struct {
+@@ -707,6 +733,7 @@
+         const entry = bun.handleOom(this.pathToSourceIndexMap(target).getOrPut(this.allocator(), path.text));
+         if (!entry.found_existing) {
+             path.* = bun.handleOom(this.pathWithPrettyInitialized(path.*, target));
++            harmonyDebugRunResolver("runResolver.resolved.pretty", import_record.source_file, Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(), path.text, path.pretty, import_record.specifier, import_record.kind, target);
+             entry.key_ptr.* = path.text;
+             const loader: Loader = brk: {
+                 const record: *ImportRecord = &this.graph.ast.items(.import_records)[import_record.importer_source_index].slice()[import_record.import_record_index];
+@@ -755,6 +782,8 @@
+             }
+         } else {
+             out_source_index = Index.init(entry.value_ptr.*);
++            const cached_source = this.graph.input_files.items(.source)[entry.value_ptr.*];
++            harmonyDebugRunResolver("runResolver.source-index-cache", import_record.source_file, Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(), cached_source.path.text, cached_source.path.pretty, import_record.specifier, import_record.kind, target);
+         }
+ 
+         if (out_source_index) |source_index| {
+@@ -1372,6 +1401,7 @@
+         loader: Loader,
+         known_target: options.Target,
+     ) OOM!Index.Int {
++        harmonyDebugBundlerSource("enqueueParseTask", source.path, source.path.sourceDir(), known_target);
+         const source_index = Index.init(@as(u32, @intCast(this.graph.ast.len)));
+         this.graph.ast.append(this.allocator(), JSAst.empty) catch unreachable;
+ 
+@@ -1412,6 +1442,7 @@
+         loader: Loader,
+         known_target: options.Target,
+     ) OOM!Index.Int {
++        harmonyDebugBundlerSource("enqueueParseTask2", source.path, source.path.sourceDir(), known_target);
+         const source_index = Index.init(@as(u32, @intCast(this.graph.ast.len)));
+         this.graph.ast.append(this.allocator(), JSAst.empty) catch unreachable;
+ 
+@@ -2788,7 +2819,10 @@
+     }
+ 
+     fn pathWithPrettyInitialized(this: *BundleV2, path: Fs.Path, target: options.Target) !Fs.Path {
+-        return genericPathWithPrettyInitialized(path, target, this.transpiler.fs.top_level_dir, this.allocator());
++        harmonyDebugBundlerSource("pathWithPretty.before", path, path.sourceDir(), target);
++        const out = try genericPathWithPrettyInitialized(path, target, this.transpiler.fs.top_level_dir, this.allocator());
++        harmonyDebugBundlerSource("pathWithPretty.after", out, out.sourceDir(), target);
++        return out;
+     }
+ 
+     fn reserveSourceIndexesForBake(this: *BundleV2) !void {
+@@ -2903,6 +2937,7 @@
          const source = ctx.source;
          const loader = ctx.loader;
          const source_dir = source.path.sourceDir();
-+        harmonyDebugBundlerSource(source.path, source_dir, ctx.target);
++        harmonyDebugBundlerSource("resolveImportRecords.source", source.path, source_dir, ctx.target);
          var estimated_resolve_queue_count: usize = 0;
          for (ctx.import_records.slice()) |*import_record| {
              if (import_record.flags.is_internal) {
-@@ -2932,6 +2956,8 @@ pub const BundleV2 = struct {
+@@ -2932,6 +2967,8 @@
                  import_record.original_path = import_record.path.text;
              }
  
-+            harmonyDebugBundlerImport(source.path, source_dir, import_record.path.text, import_record.kind, ctx.target);
++            harmonyDebugBundlerImport("resolveImportRecords.import.start", source.path, source_dir, import_record.path.text, import_record.kind, ctx.target);
 +
              if (
              // Don't resolve TypeScript types
              import_record.flags.is_unused or
-@@ -4493,5 +4519,56 @@ pub const Graph = @import("./Graph.zig");
+@@ -3059,6 +3096,7 @@
+                 if (file_map.resolve(source.path.text, import_record.path.text)) |_file_map_result| {
+                     var file_map_result = _file_map_result;
+                     var path_primary = file_map_result.path_pair.primary;
++                    harmonyDebugBundlerImportResolved("resolveImportRecords.filemap", source.path, source_dir, import_record.path.text, path_primary.text, path_primary.pretty, import_record.kind, target);
+                     const import_record_loader = import_record.loader orelse Fs.Path.init(path_primary.text).loader(&transpiler.options.loaders) orelse .file;
+                     import_record.loader = import_record_loader;
+ 
+@@ -3069,6 +3107,7 @@
+ 
+                     const resolve_entry = resolve_queue.getOrPut(path_primary.text) catch |err| bun.handleOom(err);
+                     if (resolve_entry.found_existing) {
++                        harmonyDebugBundlerImportResolved("resolveImportRecords.filemap.queue-cache", source.path, source_dir, import_record.path.text, resolve_entry.value_ptr.*.path.text, resolve_entry.value_ptr.*.path.pretty, import_record.kind, target);
+                         import_record.path = resolve_entry.value_ptr.*.path;
+                         continue;
+                     }
+@@ -3104,6 +3143,7 @@
+                 import_record.kind,
+             ) catch |err| {
+                 const log = this.logForResolutionFailures(source.path.text, bake_graph);
++                harmonyDebugBundlerImportError("resolveImportRecords.error", source.path, source_dir, import_record.path.text, import_record.kind, ctx.target, @errorName(err));
+ 
+                 // Only perform directory busting when hot-reloading is enabled
+                 if (err == error.ModuleNotFound) {
+@@ -3244,8 +3284,10 @@
+ 
+                 continue;
+             };
++            harmonyDebugBundlerImportResolved("resolveImportRecords.resolved.raw", source.path, source_dir, import_record.path.text, path.text, path.pretty, import_record.kind, target);
+ 
+             if (resolve_result.flags.is_external) {
++                harmonyDebugBundlerImportResolved("resolveImportRecords.external", source.path, source_dir, import_record.path.text, path.text, path.pretty, import_record.kind, target);
+                 if (resolve_result.flags.is_external_and_rewrite_import_path and !strings.eqlLong(resolve_result.path_pair.primary.text, import_record.path.text, true)) {
+                     import_record.path = resolve_result.path_pair.primary;
+                 }
+@@ -3321,6 +3363,8 @@
+             const is_html_entrypoint = import_record_loader == .html and target.isServerSide() and this.transpiler.options.dev_server == null;
+ 
+             if (this.pathToSourceIndexMap(target).get(path.text)) |id| {
++                const cached_source = this.graph.input_files.items(.source)[id];
++                harmonyDebugBundlerImportResolved("resolveImportRecords.source-index-cache", source.path, source_dir, import_record.path.text, cached_source.path.text, cached_source.path.pretty, import_record.kind, target);
+                 if (this.transpiler.options.dev_server != null and loader != .html) {
+                     import_record.path = this.graph.input_files.items(.source)[id].path;
+                 } else {
+@@ -3335,11 +3379,13 @@
+ 
+             const resolve_entry = resolve_queue.getOrPut(path.text) catch |err| bun.handleOom(err);
+             if (resolve_entry.found_existing) {
++                harmonyDebugBundlerImportResolved("resolveImportRecords.queue-cache", source.path, source_dir, import_record.path.text, resolve_entry.value_ptr.*.path.text, resolve_entry.value_ptr.*.path.pretty, import_record.kind, target);
+                 import_record.path = resolve_entry.value_ptr.*.path;
+                 continue;
+             }
+ 
+             path.* = bun.handleOom(this.pathWithPrettyInitialized(path.*, target));
++            harmonyDebugBundlerImportResolved("resolveImportRecords.resolved.pretty", source.path, source_dir, import_record.path.text, path.text, path.pretty, import_record.kind, target);
+ 
+             import_record.path = path.*;
+             resolve_entry.key_ptr.* = path.text;
+@@ -4493,6 +4539,81 @@
  
  const string = []const u8;
  
-+fn harmonyDebugBundlerSource(path: Fs.Path, source_dir: string, target: options.Target) void {
++fn harmonyDebugBundlerSource(comptime label: string, path: Fs.Path, source_dir: string, target: options.Target) void {
 +    if (!harmonyDebugIsEnabled() or !harmonyDebugShouldLogPath(path.text, path.pretty, source_dir)) return;
 +
 +    std.debug.print(
-+        "[bun-harmony-debug] bundler.source source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" target={s}\n",
-+        .{ path.text, path.pretty, source_dir, @tagName(target) },
++        "[bun-harmony-debug] bundler.{s} source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" namespace=\"{s}\" target={s}\n",
++        .{ label, path.text, path.pretty, source_dir, path.namespace, @tagName(target) },
 +    );
 +}
 +
-+fn harmonyDebugBundlerImport(path: Fs.Path, source_dir: string, import_path: string, import_kind: ImportKind, target: options.Target) void {
-+    if (!harmonyDebugIsEnabled() or !harmonyDebugShouldLogPath(path.text, path.pretty, source_dir) or !isPackagePath(import_path)) return;
++fn harmonyDebugBundlerImport(comptime label: string, path: Fs.Path, source_dir: string, import_path: string, import_kind: ImportKind, target: options.Target) void {
++    if (!harmonyDebugIsEnabled()) return;
++    if (!harmonyDebugShouldLogPath(path.text, path.pretty, source_dir) and !isPackagePath(import_path)) return;
 +
 +    std.debug.print(
-+        "[bun-harmony-debug] bundler.resolve_from_cache source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s}\n",
-+        .{ path.text, path.pretty, source_dir, import_path, @tagName(import_kind), @tagName(target) },
++        "[bun-harmony-debug] bundler.{s} source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s}\n",
++        .{ label, path.text, path.pretty, source_dir, import_path, @tagName(import_kind), @tagName(target) },
++    );
++}
++
++fn harmonyDebugBundlerImportResolved(comptime label: string, path: Fs.Path, source_dir: string, import_path: string, resolved_text: string, resolved_pretty: string, import_kind: ImportKind, target: options.Target) void {
++    if (!harmonyDebugIsEnabled()) return;
++    if (!harmonyDebugShouldLogPath(path.text, path.pretty, source_dir) and
++        !harmonyDebugShouldLogPath(resolved_text, resolved_pretty, source_dir) and
++        !isPackagePath(import_path))
++        return;
++
++    std.debug.print(
++        "[bun-harmony-debug] bundler.{s} source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" resolved=\"{s}\" resolved_pretty=\"{s}\" kind={s} target={s}\n",
++        .{ label, path.text, path.pretty, source_dir, import_path, resolved_text, resolved_pretty, @tagName(import_kind), @tagName(target) },
++    );
++}
++
++fn harmonyDebugBundlerImportError(comptime label: string, path: Fs.Path, source_dir: string, import_path: string, import_kind: ImportKind, target: options.Target, err_name: string) void {
++    if (!harmonyDebugIsEnabled()) return;
++    if (!harmonyDebugShouldLogPath(path.text, path.pretty, source_dir) and !isPackagePath(import_path)) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] bundler.{s} source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s} err={s}\n",
++        .{ label, path.text, path.pretty, source_dir, import_path, @tagName(import_kind), @tagName(target), err_name },
 +    );
 +}
 +
@@ -121,11 +256,134 @@ index d12d0998a2..94bc9b9afc 100644
  // C++ binding for lazy metafile getter (defined in BundlerMetafile.cpp)
  // Uses jsc.conv (SYSV_ABI on Windows x64) for proper calling convention
  // Sets up metafile object with { json: <lazy parsed>, markdown?: string }
-diff --git a/src/resolver/resolver.zig b/src/resolver/resolver.zig
-index 806785b5d4..5c8700dfe6 100644
+--- a/src/bundler/linker.zig
++++ b/src/bundler/linker.zig
+@@ -213,7 +213,9 @@
+         result: *_transpiler.ParseResult,
+         comptime is_bun: bool,
+     ) !bool {
++        harmonyDebugLinker("module_not_found.enter", linker, result, import_record, is_bun);
+         if (import_record.flags.handles_import_errors) {
++            harmonyDebugLinker("module_not_found.handled_by_importer", linker, result, import_record, is_bun);
+             import_record.path.is_disabled = true;
+             return false;
+         }
+@@ -221,6 +223,7 @@
+         if (comptime is_bun) {
+             // make these happen at runtime
+             if (import_record.kind == .require or import_record.kind == .require_resolve or import_record.kind == .dynamic) {
++                harmonyDebugLinker("module_not_found.defer_runtime", linker, result, import_record, is_bun);
+                 return false;
+             }
+         }
+@@ -382,6 +385,7 @@
+     }
+ 
+     pub fn enqueueResolveResult(linker: *ThisLinker, resolve_result: *const Resolver.Result) !bool {
++        harmonyDebugLinkerResolveResult("enqueueResolveResult", linker, resolve_result);
+         const hash_key = linker.resolveResultHashKey(resolve_result);
+ 
+         const get_or_put_entry = try linker.resolve_results.getOrPut(hash_key);
+@@ -396,6 +400,49 @@
+ 
+ const string = []const u8;
+ 
++fn harmonyDebugLinker(comptime label: string, linker: *Linker, result: *const _transpiler.ParseResult, import_record: *const ImportRecord, comptime is_bun: bool) void {
++    if (!harmonyDebugIsEnabled()) return;
++    const source_dir = result.source.path.sourceDir();
++    if (!harmonyDebugShouldLogPath(result.source.path.text, result.source.path.pretty, source_dir) and !Resolver.isPackagePath(import_record.path.text)) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] linker.{s} source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s} is_bun={}\n",
++        .{ label, result.source.path.text, result.source.path.pretty, source_dir, import_record.path.text, @tagName(import_record.kind), @tagName(linker.options.target), is_bun },
++    );
++}
++
++fn harmonyDebugLinkerResolveResult(comptime label: string, linker: *Linker, resolve_result: *const Resolver.Result) void {
++    if (!harmonyDebugIsEnabled()) return;
++    var result_copy = resolve_result.*;
++    const path = result_copy.path() orelse return;
++    if (!harmonyDebugShouldLogPath(path.text, path.pretty, "")) return;
++
++    std.debug.print(
++        "[bun-harmony-debug] linker.{s} resolved=\"{s}\" pretty=\"{s}\" target={s} external={}\n",
++        .{ label, path.text, path.pretty, @tagName(linker.options.target), resolve_result.flags.is_external },
++    );
++}
++
++fn harmonyDebugIsEnabled() bool {
++    return bun.getenvTruthy("BUN_HARMONY_DEBUG_RESOLVER");
++}
++
++fn harmonyDebugIsBunInstallCachePath(path: string) bool {
++    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, bun_install_cache_segment) != null;
++}
++
++fn harmonyDebugIsNodeModulesPath(path: string) bool {
++    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, node_modules_segment) != null or
++        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
++}
++
++fn harmonyDebugShouldLogPath(a: string, b: string, c: string) bool {
++    return harmonyDebugIsBunInstallCachePath(a) or harmonyDebugIsBunInstallCachePath(b) or harmonyDebugIsBunInstallCachePath(c) or
++        harmonyDebugIsNodeModulesPath(a) or harmonyDebugIsNodeModulesPath(b) or harmonyDebugIsNodeModulesPath(c);
++}
++
+ const Fs = @import("../resolver/fs.zig");
+ const Options = @import("./options.zig");
+ const std = @import("std");
+--- a/src/node-fallbacks/build-fallbacks.ts
++++ b/src/node-fallbacks/build-fallbacks.ts
+@@ -7,6 +7,16 @@
+ const builtins = Module.builtinModules;
+ let commands: Promise<void>[] = [];
+ 
++const harmonyDebugResolver = process.env.BUN_HARMONY_DEBUG_RESOLVER;
++const harmonyDebugEnabled = harmonyDebugResolver === "1" || harmonyDebugResolver === "true";
++
++function debugLog(message: string) {
++  if (!harmonyDebugEnabled) return;
++  console.error(`[bun-harmony-debug] build-fallbacks.${message}`);
++}
++
++debugLog(`start cwd="${process.cwd()}" outdir="${outdir}" execPath="${process.execPath}" bunWhich="${Bun.which("bun") ?? ""}" debug="${harmonyDebugResolver ?? ""}" PATH="${process.env.PATH ?? ""}"`);
++
+ let moduleFiles: string[] = [];
+ for (const name of allFiles) {
+   const mod = basename(name, extname(name)).replaceAll(".", "/");
+@@ -31,11 +41,13 @@
+     .join(" ");
+ 
+   // Create the build command with all the specified options
++  debugLog(`child.start file="${name}" mod="${mod}" execPath="${process.execPath}" bunWhich="${Bun.which("bun") ?? ""}"`);
+   const buildCommand =
+     Bun.$`bun build --define=process.env.NODE_DEBUG:"false" --define=process.env.READABLE_STREAM="'enable'" --define=global:globalThis --outdir=${outdir} ${name} --minify-syntax --minify-whitespace --format=${name.includes("stream") ? "cjs" : "esm"} --target=node ${{ raw: externalModules }}`.text();
+ 
+   commands.push(
+     buildCommand.then(async text => {
++      debugLog(`child.ok file="${name}" stdout_len=${text.length}`);
+       // This is very brittle. But that should be okay for our usecase
+       let outfile = (await Bun.file(`${outdir}/${name}`).text())
+         .replaceAll("__require(", "require(")
+@@ -74,6 +86,13 @@
+       }
+ 
+       await Bun.write(`${outdir}/${name}`, outfile);
++    }).catch(error => {
++      debugLog(`child.fail file="${name}" execPath="${process.execPath}" bunWhich="${Bun.which("bun") ?? ""}"`);
++      const stdout = String(error?.stdout ?? "");
++      const stderr = String(error?.stderr ?? "");
++      if (stdout.length > 0) console.error(`[bun-harmony-debug] build-fallbacks.child.stdout file="${name}"\n${stdout}`);
++      if (stderr.length > 0) console.error(`[bun-harmony-debug] build-fallbacks.child.stderr file="${name}"\n${stderr}`);
++      throw error;
+     }),
+   );
+ }
 --- a/src/resolver/resolver.zig
 +++ b/src/resolver/resolver.zig
-@@ -1081,6 +1081,7 @@ pub const Resolver = struct {
+@@ -1081,6 +1081,7 @@
                      const logical_path = r.fs.absBuf(&[_]string{ query.entry.dir, query.entry.base() }, &logical_path_buf);
                      const preserve_logical_path = query.entry.cache.symlink_kind == .hardlink_fallback or
                          shouldPreserveBunInstallCacheSymlink(logical_path, symlink_path, query.entry.cache.kind == .file);
@@ -133,7 +391,7 @@ index 806785b5d4..5c8700dfe6 100644
                      if (symlink_path.len > 0 and !preserve_logical_path) {
                          path.setRealpath(symlink_path);
                          if (!result.file_fd.isValid()) result.file_fd = query.entry.cache.fd;
-@@ -1094,7 +1095,9 @@ pub const Resolver = struct {
+@@ -1094,7 +1095,9 @@
                          var buf: bun.PathBuffer = undefined;
  
                          const out = r.fs.absBuf(&parts, &buf);
@@ -144,7 +402,7 @@ index 806785b5d4..5c8700dfe6 100644
                              continue;
                          }
  
-@@ -4120,6 +4123,7 @@ pub const Resolver = struct {
+@@ -4120,6 +4123,7 @@
  
                          var symlink = entry.symlink(rfs, r.store_fd);
                          const preserve_logical_path = entry.cache.symlink_kind == .hardlink_fallback;
@@ -152,7 +410,7 @@ index 806785b5d4..5c8700dfe6 100644
                          if (symlink.len > 0 and !preserve_logical_path) {
                              if (r.debug_logs) |*logs| {
                                  logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
-@@ -4129,6 +4133,7 @@ pub const Resolver = struct {
+@@ -4129,6 +4133,7 @@
                              // this might leak a little i'm not sure
                              const parts = [_]string{ parent.?.abs_real_path, base };
                              symlink = r.fs.dirname_store.append(string, r.fs.absBuf(&parts, bufs(.dir_info_uncached_filename))) catch unreachable;
@@ -160,7 +418,7 @@ index 806785b5d4..5c8700dfe6 100644
  
                              if (r.debug_logs) |*logs| {
                                  logs.addNote(std.fmt.allocPrint(r.allocator, "Resolved symlink \"{s}\" to \"{s}\"", .{ path, symlink }) catch unreachable);
-@@ -4352,6 +4357,25 @@ fn pathContainsNodeModulesSegment(path: string) bool {
+@@ -4352,6 +4357,25 @@
          std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
  }
  
