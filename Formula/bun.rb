@@ -71,55 +71,12 @@ class Bun < Formula
     # Use native CPU target for HarmonyOS
     inreplace "scripts/build/zig.ts", "-Dcpu=${zigCpu(cfg)}", "-Dcpu=native"
 
-    sign_elf_script = buildpath/"scripts/sign-ohos-elf"
-    sign_elf_script.write <<~SH
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      BTS="#{ohos_sign_tool}"
-
-      is_elf() {
-        [ -f "$1" ] || return 1
-        [ "$(dd if="$1" bs=4 count=1 2>/dev/null)" = "$(printf '\\177ELF')" ]
-      }
-
-      sign_one() {
-        local file="$1"
-        local signed="${file}.signed.$$"
-
-        is_elf "$file" || return 0
-        case "$file" in
-          *.o|*.a|*.rlib) return 0 ;;
-        esac
-
-        if "$BTS" display-sign -inFile "$file" 2>/dev/null | grep -q "code signature is self-sign"; then
-          return 0
-        fi
-
-        rm -f "$signed"
-        "$BTS" sign -selfSign 1 -inFile "$file" -outFile "$signed" >/dev/null
-        chmod 0755 "$signed"
-        mv -f "$signed" "$file"
-      }
-
-      for root in "$@"; do
-        [ -e "$root" ] || continue
-        if [ -f "$root" ]; then
-          sign_one "$root"
-          continue
-        fi
-
-        find "$root" -type f ! -name '*.o' ! -name '*.a' ! -name '*.rlib' -print0 |
-          while IFS= read -r -d '' file; do
-            sign_one "$file"
-          done
-      done
-    SH
-    sign_elf_script.chmod 0755
-
     inreplace "scripts/build/zig.ts",
-              "  // ─── Write stamp ───\n  await writeFile(stampPath, commit + \"\\n\");",
-              "  const ohosSignElf = process.env.BUN_OHOS_SIGN_ELF;\n  if (ohosSignElf) {\n    const proc = Bun.spawn({ cmd: [ohosSignElf, dest], stdout: \"inherit\", stderr: \"inherit\" });\n    const exitCode = await proc.exited;\n    assert(exitCode === 0, `HarmonyOS ELF signing failed for ${dest}`);\n  }\n\n  // ─── Write stamp ───\n  await writeFile(stampPath, commit + \"\\n\");"
+              'import { mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";',
+              'import { chmod, mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";'
+    inreplace "scripts/build/zig.ts",
+              "  assert(existsSync(resolve(dest, \"lib\")), `zig lib/ dir not found`, {\n    hint: \"Archive may be incomplete\",\n  });",
+              "  assert(existsSync(resolve(dest, \"lib\")), `zig lib/ dir not found`, {\n    hint: \"Archive may be incomplete\",\n  });\n\n  const ohosSignTool = process.env.BUN_OHOS_SIGN_TOOL;\n  if (ohosSignTool) {\n    for (const exe of [zigExe, resolve(dest, \"zls\")]) {\n      if (!existsSync(exe)) continue;\n      const signed = `${exe}.signed`;\n      await rm(signed, { force: true });\n      const proc = Bun.spawn({\n        cmd: [ohosSignTool, \"sign\", \"-selfSign\", \"1\", \"-inFile\", exe, \"-outFile\", signed],\n        stdout: \"inherit\",\n        stderr: \"inherit\",\n      });\n      const exitCode = await proc.exited;\n      assert(exitCode === 0 && existsSync(signed), `HarmonyOS ELF signing failed for ${exe}`);\n      await chmod(signed, 0o755);\n      await rename(signed, exe);\n    }\n  }"
 
     # HarmonyOS has llvm-strip but no GNU strip
     inreplace "scripts/build/tools.ts",
@@ -147,11 +104,7 @@ class Bun < Formula
     # HarmonyOS. Retry, but only stamp success after a completed install.
     inreplace "scripts/build/codegen.ts",
               ': `cd $dir && ${bun} install --frozen-lockfile && ${touch} $stamp`,',
-              ': `cd $dir && (${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile) && "' +
-                sign_elf_script.to_s +
-                '" "' +
-                (buildpath/".brew_home/.bun/install/cache").to_s +
-                '" "$dir/node_modules" && ${touch} $stamp`,'
+              ': `cd $dir && (${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile || ${bun} install --frozen-lockfile) && ${touch} $stamp`,'
 
     fetch_webkit
 
@@ -252,7 +205,7 @@ class Bun < Formula
               EOS
 
     resource("bootstrap").stage("bootstrap")
-    ENV["BUN_OHOS_SIGN_ELF"] = sign_elf_script.to_s
+    ENV["BUN_OHOS_SIGN_TOOL"] = ohos_sign_tool.to_s
     ENV["BUN_HARMONY_DEBUG_RESOLVER"] = "1"
     # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
     # picks the right clang (shims resolve to OHOS SDK LLVM15, not llvm@21).
