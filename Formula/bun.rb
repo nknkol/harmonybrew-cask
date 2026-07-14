@@ -21,7 +21,7 @@ class Bun < Formula
   end
 
   depends_on "bash" => :build
-  depends_on "binary-sign-tool" => :build
+  depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "cmake" => :build
   depends_on "libgcc" => :build
   depends_on "llvm@21" => :build
