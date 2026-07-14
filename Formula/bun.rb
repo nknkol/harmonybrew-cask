@@ -158,6 +158,42 @@ class Bun < Formula
               "lang: \"cxx\"",
               "lang: \"c\""
 
+    build_fallbacks = "src/node-fallbacks/build-fallbacks.ts"
+    inreplace build_fallbacks,
+              "let commands: Promise<void>[] = [];\n",
+              <<~'EOS'
+                let commands: Promise<void>[] = [];
+
+                const harmonyDebugResolver = process.env.BUN_HARMONY_DEBUG_RESOLVER;
+                const harmonyDebugEnabled = harmonyDebugResolver === "1" || harmonyDebugResolver === "true";
+
+                function harmonyDebugLog(message: string) {
+                  if (!harmonyDebugEnabled) return;
+                  console.error(`[bun-harmony-debug] build-fallbacks.${message}`);
+                }
+
+                harmonyDebugLog(`start cwd="${process.cwd()}" outdir="${outdir}" execPath="${process.execPath}" bunWhich="${Bun.which("bun") ?? ""}" debug="${harmonyDebugResolver ?? ""}" PATH="${process.env.PATH ?? ""}"`);
+              EOS
+    inreplace build_fallbacks,
+              "  // Create the build command with all the specified options\n  const buildCommand =\n",
+              "  // Create the build command with all the specified options\n  harmonyDebugLog(`child.start file=\"${name}\" mod=\"${mod}\" execPath=\"${process.execPath}\" bunWhich=\"${Bun.which(\"bun\") ?? \"\"}\"`);\n  const buildCommand =\n"
+    inreplace build_fallbacks,
+              "    buildCommand.then(async text => {\n",
+              "    buildCommand.then(async text => {\n      harmonyDebugLog(`child.ok file=\"${name}\" stdout_len=${text.length}`);\n"
+    inreplace build_fallbacks,
+              "      await Bun.write(`${outdir}/${name}`, outfile);\n    }),\n",
+              <<~'EOS'
+                      await Bun.write(`${outdir}/${name}`, outfile);
+                    }).catch(error => {
+                      harmonyDebugLog(`child.fail file="${name}" execPath="${process.execPath}" bunWhich="${Bun.which("bun") ?? ""}"`);
+                      const stdout = String(error?.stdout ?? "");
+                      const stderr = String(error?.stderr ?? "");
+                      if (stdout.length > 0) console.error(`[bun-harmony-debug] build-fallbacks.child.stdout file="${name}"\n${stdout}`);
+                      if (stderr.length > 0) console.error(`[bun-harmony-debug] build-fallbacks.child.stderr file="${name}"\n${stderr}`);
+                      throw error;
+                    }),
+              EOS
+
     resource("bootstrap").stage("bootstrap")
     ENV["BUN_HARMONY_DEBUG_RESOLVER"] = "1"
     # Prepend bootstrap to PATH BEFORE the superenv shims, so bun's configure
