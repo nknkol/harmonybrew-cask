@@ -2,7 +2,51 @@ diff --git a/src/bundler/bundle_v2.zig b/src/bundler/bundle_v2.zig
 index d12d0998a2..94bc9b9afc 100644
 --- a/src/bundler/bundle_v2.zig
 +++ b/src/bundler/bundle_v2.zig
-@@ -2903,6 +2903,7 @@ pub const BundleV2 = struct {
+@@ -548,6 +548,7 @@ pub const BundleV2 = struct {
+         const transpiler = this.transpilerForTarget(target);
+         const source_dir = Fs.PathName.init(import_record.source_file).dirWithTrailingSlash();
+ 
++        harmonyDebugRunResolver("runResolver.start", import_record.source_file, source_dir, "", "", import_record.specifier, import_record.kind, target);
+         // Check the FileMap first for in-memory files
+         if (this.file_map) |file_map| {
+             if (file_map.resolve(import_record.source_file, import_record.specifier)) |_file_map_result| {
+@@ -621,6 +622,18 @@ pub const BundleV2 = struct {
+             var record: *ImportRecord = &this.graph.ast.items(.import_records)[import_record.importer_source_index].slice()[import_record.import_record_index];
+             source = &this.graph.input_files.items(.source)[import_record.importer_source_index];
+             handles_import_errors = record.flags.handles_import_errors;
++            if (source) |failure_source| {
++                harmonyDebugRunResolver(
++                    "runResolver.error",
++                    import_record.source_file,
++                    Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(),
++                    failure_source.path.text,
++                    failure_source.path.pretty,
++                    import_record.specifier,
++                    import_record.kind,
++                    target,
++                );
++            }
+ 
+             // Disable failing packages from being printed.
+             // This may cause broken code to write.
+@@ -695,6 +708,16 @@ pub const BundleV2 = struct {
+         if (resolve_result.flags.is_external) {
+             return;
+         }
++        harmonyDebugRunResolver(
++            "runResolver.resolved",
++            import_record.source_file,
++            Fs.PathName.init(import_record.source_file).dirWithTrailingSlash(),
++            path.text,
++            path.pretty,
++            import_record.specifier,
++            import_record.kind,
++            target,
++        );
+ 
+         if (path.pretty.ptr == path.text.ptr) {
+             // TODO: outbase
+@@ -2903,6 +2926,7 @@ pub const BundleV2 = struct {
          const source = ctx.source;
          const loader = ctx.loader;
          const source_dir = source.path.sourceDir();
@@ -10,7 +54,7 @@ index d12d0998a2..94bc9b9afc 100644
          var estimated_resolve_queue_count: usize = 0;
          for (ctx.import_records.slice()) |*import_record| {
              if (import_record.flags.is_internal) {
-@@ -2932,6 +2933,8 @@ pub const BundleV2 = struct {
+@@ -2932,6 +2956,8 @@ pub const BundleV2 = struct {
                  import_record.original_path = import_record.path.text;
              }
  
@@ -19,12 +63,12 @@ index d12d0998a2..94bc9b9afc 100644
              if (
              // Don't resolve TypeScript types
              import_record.flags.is_unused or
-@@ -4493,6 +4496,33 @@ pub const Graph = @import("./Graph.zig");
+@@ -4493,5 +4519,56 @@ pub const Graph = @import("./Graph.zig");
  
  const string = []const u8;
  
 +fn harmonyDebugBundlerSource(path: Fs.Path, source_dir: string, target: options.Target) void {
-+    if (!harmonyDebugIsEnabled() or !harmonyDebugIsBunInstallCachePath(path.text)) return;
++    if (!harmonyDebugIsEnabled() or !harmonyDebugShouldLogPath(path.text, path.pretty, source_dir)) return;
 +
 +    std.debug.print(
 +        "[bun-harmony-debug] bundler.source source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" target={s}\n",
@@ -33,11 +77,24 @@ index d12d0998a2..94bc9b9afc 100644
 +}
 +
 +fn harmonyDebugBundlerImport(path: Fs.Path, source_dir: string, import_path: string, import_kind: ImportKind, target: options.Target) void {
-+    if (!harmonyDebugIsEnabled() or !harmonyDebugIsBunInstallCachePath(path.text) or !isPackagePath(import_path)) return;
++    if (!harmonyDebugIsEnabled() or !harmonyDebugShouldLogPath(path.text, path.pretty, source_dir) or !isPackagePath(import_path)) return;
 +
 +    std.debug.print(
 +        "[bun-harmony-debug] bundler.resolve_from_cache source=\"{s}\" pretty=\"{s}\" source_dir=\"{s}\" import=\"{s}\" kind={s} target={s}\n",
 +        .{ path.text, path.pretty, source_dir, import_path, @tagName(import_kind), @tagName(target) },
++    );
++}
++
++fn harmonyDebugRunResolver(comptime label: string, source_file: string, source_dir: string, resolved_text: string, resolved_pretty: string, specifier: string, import_kind: ImportKind, target: options.Target) void {
++    if (!harmonyDebugIsEnabled()) return;
++    if (!harmonyDebugShouldLogPath(source_file, source_dir, resolved_text) and
++        !harmonyDebugShouldLogPath(resolved_text, resolved_pretty, source_dir) and
++        !isPackagePath(specifier))
++        return;
++
++    std.debug.print(
++        "[bun-harmony-debug] bundler.{s} source_file=\"{s}\" source_dir=\"{s}\" resolved=\"{s}\" pretty=\"{s}\" import=\"{s}\" kind={s} target={s}\n",
++        .{ label, source_file, source_dir, resolved_text, resolved_pretty, specifier, @tagName(import_kind), @tagName(target) },
 +    );
 +}
 +
@@ -48,6 +105,17 @@ index d12d0998a2..94bc9b9afc 100644
 +fn harmonyDebugIsBunInstallCachePath(path: string) bool {
 +    const bun_install_cache_segment = std.fs.path.sep_str ++ ".bun" ++ std.fs.path.sep_str ++ "install" ++ std.fs.path.sep_str ++ "cache" ++ std.fs.path.sep_str;
 +    return strings.indexOf(path, bun_install_cache_segment) != null;
++}
++
++fn harmonyDebugIsNodeModulesPath(path: string) bool {
++    const node_modules_segment = std.fs.path.sep_str ++ "node_modules" ++ std.fs.path.sep_str;
++    return strings.indexOf(path, node_modules_segment) != null or
++        std.mem.startsWith(u8, path, "node_modules" ++ std.fs.path.sep_str);
++}
++
++fn harmonyDebugShouldLogPath(a: string, b: string, c: string) bool {
++    return harmonyDebugIsBunInstallCachePath(a) or harmonyDebugIsBunInstallCachePath(b) or harmonyDebugIsBunInstallCachePath(c) or
++        harmonyDebugIsNodeModulesPath(a) or harmonyDebugIsNodeModulesPath(b) or harmonyDebugIsNodeModulesPath(c);
 +}
 +
  // C++ binding for lazy metafile getter (defined in BundlerMetafile.cpp)
