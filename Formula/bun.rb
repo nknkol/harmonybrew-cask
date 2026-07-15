@@ -171,6 +171,18 @@ class Bun < Formula
               "#if !OS(ANDROID)\n    pthread_setcancelstate(cs, 0);\n#else",
               "#if !OS(ANDROID) && !defined(__OHOS__)\n    pthread_setcancelstate(cs, 0);\n#else"
 
+    # OHOS exports libc's environ as an unaligned data symbol. Avoid direct
+    # C++ access and use Bun's Zig environment pointer for spawn inheritance.
+    inreplace "src/main.zig",
+              "pub extern \"c\" var _environ: ?*anyopaque;\npub extern \"c\" var environ: ?*anyopaque;\n\npub fn main() void {",
+              "pub extern \"c\" var _environ: ?*anyopaque;\npub extern \"c\" var environ: ?*anyopaque;\n\npub export fn Bun__getEnvironForSpawn() ?*anyopaque {\n    return @ptrCast(std.os.environ.ptr);\n}\n\npub fn main() void {"
+    inreplace "src/jsc/bindings/bun-spawn.cpp",
+              "extern char** environ;",
+              "#if defined(__OHOS__)\nextern \"C\" char** Bun__getEnvironForSpawn();\n#else\nextern char** environ;\n#endif"
+    inreplace "src/jsc/bindings/bun-spawn.cpp",
+              "        if (!envp)\n            envp = environ;",
+              "        if (!envp) {\n#if defined(__OHOS__)\n            envp = Bun__getEnvironForSpawn();\n#else\n            envp = environ;\n#endif\n        }"
+
     # hmdfs does not support hardlink(2). The bootstrap bun patches
 
     # bun install can hit transient tarball integrity/extraction failures on
