@@ -228,6 +228,89 @@ class Bun < Formula
               "const LINUX_NETDB_R = def1([\n  \"HAVE_GETSERVBYPORT_R\", \"HAVE_GETSERVBYNAME_R\",\n]);",
               "const LINUX_NETDB_R = def1([]);"
 
+    # Bun's TypeScript build system does not pass Homebrew LDFLAGS through to
+    # the final bun-profile link. Put non-default Homebrew library paths in
+    # Bun's own system library list.
+    libatomic_a = Formula["libgcc"].opt_lib/"libatomic.a"
+    icu_include = Formula["icu4c@78"].opt_include
+    icu_lib = Formula["icu4c@78"].opt_lib
+    inreplace "scripts/build/flags.ts",
+              "  const includes: string[] = [\n",
+              "  const includes: string[] = [\n    \"#{icu_include}\",\n"
+    inreplace "scripts/build/bun.ts",
+              'libs.push("-l:libatomic.a");',
+              "libs.push(\"#{libatomic_a}\");"
+    inreplace "scripts/build/bun.ts",
+              'libs.push("-licudata", "-licui18n", "-licuuc");',
+              "libs.push(\"-L#{icu_lib}\", \"-licudata\", \"-licui18n\", \"-licuuc\");"
+    inreplace "src/jsc/bindings/workaround-missing-symbols.cpp",
+              "#endif // glibc\n\n// musl",
+              <<~'EOS'
+                #endif // glibc
+
+                #if defined(__OHOS__)
+                #include <errno.h>
+                #include <fcntl.h>
+                #include <math.h>
+                #include <stdarg.h>
+                #include <stdlib.h>
+                #include <sys/random.h>
+                #include <sys/stat.h>
+                #include <sys/syscall.h>
+                #include <unistd.h>
+
+                extern "C" {
+
+                float __wrap_expf(float x) { return expf(x); }
+                float __wrap_powf(float x, float y) { return powf(x, y); }
+                float __wrap_logf(float x) { return logf(x); }
+                float __wrap_log2f(float x) { return log2f(x); }
+                double __wrap_exp(double x) { return exp(x); }
+                double __wrap_exp2(double x) { return exp2(x); }
+                double __wrap_pow(double x, double y) { return pow(x, y); }
+                double __wrap_log(double x) { return log(x); }
+                double __wrap_log2(double x) { return log2(x); }
+
+                [[noreturn]] void __wrap_quick_exit(int code)
+                {
+                    _Exit(code);
+                }
+
+                ssize_t __wrap_getrandom(void* buf, size_t buflen, unsigned int flags)
+                {
+                    return syscall(SYS_getrandom, buf, buflen, flags);
+                }
+
+                int __wrap_fcntl64(int fd, int cmd, ...)
+                {
+                    va_list ap;
+                    va_start(ap, cmd);
+                    void* arg = va_arg(ap, void*);
+                    va_end(ap);
+                    return fcntl(fd, cmd, arg);
+                }
+
+                int lchmod(const char*, mode_t)
+                {
+                    errno = EOPNOTSUPP;
+                    return -1;
+                }
+
+                } // extern "C"
+                #endif
+
+                // musl
+              EOS
+    inreplace "src/jsc/bindings/BunProcess.cpp",
+              "#ifdef __GNU_LIBRARY__\n        header->putDirect(vm, JSC::Identifier::fromString(vm, \"glibcVersionCompiler\"_s), JSC::jsString(vm, makeString(__GLIBC__, '.', __GLIBC_MINOR__)), 0);",
+              "#if defined(__GNU_LIBRARY__) && !defined(__OHOS__)\n        header->putDirect(vm, JSC::Identifier::fromString(vm, \"glibcVersionCompiler\"_s), JSC::jsString(vm, makeString(__GLIBC__, '.', __GLIBC_MINOR__)), 0);"
+    inreplace "src/runtime/node/node_fs.zig",
+              "        if (comptime Environment.isAndroid) {\n            // bionic has no lchmod(); symlink modes are meaningless on Linux",
+              "        if (comptime Environment.isAndroid or Environment.isMusl) {\n            // bionic/musl have no lchmod(); symlink modes are meaningless on Linux"
+    inreplace "src/napi/napi.zig",
+              "} else if (bun.Environment.isMac or bun.Environment.isFreeBSD) struct {\n    // FreeBSD's base libc++ uses the same `std::__1::` inline namespace as Apple's.",
+              "} else if (bun.Environment.isMac or bun.Environment.isFreeBSD or bun.Environment.isMusl) struct {\n    // FreeBSD's base libc++ and Harmonybrew's musl toolchain use the same `std::__1::` inline namespace as Apple's."
+
     # rustc_wrapper uses #!/bin/bash which doesn't exist on HarmonyOS.
     # (May already be fixed from a previous run — only inreplace if needed.)
     wrapper = HOMEBREW_LIBRARY/"Homebrew/shims/shared/rustc_wrapper"
@@ -314,18 +397,15 @@ class Bun < Formula
       inreplace f, "#!/bin/bash", "#!/usr/bin/env bash"
     end
 
-    # Link against libgcc + OHOS SDK static runtime.
-    libgcc_prefix = Formula["libgcc"].opt_prefix
+    # Link against OHOS SDK static runtime.
     ohos_lib = Formula["ohos-sdk"].opt_prefix/"native/llvm/lib/aarch64-linux-ohos"
     ENV.append "LDFLAGS",
-      "-static-libstdc++ -static-libgcc -l:libatomic.a " \
-      "-L#{libgcc_prefix}/lib/gcc/aarch64-unknown-linux-musl/16 " \
-      "-L#{ohos_lib}"
+      "-static-libstdc++ -static-libgcc -L#{ohos_lib}"
 
     # Bypass "bun run" — it walks up directories to find project root,
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
     # Equivalent to: bun run build:release:local --canary=off
-    system "bun", "scripts/build.ts", "--profile=release-local", "--build-dir=build/release-local", "--canary=off"
+    system "bun", "scripts/build.ts", "--profile=release-local", "--build-dir=build/release-local", "--canary=off", "--abi=musl"
     bin.install "build/release-local/bun"
     bin.install_symlink bin/"bun" => "bunx"
 
