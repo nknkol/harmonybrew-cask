@@ -161,6 +161,16 @@ class Bun < Formula
               "#include \"root.h\"",
               "#include <unicode/utf16.h>\n\n#include \"root.h\""
 
+    # OHOS exposes pthread cancellation constants but not
+    # pthread_setcancelstate in the Native SDK sysroot. Match Android's
+    # behavior and skip the cancellation guard around vfork/exec.
+    inreplace "src/jsc/bindings/bun-spawn.cpp",
+              "#if !OS(ANDROID)\n    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);\n#endif",
+              "#if !OS(ANDROID) && !defined(__OHOS__)\n    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);\n#endif"
+    inreplace "src/jsc/bindings/bun-spawn.cpp",
+              "#if !OS(ANDROID)\n    pthread_setcancelstate(cs, 0);\n#else",
+              "#if !OS(ANDROID) && !defined(__OHOS__)\n    pthread_setcancelstate(cs, 0);\n#else"
+
     # hmdfs does not support hardlink(2). The bootstrap bun patches
 
     # bun install can hit transient tarball integrity/extraction failures on
