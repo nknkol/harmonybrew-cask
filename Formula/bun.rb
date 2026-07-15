@@ -155,6 +155,12 @@ class Bun < Formula
               "OVERLAY_CSS: css(",
               "OVERLAY_CSS: await css("
 
+    # WebKit WTF headers use ICU U16_* macros while Bun's PCH includes them
+    # through root.h. Include utf16.h first so the PCH compile sees the macros.
+    inreplace "src/jsc/bindings/root-pch.h",
+              "#include \"root.h\"",
+              "#include <unicode/utf16.h>\n\n#include \"root.h\""
+
     # hmdfs does not support hardlink(2). The bootstrap bun patches
 
     # bun install can hit transient tarball integrity/extraction failures on
