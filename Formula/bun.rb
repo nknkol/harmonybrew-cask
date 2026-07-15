@@ -231,18 +231,55 @@ class Bun < Formula
     # Bun's TypeScript build system does not pass Homebrew LDFLAGS through to
     # the final bun-profile link. Put non-default Homebrew library paths in
     # Bun's own system library list.
+    libgcc_lib = Formula["libgcc"].opt_lib
     libatomic_a = Formula["libgcc"].opt_lib/"libatomic.a"
     icu_include = Formula["icu4c@78"].opt_include
     icu_lib = Formula["icu4c@78"].opt_lib
     inreplace "scripts/build/flags.ts",
               "  const includes: string[] = [\n",
               "  const includes: string[] = [\n    \"#{icu_include}\",\n"
+    inreplace "scripts/build/flags.ts",
+              'flag: ["-lstdc++", "-lgcc"],',
+              "flag: [\"-L#{libgcc_lib}\", \"-lstdc++\", \"-lgcc\"],"
     inreplace "scripts/build/bun.ts",
               'libs.push("-l:libatomic.a");',
               "libs.push(\"#{libatomic_a}\");"
     inreplace "scripts/build/bun.ts",
               'libs.push("-licudata", "-licui18n", "-licuuc");',
               "libs.push(\"-L#{icu_lib}\", \"-licudata\", \"-licui18n\", \"-licuuc\");"
+
+    # OHOS libc exports stdout/stderr as unaligned data symbols. Direct C++
+    # access emits 64-bit absolute-load relocations that lld rejects on aarch64.
+    inreplace "src/jsc/bindings/c-bindings.cpp",
+              "#include \"root.h\"\n#include <cstdio>",
+              "#include \"root.h\"\n#include <cstdio>\n#include <stdio.h>"
+    inreplace "src/jsc/bindings/c-bindings.cpp",
+              "    setvbuf(stdout, nullptr, _IONBF, 0);\n    setvbuf(stderr, nullptr, _IONBF, 0);",
+              "#if !defined(__OHOS__)\n    setvbuf(stdout, nullptr, _IONBF, 0);\n    setvbuf(stderr, nullptr, _IONBF, 0);\n#endif"
+    inreplace "src/jsc/bindings/c-bindings.cpp",
+              "extern \"C\" int ffi_vprintf(const char* fmt, va_list ap)\n{\n    int ret = vfprintf(stderr, fmt, ap);\n    fflush(stderr);\n    return ret;\n}",
+              "extern \"C\" int ffi_vprintf(const char* fmt, va_list ap)\n{\n#if defined(__OHOS__)\n    return vdprintf(STDERR_FILENO, fmt, ap);\n#else\n    int ret = vfprintf(stderr, fmt, ap);\n    fflush(stderr);\n    return ret;\n#endif\n}"
+    inreplace "src/jsc/bindings/c-bindings.cpp",
+              "extern \"C\" int ffi_printf(const char* __restrict fmt, ...)\n{\n    va_list ap;\n    va_start(ap, fmt);\n    int r = vprintf(fmt, ap);\n    va_end(ap);\n    fflush(stdout);\n    return r;\n}",
+              "extern \"C\" int ffi_printf(const char* __restrict fmt, ...)\n{\n    va_list ap;\n    va_start(ap, fmt);\n#if defined(__OHOS__)\n    int r = vdprintf(STDOUT_FILENO, fmt, ap);\n#else\n    int r = vprintf(fmt, ap);\n    fflush(stdout);\n#endif\n    va_end(ap);\n    return r;\n}"
+    inreplace "src/jsc/bindings/BunProcess.cpp",
+              "#include \"v8/node.h\"\n\n// Include the CMake-generated dependency versions header",
+              "#include \"v8/node.h\"\n#include <stdio.h>\n#include <unistd.h>\n\n// Include the CMake-generated dependency versions header"
+    inreplace "src/jsc/bindings/BunProcess.cpp",
+              "    fprintf(stderr, \"process.execve failed with error code %s\\n\", errName ? errName : \"UNKNOWN\");\n    fprintf(stderr, \"SystemError [process.execve]: execve %s: %s\\n\", strerror(savedErrno), execPathUtf8.data());\n    fprintf(stderr, \"    at execve (node:internal/process/per_thread:0:0)\\n\");\n    fflush(stderr);",
+              "#if defined(__OHOS__)\n    dprintf(STDERR_FILENO, \"process.execve failed with error code %s\\n\", errName ? errName : \"UNKNOWN\");\n    dprintf(STDERR_FILENO, \"SystemError [process.execve]: execve %s: %s\\n\", strerror(savedErrno), execPathUtf8.data());\n    dprintf(STDERR_FILENO, \"    at execve (node:internal/process/per_thread:0:0)\\n\");\n#else\n    fprintf(stderr, \"process.execve failed with error code %s\\n\", errName ? errName : \"UNKNOWN\");\n    fprintf(stderr, \"SystemError [process.execve]: execve %s: %s\\n\", strerror(savedErrno), execPathUtf8.data());\n    fprintf(stderr, \"    at execve (node:internal/process/per_thread:0:0)\\n\");\n    fflush(stderr);\n#endif"
+    inreplace "src/jsc/bindings/napi.h",
+              "#include \"root.h\"\n#include <JavaScriptCore/DeferGC.h>",
+              "#include \"root.h\"\n#include <stdio.h>\n#include <unistd.h>\n#include <JavaScriptCore/DeferGC.h>"
+    inreplace "src/jsc/bindings/napi.h",
+              "                fprintf(stderr, \"FATAL ERROR: Finalizer is calling a function that may affect GC state.\\n\");\n                fprintf(stderr, \"The finalizers are run directly from GC and must not affect GC state.\\n\");\n                fprintf(stderr, \"Use `node_api_post_finalizer` from inside of the finalizer to work around this issue.\\n\");\n                fprintf(stderr, \"It schedules the call as a new task in the event loop.\\n\");\n                fflush(stderr);",
+              "#if defined(__OHOS__)\n                dprintf(STDERR_FILENO, \"FATAL ERROR: Finalizer is calling a function that may affect GC state.\\n\");\n                dprintf(STDERR_FILENO, \"The finalizers are run directly from GC and must not affect GC state.\\n\");\n                dprintf(STDERR_FILENO, \"Use `node_api_post_finalizer` from inside of the finalizer to work around this issue.\\n\");\n                dprintf(STDERR_FILENO, \"It schedules the call as a new task in the event loop.\\n\");\n#else\n                fprintf(stderr, \"FATAL ERROR: Finalizer is calling a function that may affect GC state.\\n\");\n                fprintf(stderr, \"The finalizers are run directly from GC and must not affect GC state.\\n\");\n                fprintf(stderr, \"Use `node_api_post_finalizer` from inside of the finalizer to work around this issue.\\n\");\n                fprintf(stderr, \"It schedules the call as a new task in the event loop.\\n\");\n                fflush(stderr);\n#endif"
+    inreplace "src/jsc/bindings/node/http/llhttp/api.c",
+              "#include <stdio.h>\n#include <string.h>",
+              "#include <stdio.h>\n#include <string.h>\n#include <unistd.h>"
+    inreplace "src/jsc/bindings/node/http/llhttp/api.c",
+              "    if (p == endp) {\n        fprintf(stderr, \"p=%p type=%d flags=%02x next=null debug=%s\\n\", s, s->type,\n            s->flags, msg);\n    } else {\n        fprintf(stderr, \"p=%p type=%d flags=%02x next=%02x   debug=%s\\n\", s,\n            s->type, s->flags, *p, msg);\n    }",
+              "    if (p == endp) {\n#if defined(__OHOS__)\n        dprintf(STDERR_FILENO, \"p=%p type=%d flags=%02x next=null debug=%s\\n\", s, s->type,\n            s->flags, msg);\n#else\n        fprintf(stderr, \"p=%p type=%d flags=%02x next=null debug=%s\\n\", s, s->type,\n            s->flags, msg);\n#endif\n    } else {\n#if defined(__OHOS__)\n        dprintf(STDERR_FILENO, \"p=%p type=%d flags=%02x next=%02x   debug=%s\\n\", s,\n            s->type, s->flags, *p, msg);\n#else\n        fprintf(stderr, \"p=%p type=%d flags=%02x next=%02x   debug=%s\\n\", s,\n            s->type, s->flags, *p, msg);\n#endif\n    }"
     inreplace "src/jsc/bindings/workaround-missing-symbols.cpp",
               "#endif // glibc\n\n// musl",
               <<~'EOS'
