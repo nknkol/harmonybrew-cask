@@ -38,8 +38,17 @@ class Bun < Formula
   patch do
     # HarmonyOS platform/filesystem fixes for the bootstrap bun.
     file "patches/bun/0001-fix-platform-syscalls.patch"
+  end
+
+  patch do
     file "patches/bun/0002-fix-resolver-traversal.patch"
+  end
+
+  patch do
     file "patches/bun/0003-fix-hmdfs-filesystem.patch"
+  end
+
+  patch do
     file "patches/bun/0004-fix-harmonyos-path-permissions.patch"
   end
 
