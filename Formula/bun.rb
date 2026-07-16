@@ -71,8 +71,48 @@ class Bun < Formula
     system "git", "clone", *clone_args, "https://github.com/oven-sh/WebKit.git", "vendor/WebKit"
   end
 
+  def sign_tool
+    Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+  end
+
+  def llvm_objcopy
+    Formula["llvm@21"].opt_bin/"llvm-objcopy"
+  end
+
+  def elf_file?(path)
+    return false unless path.file?
+
+    path.open("rb") { |f| f.read(4) } == "\x7fELF".b
+  rescue
+    false
+  end
+
+  def sign_elf!(path)
+    return unless elf_file?(path)
+
+    unsigned = path.sub_ext("#{path.extname}.unsigned")
+    signed = path.sub_ext("#{path.extname}.signed")
+
+    rm_f unsigned
+    rm_f signed
+    chmod 0755, path
+
+    if quiet_system llvm_objcopy, "--remove-section=.codesign", path, unsigned
+      chmod 0755, unsigned
+    else
+      cp path, unsigned
+    end
+
+    system sign_tool, "sign", "-selfSign", "1", "-inFile", unsigned, "-outFile", signed
+    chmod 0755, signed
+    mv signed, path, force: true
+  ensure
+    rm_f unsigned if defined?(unsigned) && unsigned
+    rm_f signed if defined?(signed) && signed
+  end
+
   def install
-    ohos_sign_tool = Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+    ohos_sign_tool = sign_tool
 
     # Avoid `rustup` dependency by removing usage of nightly Rust features
     inreplace "scripts/build/deps/lolhtml.ts", "if (cfg.release && canBuildStdImmediateAbort)", "if (false)"
@@ -461,6 +501,7 @@ class Bun < Formula
     # hitting /storage/Users/ which has no read permission on HarmonyOS.
     # Equivalent to: bun run build:release:local --canary=off
     system "bun", "scripts/build.ts", "--profile=release-local", "--build-dir=build/release-local", "--canary=off", "--abi=musl"
+    sign_elf! buildpath/"build/release-local/bun"
     bin.install "build/release-local/bun"
     bin.install_symlink bin/"bun" => "bunx"
 
@@ -473,7 +514,7 @@ class Bun < Formula
       prefix.install bin/"bun"
       Utils::Gzip.compress(prefix/"bun")
       (bin/"bun").write <<~SHELL
-        #!/bin/bash
+        #!/usr/bin/env bash
         echo 'ERROR: Need to run `brew postinstall #{name}`' >&2
         exit 1
       SHELL
@@ -484,8 +525,10 @@ class Bun < Formula
     if (prefix/"bun.gz").exist?
       system "gunzip", prefix/"bun.gz"
       (prefix/"bun").chmod 0755
+      sign_elf! prefix/"bun"
       bin.install prefix/"bun"
     end
+    sign_elf! bin/"bun"
   end
 
   test do
