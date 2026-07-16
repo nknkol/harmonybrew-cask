@@ -258,7 +258,7 @@ class Bun < Formula
               "libs.push(\"#{libatomic_a}\");"
     inreplace "scripts/build/bun.ts",
               'libs.push("-licudata", "-licui18n", "-licuuc");',
-              "libs.push(\"-L#{icu_lib}\", \"-licudata\", \"-licui18n\", \"-licuuc\");"
+              "libs.push(\"-L#{icu_lib}\", \"-Wl,-rpath,#{icu_lib}\", \"-licudata\", \"-licui18n\", \"-licuuc\");"
 
     # OHOS libc exports stdout/stderr as unaligned data symbols. Direct C++
     # access emits 64-bit absolute-load relocations that lld rejects on aarch64.
