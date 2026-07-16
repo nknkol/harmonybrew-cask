@@ -275,9 +275,6 @@ class Bun < Formula
               "#include \"root.h\"\n#include <cstdio>",
               "#include \"root.h\"\n#include <cstdio>\n#include <stdio.h>"
     inreplace "src/jsc/bindings/c-bindings.cpp",
-              "    setvbuf(stdout, nullptr, _IONBF, 0);\n    setvbuf(stderr, nullptr, _IONBF, 0);",
-              "#if !defined(__OHOS__)\n    setvbuf(stdout, nullptr, _IONBF, 0);\n    setvbuf(stderr, nullptr, _IONBF, 0);\n#endif"
-    inreplace "src/jsc/bindings/c-bindings.cpp",
               "extern \"C\" int ffi_vprintf(const char* fmt, va_list ap)\n{\n    int ret = vfprintf(stderr, fmt, ap);\n    fflush(stderr);\n    return ret;\n}",
               "extern \"C\" int ffi_vprintf(const char* fmt, va_list ap)\n{\n#if defined(__OHOS__)\n    return vdprintf(STDERR_FILENO, fmt, ap);\n#else\n    int ret = vfprintf(stderr, fmt, ap);\n    fflush(stderr);\n    return ret;\n#endif\n}"
     inreplace "src/jsc/bindings/c-bindings.cpp",
