@@ -7,7 +7,7 @@ class Adbcli < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fadbcli"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "61ca811957c776b2ff6582f50014253a3d8b4d67cd86591fd67e18433283decf"
+      sha256 cellar: :any_skip_relocation, arm64_ohos: "2064ac0007bf38264bf43a872cc1010f6c2560b06413c27be9fe8420afc5f8c1"
   end
 
   skip_clean "bin/adbcli"
