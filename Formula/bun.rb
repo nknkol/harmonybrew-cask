@@ -103,6 +103,8 @@ class Bun < Formula
       cp path, unsigned
     end
 
+    # TODO: teach `bun build --compile` to regenerate OHOS .codesign after
+    # it rewrites ELF output in src/exe_format/elf.zig.
     system sign_tool, "sign", "-selfSign", "1", "-inFile", unsigned, "-outFile", signed
     chmod 0755, signed
     mv signed, path, force: true
