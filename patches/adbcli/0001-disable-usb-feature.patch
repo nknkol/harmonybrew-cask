@@ -1,0 +1,186 @@
+diff --git a/adb_cli/Cargo.toml b/adb_cli/Cargo.toml
+index d8af3ff..1c30da4 100644
+--- a/adb_cli/Cargo.toml
++++ b/adb_cli/Cargo.toml
+@@ -13,11 +13,16 @@ version.workspace = true
+ [lints]
+ workspace = true
+ 
++[features]
++default = ["mdns"]
++mdns = ["adb_client/mdns"]
++usb = ["adb_client/usb"]
++
+ [dependencies]
+-adb_client = { version = "^3.2.1", features = ["mdns", "usb"] }
++adb_client = { version = "^3.2.2" }
+ clap = { version = "4.6.1", features = ["derive"] }
+ env_logger = { version = "0.11.10" }
+-log = { version = "0.4.30" }
++log = { version = "0.4.32" }
+ tabwriter = { version = "1.4.1" }
+ 
+ [target.'cfg(unix)'.dependencies]
+diff --git a/adb_cli/src/main.rs b/adb_cli/src/main.rs
+index fd3ae5b..5325744 100644
+--- a/adb_cli/src/main.rs
++++ b/adb_cli/src/main.rs
+@@ -8,10 +8,12 @@ mod models;
+ mod utils;
+ 
+ use adb_client::ADBDeviceExt;
++#[cfg(feature = "mdns")]
+ use adb_client::mdns::MDNSDiscoveryService;
+ use adb_client::server::ADBServer;
+ use adb_client::server_device::ADBServerDevice;
+ use adb_client::tcp::ADBTcpDevice;
++#[cfg(feature = "usb")]
+ use adb_client::usb::{ADBDeviceInfo, ADBUSBDevice, find_all_connected_adb_devices};
+ 
+ #[cfg(any(target_os = "linux", target_os = "macos"))]
+@@ -22,13 +24,18 @@ use handlers::{handle_emulator_commands, handle_host_commands, handle_local_comm
+ use models::{DeviceCommands, LocalCommand, MainCommand, Opts};
+ use std::collections::HashMap;
+ use std::fs::File;
+-use std::io::{Write, stdout};
++use std::io::Write;
++#[cfg(feature = "usb")]
++use std::io::stdout;
+ use std::path::Path;
+ use std::process::ExitCode;
++#[cfg(feature = "usb")]
+ use tabwriter::TabWriter;
+ use utils::setup_logger;
+ 
+-use crate::models::{ADBCliError, ADBCliResult};
++#[cfg(feature = "usb")]
++use crate::models::ADBCliError;
++use crate::models::ADBCliResult;
+ 
+ fn run_command(mut device: Box<dyn ADBDeviceExt>, command: DeviceCommands) -> ADBCliResult<()> {
+     match command {
+@@ -154,6 +161,7 @@ fn inner_main() -> ADBCliResult<()> {
+                 }
+             }
+         }
++        #[cfg(feature = "usb")]
+         MainCommand::Usb(usb_command) => {
+             if usb_command.list_devices {
+                 let devices = find_all_connected_adb_devices()?;
+@@ -212,6 +220,7 @@ fn inner_main() -> ADBCliResult<()> {
+             };
+             (device.boxed(), tcp_command.commands)
+         }
++        #[cfg(feature = "mdns")]
+         MainCommand::Mdns => {
+             let mut service = MDNSDiscoveryService::new()?;
+ 
+@@ -230,10 +239,6 @@ fn inner_main() -> ADBCliResult<()> {
+ 
+             return Ok(service.shutdown()?);
+         }
+-        MainCommand::Version => {
+-            println!("{} {}", env!("CARGO_PKG_NAME"), utils::long_version());
+-            return Ok(());
+-        }
+     };
+ 
+     run_command(device, commands)?;
+diff --git a/adb_cli/src/models/adb_cli_error.rs b/adb_cli/src/models/adb_cli_error.rs
+index 8af93ea..2153180 100644
+--- a/adb_cli/src/models/adb_cli_error.rs
++++ b/adb_cli/src/models/adb_cli_error.rs
+@@ -37,6 +37,10 @@ impl From<adb_client::RustADBError> for ADBCliError {
+         let value = Box::new(value);
+ 
+         match value.as_ref() {
++            #[cfg(feature = "usb")]
++            RustADBError::UsbError(_) => Self::MayNeedAnIssue(value),
++            #[cfg(feature = "mdns")]
++            RustADBError::MDNSError(_) => Self::MayNeedAnIssue(value),
+             RustADBError::RegexParsingError
+             | RustADBError::WrongResponseReceived(_, _)
+             | RustADBError::FramebufferImageError(_)
+@@ -53,7 +57,6 @@ impl From<adb_client::RustADBError> for ADBCliError {
+             | RustADBError::ConversionError
+             | RustADBError::IntegerConversionError(_)
+             | RustADBError::NoHomeDirectory
+-            | RustADBError::UsbError(_)
+             | RustADBError::InvalidIntegrity(_, _)
+             | RustADBError::Base64DecodeError(_)
+             | RustADBError::Base64EncodeError(_)
+@@ -65,7 +68,6 @@ impl From<adb_client::RustADBError> for ADBCliError {
+             | RustADBError::PemCertError(_)
+             | RustADBError::PoisonError
+             | RustADBError::UpgradeError(_)
+-            | RustADBError::MDNSError(_)
+             | RustADBError::SendError
+             | RustADBError::UnknownFileMode(_)
+             | RustADBError::UnknownTransport(_)
+@@ -80,8 +82,9 @@ impl From<adb_client::RustADBError> for ADBCliError {
+             | RustADBError::ADBShellNotSupported
+             | RustADBError::USBDeviceNotFound(_, _)
+             | RustADBError::WrongFileExtension(_)
+-            | RustADBError::AddrParseError(_)
+-            | RustADBError::DeviceBusy => Self::Standard(value),
++            | RustADBError::AddrParseError(_) => Self::Standard(value),
++            #[cfg(feature = "usb")]
++            RustADBError::DeviceBusy => Self::Standard(value),
+         }
+     }
+ }
+diff --git a/adb_cli/src/models/mod.rs b/adb_cli/src/models/mod.rs
+index d64d020..e92977b 100644
+--- a/adb_cli/src/models/mod.rs
++++ b/adb_cli/src/models/mod.rs
+@@ -6,6 +6,7 @@ mod local;
+ mod opts;
+ mod reboot_type;
+ mod tcp;
++#[cfg(feature = "usb")]
+ mod usb;
+ 
+ pub use adb_cli_error::{ADBCliError, ADBCliResult};
+@@ -16,4 +17,5 @@ pub use local::{ForwardCommand, LocalCommand, LocalDeviceCommand, ReverseCommand
+ pub use opts::{MainCommand, Opts, ServerCommand};
+ pub use reboot_type::RebootTypeCommand;
+ pub use tcp::TcpCommand;
++#[cfg(feature = "usb")]
+ pub use usb::UsbCommand;
+diff --git a/adb_cli/src/models/opts.rs b/adb_cli/src/models/opts.rs
+index 5201fa3..b27b4fc 100644
+--- a/adb_cli/src/models/opts.rs
++++ b/adb_cli/src/models/opts.rs
+@@ -2,12 +2,12 @@ use std::net::SocketAddrV4;
+ 
+ use clap::{Parser, Subcommand};
+ 
+-use crate::utils;
+-
+-use super::{EmulatorCommand, HostCommand, LocalCommand, TcpCommand, UsbCommand};
++#[cfg(feature = "usb")]
++use super::UsbCommand;
++use super::{EmulatorCommand, HostCommand, LocalCommand, TcpCommand};
+ 
+ #[derive(Debug, Parser)]
+-#[clap(about, long_version = utils::long_version(), author)]
++#[clap(about, version)]
+ pub struct Opts {
+     #[clap(long = "debug")]
+     pub debug: bool,
+@@ -24,13 +24,13 @@ pub enum MainCommand {
+     /// Emulator related commands
+     Emu(EmulatorCommand),
+     /// USB device related commands
++    #[cfg(feature = "usb")]
+     Usb(UsbCommand),
+     /// TCP device related commands
+     Tcp(TcpCommand),
+     /// MDNS discovery related commands
++    #[cfg(feature = "mdns")]
+     Mdns,
+-    /// Display various version information
+-    Version,
+ }
+ 
+ #[derive(Debug, Parser)]
