@@ -1,6 +1,7 @@
 class Reasonix < Formula
   desc "DeepSeek-native AI coding agent for your terminal"
   homepage "https://github.com/esengine/DeepSeek-Reasonix"
+  version "1.17.14"
   url "https://github.com/esengine/DeepSeek-Reasonix/releases/download/v1.17.14/reasonix-linux-arm64.tar.gz"
   sha256 "971b08ec51b9d1e61187fdaca4dc3cab1b5cd343972d7283a9bfee14e78c95d8"
   license "MIT"
