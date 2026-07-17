@@ -59,6 +59,7 @@ fi
 if [ -d "$WORKSPACE/Formula" ]; then
   log_step "Tap $TAP_NAME from local workspace"
   brew tap --force "$TAP_NAME" "$WORKSPACE"
+  brew trust "$TAP_NAME"
 else
   echo "ERROR: WORKSPACE/Formula not found — mount your repo to $WORKSPACE" >&2
   exit 1
