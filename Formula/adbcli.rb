@@ -13,7 +13,7 @@ class Adbcli < Formula
   skip_clean "bin/adbcli"
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
-  depends_on "llvm@21" => :build
+  depends_on "ohos-sdk" => :build
   depends_on "rust" => :build
 
   patch do
@@ -25,7 +25,7 @@ class Adbcli < Formula
   end
 
   def llvm_objcopy
-    Formula["llvm@21"].opt_bin/"llvm-objcopy"
+    Formula["ohos-sdk"].opt_prefix/"native/llvm/bin/llvm-objcopy"
   end
 
   def sign_elf!(path)
