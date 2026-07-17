@@ -8,6 +8,7 @@ class Reasonix < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Freasonix"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "a1c98356d3197e6044f27059098b9e890b3a5a0eb0ec55116647b6b80e86b89e"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
