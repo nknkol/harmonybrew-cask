@@ -240,7 +240,7 @@ class Libgcc < Formula
       ]
 
       # Step 1 · 构建编译器本体（cc1 / cc1plus / xgcc，不安装）
-      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-gcc"
+      system "gmake", "-j4", *make_args, "all-gcc"
 
       # xgcc 的 startfile 查找（gcc.cc:8652）只搜 /usr/lib/，不走
       # multiarch 子目录。libatomic 的 libtool 又过滤 -B。利用
@@ -250,9 +250,9 @@ class Libgcc < Formula
       end
 
       # Step 2 · 构建目标运行时库
-      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libgcc"
-      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libstdc++-v3"
-      system "gmake", "-j#{ENV.make_jobs}", *make_args, "all-target-libatomic"
+      system "gmake", "-j4", *make_args, "all-target-libgcc"
+      system "gmake", "-j4", *make_args, "all-target-libstdc++-v3"
+      system "gmake", "-j4", *make_args, "all-target-libatomic"
 
       # Step 3 · 仅安装目标运行时库（编译器二进制不入包）
       system "gmake", *make_args, "install-target-libgcc",
