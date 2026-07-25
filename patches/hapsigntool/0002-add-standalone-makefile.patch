@@ -1,6 +1,6 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 01:33:59.037346563 +0800
++++ a_build/Makefile	2026-07-26 01:37:29.161344063 +0800
 @@ -0,0 +1,186 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
@@ -180,27 +180,17 @@ diff -ruN a/Makefile a_build/Makefile
 +	@echo "[LD]  $@"
 +	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(OPENSSL_LIBS) $(LDFLAGS) -o $@
 +
-+# Build OpenSSL 1.1.1 static libraries
++# Build OpenSSL 1.1.1 static libraries (header-only, system libs not used)
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
 +	@echo "[BUILD] OpenSSL 1.1.1"
-+	cd $(T)/openssl && ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl --openssldir=$(T)/openssl 2>&1 | tail -1
-+	$(MAKE) -C $(T)/openssl -j4 build_sw 2>&1 | tail -1
++	cd $(T)/openssl && ./Configure linux-aarch64 no-shared no-tests no-apps --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
++	$(MAKE) -C $(T)/openssl -j4 2>&1 | tail -2
 +
 +clean:
 +	rm -rf $(BLD)
-diff -ruN a/cmd/src/cmd_util.cpp a_build/cmd/src/cmd_util.cpp
---- a/cmd/src/cmd_util.cpp	2026-07-26 01:33:58.857352032 +0800
-+++ a_build/cmd/src/cmd_util.cpp	2026-07-26 01:33:58.965347032 +0800
-@@ -533,4 +533,4 @@
-     return false;
- }
- } // namespace SignatureTools
--} // namespace OHOS
-\ No newline at end of file
-+} // namespace OHOS
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 01:33:59.037346563 +0800
++++ a_build/compat.h	2026-07-26 01:37:29.161344063 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
