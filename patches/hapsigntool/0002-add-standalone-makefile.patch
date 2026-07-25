@@ -1,6 +1,6 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 02:12:00.801354063 +0800
++++ a_build/Makefile	2026-07-26 02:21:52.861352188 +0800
 @@ -0,0 +1,185 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
@@ -182,14 +182,14 @@ diff -ruN a/Makefile a_build/Makefile
 +# Build OpenSSL 1.1.1 static libraries (header-only, system libs not used)
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
 +	@echo "[BUILD] OpenSSL 1.1.1"
-+	cd $(T)/openssl && ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
-+	$(MAKE) -C $(T)/openssl -j4 build_libs
++	cd $(T)/openssl && AR=llvm-ar ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
++	$(MAKE) -C $(T)/openssl -j4
 +
 +clean:
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 02:12:00.801354063 +0800
++++ a_build/compat.h	2026-07-26 02:21:52.861352188 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
