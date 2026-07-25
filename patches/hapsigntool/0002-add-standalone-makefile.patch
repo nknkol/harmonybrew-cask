@@ -1,12 +1,11 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 00:33:30.289343438 +0800
-@@ -0,0 +1,180 @@
++++ a_build/Makefile	2026-07-26 01:33:59.037346563 +0800
+@@ -0,0 +1,186 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
-+# Usage: make CXX=clang++ OPENSSL_PREFIX=/path/to/openssl ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
++# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
 +
 +PROJ ?= .
-+OPENSSL_PREFIX ?= /opt/openssl
 +ZLIB_PREFIX ?= /opt/zlib
 +
 +CXX ?= clang++
@@ -39,7 +38,7 @@ diff -ruN a/Makefile a_build/Makefile
 +  -I$(T)/third_party_zlib/contrib/minizip \
 +  -I$(T)/third_party_bounds_checking_function/include \
 +  -I$(T)/third_party_bounds_checking_function/src \
-+  -I$(OPENSSL_PREFIX)/include \
++  -I$(T)/openssl/include \
 +  -I$(ZLIB_PREFIX)/include
 +
 +SRCS := \
@@ -156,7 +155,8 @@ diff -ruN a/Makefile a_build/Makefile
 +MINIZIP_OBJS := $(patsubst %.c, $(BLD)/%.o, $(MINIZIP_SRCS))
 +SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
 +
-+LDFLAGS := -L$(OPENSSL_PREFIX)/lib -L$(ZLIB_PREFIX)/lib -lssl -lcrypto -lz
++OPENSSL_LIBS := $(T)/openssl/libssl.a $(T)/openssl/libcrypto.a
++LDFLAGS := -L$(ZLIB_PREFIX)/lib -lz -ldl -lpthread
 +
 +TARGET := $(BLD)/hap-sign-tool
 +
@@ -176,15 +176,21 @@ diff -ruN a/Makefile a_build/Makefile
 +	@echo "[CC]  $<"
 +	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 +
-+$(TARGET): $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS)
++$(TARGET): $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(OPENSSL_LIBS)
 +	@echo "[LD]  $@"
-+	@$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
++	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(OPENSSL_LIBS) $(LDFLAGS) -o $@
++
++# Build OpenSSL 1.1.1 static libraries
++$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
++	@echo "[BUILD] OpenSSL 1.1.1"
++	cd $(T)/openssl && ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl --openssldir=$(T)/openssl 2>&1 | tail -1
++	$(MAKE) -C $(T)/openssl -j4 build_sw 2>&1 | tail -1
 +
 +clean:
 +	rm -rf $(BLD)
 diff -ruN a/cmd/src/cmd_util.cpp a_build/cmd/src/cmd_util.cpp
---- a/cmd/src/cmd_util.cpp	2026-07-26 00:33:30.001345938 +0800
-+++ a_build/cmd/src/cmd_util.cpp	2026-07-26 00:33:30.117344845 +0800
+--- a/cmd/src/cmd_util.cpp	2026-07-26 01:33:58.857352032 +0800
++++ a_build/cmd/src/cmd_util.cpp	2026-07-26 01:33:58.965347032 +0800
 @@ -533,4 +533,4 @@
      return false;
  }
@@ -194,7 +200,7 @@ diff -ruN a/cmd/src/cmd_util.cpp a_build/cmd/src/cmd_util.cpp
 +} // namespace OHOS
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 00:33:30.289343438 +0800
++++ a_build/compat.h	2026-07-26 01:33:59.037346563 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
@@ -220,19 +226,3 @@ diff -ruN a/compat.h a_build/compat.h
 +#include <cmath>
 +
 +#endif
-diff -ruN a/main.cpp a_build/main.cpp
---- a/main.cpp	2026-07-26 00:33:29.997350001 +0800
-+++ a_build/main.cpp	2026-07-26 00:33:30.289343438 +0800
-@@ -13,10 +13,12 @@
-  * limitations under the License.
-  */
- #include "params_run_tool.h"
-+#include <openssl/provider.h>
- 
- using namespace OHOS::SignatureTools;
- int main(int argc, char** argv)
- {
-+    OSSL_PROVIDER_load(NULL, "legacy");
-     // prepare modes vector by macro DEFINE_MODE which subscribe UPDATER_MAIN_PRE_EVENT event
-     bool isSuccess = ParamsRunTool::ProcessCmd(argv, argc);
-     if (isSuccess) {
