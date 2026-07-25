@@ -37,7 +37,7 @@ class Hapsigntool < Formula
     # Patch 1 — HNP code-signing (6 files, uses upstream cJSON)
     patch1 = tap_root/"patches/hapsigntool/0001-add-hnp-signing.patch"
     cd buildpath do
-      system "patch -f -p1 -i #{patch1} || [ $? -le 1 ]"
+      system "patch -f -p0 -i #{patch1} || [ $? -le 1 ]"
     end
 
     # Patch 2 — standalone Makefile + compat.h
