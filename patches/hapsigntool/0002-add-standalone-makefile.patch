@@ -1,6 +1,6 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 02:21:52.861352188 +0800
++++ a_build/Makefile	2026-07-26 02:25:47.517346407 +0800
 @@ -0,0 +1,185 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
@@ -177,7 +177,7 @@ diff -ruN a/Makefile a_build/Makefile
 +
 +$(TARGET): $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(OPENSSL_LIBS)
 +	@echo "[LD]  $@"
-+	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(LDFLAGS) $(OPENSSL_LIBS) -o $@
++	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(LDFLAGS) -Wl,--whole-archive $(OPENSSL_LIBS) -Wl,--no-whole-archive -o $@
 +
 +# Build OpenSSL 1.1.1 static libraries (header-only, system libs not used)
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
@@ -189,8 +189,8 @@ diff -ruN a/Makefile a_build/Makefile
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 02:21:52.861352188 +0800
-@@ -0,0 +1,24 @@
++++ a_build/compat.h	2026-07-26 02:25:47.517346407 +0800
+@@ -0,0 +1,31 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
 +#ifndef STANDALONE_COMPAT_H
@@ -213,5 +213,12 @@ diff -ruN a/compat.h a_build/compat.h
 +#include <cstring>
 +#include <cstdlib>
 +#include <cmath>
++
++// OpenSSL 1.1.1 compatibility: ERR_set_error was added in OpenSSL 3.0
++#include <openssl/err.h>
++#ifndef ERR_set_error
++#define ERR_set_error(lib, reason, fmt, ...) \
++    ERR_put_error((lib), 0, (reason), __FILE__, __LINE__)
++#endif
 +
 +#endif
