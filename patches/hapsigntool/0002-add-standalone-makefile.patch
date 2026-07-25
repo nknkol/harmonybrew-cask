@@ -1,7 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 01:37:29.161344063 +0800
-@@ -0,0 +1,186 @@
++++ a_build/Makefile	2026-07-26 01:38:19.509353438 +0800
+@@ -0,0 +1,185 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
 +
@@ -9,7 +9,7 @@ diff -ruN a/Makefile a_build/Makefile
 +ZLIB_PREFIX ?= /opt/zlib
 +
 +CXX ?= clang++
-+CXXFLAGS ?= -std=c++17 -fno-rtti -Wall -include $(PROJ)/compat.h
++CXXFLAGS ?= -std=c++17 -fno-rtti -Wall -I$(PROJ)/third_party/openssl/include -include $(PROJ)/compat.h
 +
 +H := $(PROJ)/hapsigntool_cpp
 +T := $(PROJ)/third_party
@@ -38,7 +38,6 @@ diff -ruN a/Makefile a_build/Makefile
 +  -I$(T)/third_party_zlib/contrib/minizip \
 +  -I$(T)/third_party_bounds_checking_function/include \
 +  -I$(T)/third_party_bounds_checking_function/src \
-+  -I$(T)/openssl/include \
 +  -I$(ZLIB_PREFIX)/include
 +
 +SRCS := \
@@ -190,7 +189,7 @@ diff -ruN a/Makefile a_build/Makefile
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 01:37:29.161344063 +0800
++++ a_build/compat.h	2026-07-26 01:38:19.509353438 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
