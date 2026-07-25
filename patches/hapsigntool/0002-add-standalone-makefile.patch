@@ -1,6 +1,6 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-25 22:05:00.515478749 +0800
++++ a_build/Makefile	2026-07-26 00:33:30.289343438 +0800
 @@ -0,0 +1,180 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ OPENSSL_PREFIX=/path/to/openssl ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
@@ -182,9 +182,19 @@ diff -ruN a/Makefile a_build/Makefile
 +
 +clean:
 +	rm -rf $(BLD)
+diff -ruN a/cmd/src/cmd_util.cpp a_build/cmd/src/cmd_util.cpp
+--- a/cmd/src/cmd_util.cpp	2026-07-26 00:33:30.001345938 +0800
++++ a_build/cmd/src/cmd_util.cpp	2026-07-26 00:33:30.117344845 +0800
+@@ -533,4 +533,4 @@
+     return false;
+ }
+ } // namespace SignatureTools
+-} // namespace OHOS
+\ No newline at end of file
++} // namespace OHOS
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-25 22:05:00.511469218 +0800
++++ a_build/compat.h	2026-07-26 00:33:30.289343438 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
@@ -210,3 +220,19 @@ diff -ruN a/compat.h a_build/compat.h
 +#include <cmath>
 +
 +#endif
+diff -ruN a/main.cpp a_build/main.cpp
+--- a/main.cpp	2026-07-26 00:33:29.997350001 +0800
++++ a_build/main.cpp	2026-07-26 00:33:30.289343438 +0800
+@@ -13,10 +13,12 @@
+  * limitations under the License.
+  */
+ #include "params_run_tool.h"
++#include <openssl/provider.h>
+ 
+ using namespace OHOS::SignatureTools;
+ int main(int argc, char** argv)
+ {
++    OSSL_PROVIDER_load(NULL, "legacy");
+     // prepare modes vector by macro DEFINE_MODE which subscribe UPDATER_MAIN_PRE_EVENT event
+     bool isSuccess = ParamsRunTool::ProcessCmd(argv, argc);
+     if (isSuccess) {
