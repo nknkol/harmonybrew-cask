@@ -9,6 +9,7 @@ class Hapsigntool < Formula
   depends_on "zlib-ng-compat"
   depends_on "make" => :build
   depends_on "gpatch" => :build
+  depends_on "perl" => :build
 
   # OpenSSL 1.1.1w — statically linked to avoid OpenSSL 3 PKCS7_verify incompatibility
   resource "openssl" do
