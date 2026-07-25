@@ -1,0 +1,212 @@
+diff -ruN a/Makefile a_build/Makefile
+--- a/Makefile	1970-01-01 08:00:00.000000000 +0800
++++ a_build/Makefile	2026-07-25 21:53:09.199480624 +0800
+@@ -0,0 +1,180 @@
++# Makefile for standalone compilation of hapsigntool_cpp
++# Usage: make CXX=clang++ OPENSSL_PREFIX=/path/to/openssl ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
++
++PROJ ?= .
++OPENSSL_PREFIX ?= /opt/openssl
++ZLIB_PREFIX ?= /opt/zlib
++
++CXX ?= clang++
++CXXFLAGS ?= -std=c++17 -fno-rtti -Wall -include $(PROJ)/compat.h
++
++H := $(PROJ)/hapsigntool_cpp
++T := $(PROJ)/third_party
++BLD := $(PROJ)/build
++
++INCLUDES := \
++  -I$(H)/api/include \
++  -I$(H)/cmd/include \
++  -I$(H)/codesigning/datastructure/include \
++  -I$(H)/codesigning/fsverity/include \
++  -I$(H)/codesigning/sign/include \
++  -I$(H)/codesigning/utils/include \
++  -I$(H)/common/include \
++  -I$(H)/hap/config/include \
++  -I$(H)/hap/entity/include \
++  -I$(H)/hap/provider/include \
++  -I$(H)/hap/sign/include \
++  -I$(H)/hap/utils/include \
++  -I$(H)/hap/verify/include \
++  -I$(H)/profile/include \
++  -I$(H)/signer/include \
++  -I$(H)/utils/include \
++  -I$(H)/zip/include \
++  -I$(T)/third_party_cJSON \
++  -I$(T)/third_party_zlib \
++  -I$(T)/third_party_zlib/contrib/minizip \
++  -I$(T)/third_party_bounds_checking_function/include \
++  -I$(T)/third_party_bounds_checking_function/src \
++  -I$(OPENSSL_PREFIX)/include \
++  -I$(ZLIB_PREFIX)/include
++
++SRCS := \
++  $(H)/main.cpp \
++  $(H)/api/src/cert_tools.cpp \
++  $(H)/api/src/sign_tool_service_impl.cpp \
++  $(H)/cmd/src/cmd_util.cpp \
++  $(H)/cmd/src/params.cpp \
++  $(H)/cmd/src/params_run_tool.cpp \
++  $(H)/cmd/src/params_trust_list.cpp \
++  $(H)/codesigning/datastructure/src/code_sign_block.cpp \
++  $(H)/codesigning/datastructure/src/code_sign_block_header.cpp \
++  $(H)/codesigning/datastructure/src/elf_sign_block.cpp \
++  $(H)/codesigning/datastructure/src/extension.cpp \
++  $(H)/codesigning/datastructure/src/fs_verity_info_segment.cpp \
++  $(H)/codesigning/datastructure/src/hap_info_segment.cpp \
++  $(H)/codesigning/datastructure/src/merkle_tree_extension.cpp \
++  $(H)/codesigning/datastructure/src/native_lib_info_segment.cpp \
++  $(H)/codesigning/datastructure/src/segment_header.cpp \
++  $(H)/codesigning/datastructure/src/sign_info.cpp \
++  $(H)/codesigning/datastructure/src/signed_file_pos.cpp \
++  $(H)/codesigning/datastructure/src/unzip_handle_param.cpp \
++  $(H)/codesigning/fsverity/src/fs_verity_descriptor.cpp \
++  $(H)/codesigning/fsverity/src/fs_verity_descriptor_with_sign.cpp \
++  $(H)/codesigning/fsverity/src/fs_verity_digest.cpp \
++  $(H)/codesigning/fsverity/src/fs_verity_generator.cpp \
++  $(H)/codesigning/fsverity/src/fs_verity_hash_algorithm.cpp \
++  $(H)/codesigning/fsverity/src/merkle_tree_builder.cpp \
++  $(H)/codesigning/sign/src/bc_signeddata_generator.cpp \
++  $(H)/codesigning/sign/src/code_signing.cpp \
++  $(H)/codesigning/sign/src/verify_code_signature.cpp \
++  $(H)/codesigning/utils/src/cms_utils.cpp \
++  $(H)/codesigning/utils/src/fs_digest_utils.cpp \
++  $(H)/common/src/byte_buffer.cpp \
++  $(H)/common/src/byte_buffer_data_source.cpp \
++  $(H)/common/src/digest_common.cpp \
++  $(H)/common/src/digest_parameter.cpp \
++  $(H)/common/src/file_data_source.cpp \
++  $(H)/common/src/localization_adapter.cpp \
++  $(H)/common/src/options.cpp \
++  $(H)/common/src/password_guard.cpp \
++  $(H)/common/src/random_access_file.cpp \
++  $(H)/hap/config/src/signer_config.cpp \
++  $(H)/hap/entity/src/block_data.cpp \
++  $(H)/hap/entity/src/block_head.cpp \
++  $(H)/hap/entity/src/content_digest_algorithm.cpp \
++  $(H)/hap/entity/src/param_constants.cpp \
++  $(H)/hap/entity/src/sign_block_data.cpp \
++  $(H)/hap/entity/src/sign_block_info.cpp \
++  $(H)/hap/entity/src/sign_content_info.cpp \
++  $(H)/hap/entity/src/sign_head.cpp \
++  $(H)/hap/entity/src/signature_algorithm_helper.cpp \
++  $(H)/hap/entity/src/signature_block_types.cpp \
++  $(H)/hap/entity/src/signing_block.cpp \
++  $(H)/hap/provider/src/local_sign_provider.cpp \
++  $(H)/hap/provider/src/remote_sign_provider.cpp \
++  $(H)/hap/provider/src/sign_provider.cpp \
++  $(H)/hap/sign/src/bc_pkcs7_generator.cpp \
++  $(H)/hap/sign/src/sign_bin.cpp \
++  $(H)/hap/sign/src/sign_elf.cpp \
++  $(H)/hap/sign/src/sign_hap.cpp \
++  $(H)/hap/utils/src/dynamic_lib_handle.cpp \
++  $(H)/hap/utils/src/hap_utils.cpp \
++  $(H)/hap/verify/src/verify_bin.cpp \
++  $(H)/hap/verify/src/verify_elf.cpp \
++  $(H)/hap/verify/src/verify_hap.cpp \
++  $(H)/profile/src/pkcs7_data.cpp \
++  $(H)/profile/src/profile_info.cpp \
++  $(H)/profile/src/profile_sign_tool.cpp \
++  $(H)/profile/src/profile_verify.cpp \
++  $(H)/signer/src/local_signer.cpp \
++  $(H)/signer/src/signer_factory.cpp \
++  $(H)/utils/src/byte_array_utils.cpp \
++  $(H)/utils/src/cert_dn_utils.cpp \
++  $(H)/utils/src/file_utils.cpp \
++  $(H)/utils/src/hap_signer_block_utils.cpp \
++  $(H)/utils/src/hash_utils.cpp \
++  $(H)/utils/src/key_store_helper.cpp \
++  $(H)/utils/src/string_utils.cpp \
++  $(H)/utils/src/verify_cert_openssl_utils.cpp \
++  $(H)/utils/src/verify_hap_openssl_utils.cpp \
++  $(H)/zip/src/central_directory.cpp \
++  $(H)/zip/src/data_descriptor.cpp \
++  $(H)/zip/src/endof_central_directory.cpp \
++  $(H)/zip/src/random_access_file_input.cpp \
++  $(H)/zip/src/random_access_file_output.cpp \
++  $(H)/zip/src/zip_entry.cpp \
++  $(H)/zip/src/zip_entry_data.cpp \
++  $(H)/zip/src/zip_entry_header.cpp \
++  $(H)/zip/src/zip_signer.cpp \
++  $(H)/zip/src/zip_utils.cpp
++
++# Third-party sources
++CJSON_SRC := $(T)/third_party_cJSON/cJSON.c
++MINIZIP_SRCS := \
++  $(T)/third_party_zlib/contrib/minizip/ioapi.c \
++  $(T)/third_party_zlib/contrib/minizip/unzip.c
++SEC_SRCS := \
++  $(T)/third_party_bounds_checking_function/src/memcpy_s.c \
++  $(T)/third_party_bounds_checking_function/src/memset_s.c \
++  $(T)/third_party_bounds_checking_function/src/sprintf_s.c \
++  $(T)/third_party_bounds_checking_function/src/snprintf_s.c \
++  $(T)/third_party_bounds_checking_function/src/vsprintf_s.c \
++  $(T)/third_party_bounds_checking_function/src/vsnprintf_s.c \
++  $(T)/third_party_bounds_checking_function/src/strcpy_s.c \
++  $(T)/third_party_bounds_checking_function/src/strcat_s.c \
++  $(T)/third_party_bounds_checking_function/src/strncat_s.c \
++  $(T)/third_party_bounds_checking_function/src/strncpy_s.c \
++  $(T)/third_party_bounds_checking_function/src/securecutil.c \
++  $(T)/third_party_bounds_checking_function/src/secureprintoutput_a.c
++
++OBJS := $(patsubst %.cpp, $(BLD)/%.o, $(SRCS))
++CJSON_OBJ := $(patsubst %.c, $(BLD)/%.o, $(CJSON_SRC))
++MINIZIP_OBJS := $(patsubst %.c, $(BLD)/%.o, $(MINIZIP_SRCS))
++SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
++
++LDFLAGS := -L$(OPENSSL_PREFIX)/lib -lssl -lcrypto
++
++TARGET := $(BLD)/hap-sign-tool
++
++.PHONY: all clean
++
++all: $(TARGET)
++
++# Rule for .cpp -> .o
++$(BLD)/%.o: %.cpp
++	@mkdir -p $(dir $@)
++	@echo "[CXX] $<"
++	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
++
++# Rule for .c -> .o
++$(BLD)/%.o: %.c
++	@mkdir -p $(dir $@)
++	@echo "[CC]  $<"
++	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
++
++$(TARGET): $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS)
++	@echo "[LD]  $@"
++	@$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
++
++clean:
++	rm -rf $(BLD)
+diff -ruN a/compat.h a_build/compat.h
+--- a/compat.h	1970-01-01 08:00:00.000000000 +0800
++++ a_build/compat.h	2026-07-25 21:53:09.199480624 +0800
+@@ -0,0 +1,24 @@
++// compatibility header for standalone compilation
++// force-included to fix missing includes in the OpenHarmony codebase
++#ifndef STANDALONE_COMPAT_H
++#define STANDALONE_COMPAT_H
++
++#include <cstdint>
++#include <cinttypes>
++#include <cstddef>
++#include <algorithm>
++#include <string>
++#include <vector>
++#include <memory>
++#include <list>
++#include <map>
++#include <set>
++#include <sstream>
++#include <fstream>
++#include <iostream>
++#include <cstdio>
++#include <cstring>
++#include <cstdlib>
++#include <cmath>
++
++#endif
