@@ -6,10 +6,15 @@ class Hapsigntool < Formula
   license "Apache-2.0"
   version "1.0.0"
 
-  depends_on "openssl@3"
   depends_on "zlib-ng-compat"
   depends_on "make" => :build
   depends_on "gpatch" => :build
+
+  # OpenSSL 1.1.1w — statically linked to avoid OpenSSL 3 PKCS7_verify incompatibility
+  resource "openssl" do
+    url "https://www.openssl.org/source/openssl-1.1.1w.tar.gz"
+    sha256 "cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
+  end
 
   # cJSON — lightweight JSON parser (used by upstream)
   resource "cjson" do
@@ -48,19 +53,18 @@ class Hapsigntool < Formula
 
     # ── Unpack third-party resources into expected paths ──────────
     (buildpath/"third_party").mkpath
+    (buildpath/"third_party/openssl").install resource("openssl")
     (buildpath/"third_party/third_party_cJSON").install resource("cjson")
     (buildpath/"third_party/third_party_zlib").install resource("zlib")
     (buildpath/"third_party/third_party_bounds_checking_function").install resource("bounds_checking_function")
 
     # ── Build ─────────────────────────────────────────────────────
-    openssl_prefix = Formula["openssl@3"].opt_prefix
-    zlib_prefix    = Formula["zlib-ng-compat"].opt_prefix
+    zlib_prefix = Formula["zlib-ng-compat"].opt_prefix
 
     cd buildpath do
       system "make",
              "CXX=clang++",
              "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
-             "OPENSSL_PREFIX=#{openssl_prefix}",
              "ZLIB_PREFIX=#{zlib_prefix}",
              "PROJ=#{buildpath}"
     end
