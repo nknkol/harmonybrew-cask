@@ -1,6 +1,6 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-25 21:53:09.199480624 +0800
++++ a_build/Makefile	2026-07-25 22:05:00.515478749 +0800
 @@ -0,0 +1,180 @@
 +# Makefile for standalone compilation of hapsigntool_cpp
 +# Usage: make CXX=clang++ OPENSSL_PREFIX=/path/to/openssl ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
@@ -156,7 +156,7 @@ diff -ruN a/Makefile a_build/Makefile
 +MINIZIP_OBJS := $(patsubst %.c, $(BLD)/%.o, $(MINIZIP_SRCS))
 +SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
 +
-+LDFLAGS := -L$(OPENSSL_PREFIX)/lib -lssl -lcrypto
++LDFLAGS := -L$(OPENSSL_PREFIX)/lib -L$(ZLIB_PREFIX)/lib -lssl -lcrypto -lz
 +
 +TARGET := $(BLD)/hap-sign-tool
 +
@@ -184,7 +184,7 @@ diff -ruN a/Makefile a_build/Makefile
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-25 21:53:09.199480624 +0800
++++ a_build/compat.h	2026-07-25 22:05:00.511469218 +0800
 @@ -0,0 +1,24 @@
 +// compatibility header for standalone compilation
 +// force-included to fix missing includes in the OpenHarmony codebase
