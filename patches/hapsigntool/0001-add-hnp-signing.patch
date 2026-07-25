@@ -1,6 +1,6 @@
 diff -ruN hapsigntool_cpp/codesigning/sign/include/code_signing.h hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h
---- hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-07-25 22:24:13.635329844 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h	2026-07-25 22:24:13.823329376 +0800
+--- hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-07-26 00:41:31.901352188 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h	2026-07-26 00:41:32.025345313 +0800
 @@ -17,6 +17,7 @@
  
  #include <vector>
@@ -41,8 +41,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/include/code_signing.h hapsigntool_cp
      const int POOL_SIZE = std::min(MAX_PROCESSORS, static_cast<int>(std::thread::hardware_concurrency()));
      std::shared_ptr<Uscript::ThreadPool> mPools;
 diff -ruN hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h
---- hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-07-25 22:24:13.635329844 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h	2026-07-25 22:24:13.823329376 +0800
+--- hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-07-26 00:41:31.905344845 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h	2026-07-26 00:41:32.021349063 +0800
 @@ -18,6 +18,7 @@
  #include <vector>
  #include <string>
@@ -67,8 +67,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h hapsi
                                 std::string>& pairResult, CodeSignBlock& csb);
      static bool VerifySingleFile(std::istream& input, int64_t length, std::vector<int8_t> signature,
 diff -ruN hapsigntool_cpp/codesigning/sign/src/code_signing.cpp hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp
---- hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-07-25 22:24:13.631333438 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp	2026-07-25 22:24:13.819329532 +0800
+--- hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-07-26 00:41:31.901352188 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp	2026-07-26 00:41:32.021349063 +0800
 @@ -14,6 +14,10 @@
   */
  
@@ -319,8 +319,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/src/code_signing.cpp hapsigntool_cpp_
  } // namespace SignatureTools
  } // namespace OHOS
 diff -ruN hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp
---- hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-07-25 22:24:13.635329844 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp	2026-07-25 22:24:13.823329376 +0800
+--- hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 00:41:31.901352188 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 00:41:32.021349063 +0800
 @@ -13,6 +13,10 @@
   * limitations under the License.
   */
@@ -518,8 +518,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp hapsign
  } // namespace OHOS
 \ No newline at end of file
 diff -ruN hapsigntool_cpp/hap/utils/include/hap_utils.h hapsigntool_cpp_patched/hap/utils/include/hap_utils.h
---- hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-07-25 22:24:13.751338282 +0800
-+++ hapsigntool_cpp_patched/hap/utils/include/hap_utils.h	2026-07-25 22:24:13.875336094 +0800
+--- hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-07-26 00:41:31.961345782 +0800
++++ hapsigntool_cpp_patched/hap/utils/include/hap_utils.h	2026-07-26 00:41:32.145349845 +0800
 @@ -80,10 +80,15 @@
      static std::vector<int8_t> GetHapSigningBlockMagicV3();
      static int GetHapSigningBlockVersion(int compatibleVersion);
@@ -537,8 +537,8 @@ diff -ruN hapsigntool_cpp/hap/utils/include/hap_utils.h hapsigntool_cpp_patched/
      static constexpr int MIN_COMPATIBLE_VERSION_FOR_SCHEMA_V3 = 8;
      static const std::vector<int8_t> HAP_SIGNING_BLOCK_MAGIC_V2;
 diff -ruN hapsigntool_cpp/hap/utils/src/hap_utils.cpp hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp
---- hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-07-25 22:24:13.743336094 +0800
-+++ hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp	2026-07-25 22:24:13.875336094 +0800
+--- hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-07-26 00:41:31.957346095 +0800
++++ hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp	2026-07-26 00:41:32.145349845 +0800
 @@ -17,8 +17,11 @@
  #include <algorithm>
  #include <stdexcept>
@@ -678,3 +678,19 @@ diff -ruN hapsigntool_cpp/hap/utils/src/hap_utils.cpp hapsigntool_cpp_patched/ha
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
+diff -ruN hapsigntool_cpp/main.cpp hapsigntool_cpp_patched/main.cpp
+--- hapsigntool_cpp/main.cpp	2026-07-26 00:41:31.865349532 +0800
++++ hapsigntool_cpp_patched/main.cpp	2026-07-26 00:41:32.181344220 +0800
+@@ -13,10 +13,12 @@
+  * limitations under the License.
+  */
+ #include "params_run_tool.h"
++#include <openssl/provider.h>
+ 
+ using namespace OHOS::SignatureTools;
+ int main(int argc, char** argv)
+ {
++    OSSL_PROVIDER_load(NULL, "legacy");
+     // prepare modes vector by macro DEFINE_MODE which subscribe UPDATER_MAIN_PRE_EVENT event
+     bool isSuccess = ParamsRunTool::ProcessCmd(argv, argc);
+     if (isSuccess) {
