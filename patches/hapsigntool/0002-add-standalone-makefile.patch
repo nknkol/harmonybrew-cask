@@ -1,7 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 12:02:04.441190469 +0800
-@@ -0,0 +1,184 @@
++++ a_build/Makefile	2026-07-26 12:10:46.897198594 +0800
+@@ -0,0 +1,185 @@
 +PROJ ?= .
 +ZLIB_PREFIX ?= /opt/zlib
 +
@@ -182,13 +182,14 @@ diff -ruN a/Makefile a_build/Makefile
 +	@test -f $(OPENSSL_CONF) || (echo "FATAL: opensslconf.h not generated" && exit 1)
 +
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a: $(OPENSSL_CONF)
-+	$(MAKE) -C $(T)/openssl -j4 AR=llvm-ar
++	ln -sf $$(which llvm-ar) $(T)/openssl/ar
++	PATH=$(T)/openssl:$$PATH $(MAKE) -C $(T)/openssl -j4 AR=ar
 +
 +clean:
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 12:02:04.429192657 +0800
++++ a_build/compat.h	2026-07-26 12:10:46.881194063 +0800
 @@ -0,0 +1,30 @@
 +// compatibility header for standalone compilation
 +#ifndef STANDALONE_COMPAT_H
