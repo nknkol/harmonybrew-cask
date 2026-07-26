@@ -1,6 +1,6 @@
 diff -ruN hapsigntool_cpp/codesigning/sign/include/code_signing.h hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h
---- hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-07-26 01:33:04.273345313 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h	2026-07-26 01:33:04.369345938 +0800
+--- hapsigntool_cpp/codesigning/sign/include/code_signing.h	2026-07-26 11:31:41.633188907 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/include/code_signing.h	2026-07-26 11:31:41.741194376 +0800
 @@ -17,6 +17,7 @@
  
  #include <vector>
@@ -41,8 +41,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/include/code_signing.h hapsigntool_cp
      const int POOL_SIZE = std::min(MAX_PROCESSORS, static_cast<int>(std::thread::hardware_concurrency()));
      std::shared_ptr<Uscript::ThreadPool> mPools;
 diff -ruN hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h
---- hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-07-26 01:33:04.273345313 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h	2026-07-26 01:33:04.369345938 +0800
+--- hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h	2026-07-26 11:31:41.633188907 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/include/verify_code_signature.h	2026-07-26 11:31:41.741194376 +0800
 @@ -18,6 +18,7 @@
  #include <vector>
  #include <string>
@@ -67,8 +67,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/include/verify_code_signature.h hapsi
                                 std::string>& pairResult, CodeSignBlock& csb);
      static bool VerifySingleFile(std::istream& input, int64_t length, std::vector<int8_t> signature,
 diff -ruN hapsigntool_cpp/codesigning/sign/src/code_signing.cpp hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp
---- hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-07-26 01:33:04.269355938 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp	2026-07-26 01:33:04.365350001 +0800
+--- hapsigntool_cpp/codesigning/sign/src/code_signing.cpp	2026-07-26 11:31:41.633188907 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/src/code_signing.cpp	2026-07-26 11:31:41.741194376 +0800
 @@ -14,6 +14,10 @@
   */
  
@@ -319,8 +319,8 @@ diff -ruN hapsigntool_cpp/codesigning/sign/src/code_signing.cpp hapsigntool_cpp_
  } // namespace SignatureTools
  } // namespace OHOS
 diff -ruN hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp
---- hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 01:33:04.273345313 +0800
-+++ hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 01:33:04.369345938 +0800
+--- hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 11:31:41.633188907 +0800
++++ hapsigntool_cpp_patched/codesigning/sign/src/verify_code_signature.cpp	2026-07-26 11:31:41.741194376 +0800
 @@ -13,6 +13,10 @@
   * limitations under the License.
   */
@@ -517,9 +517,20 @@ diff -ruN hapsigntool_cpp/codesigning/sign/src/verify_code_signature.cpp hapsign
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
+diff -ruN hapsigntool_cpp/common/src/localization_adapter.cpp hapsigntool_cpp_patched/common/src/localization_adapter.cpp
+--- hapsigntool_cpp/common/src/localization_adapter.cpp	2026-07-26 11:31:41.613193594 +0800
++++ hapsigntool_cpp_patched/common/src/localization_adapter.cpp	2026-07-26 11:31:41.773190782 +0800
+@@ -18,7 +18,6 @@
+ #include "localization_adapter.h"
+ #include "constant.h"
+ #include <openssl/evp.h>
+-#include <openssl/types.h>
+ #include <openssl/x509.h>
+ #include <openssl/x509v3.h>
+ #include <openssl/err.h>
 diff -ruN hapsigntool_cpp/hap/utils/include/hap_utils.h hapsigntool_cpp_patched/hap/utils/include/hap_utils.h
---- hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-07-26 01:33:04.317351407 +0800
-+++ hapsigntool_cpp_patched/hap/utils/include/hap_utils.h	2026-07-26 01:33:04.405351563 +0800
+--- hapsigntool_cpp/hap/utils/include/hap_utils.h	2026-07-26 11:31:41.697192501 +0800
++++ hapsigntool_cpp_patched/hap/utils/include/hap_utils.h	2026-07-26 11:31:41.781190313 +0800
 @@ -80,10 +80,15 @@
      static std::vector<int8_t> GetHapSigningBlockMagicV3();
      static int GetHapSigningBlockVersion(int compatibleVersion);
@@ -537,8 +548,8 @@ diff -ruN hapsigntool_cpp/hap/utils/include/hap_utils.h hapsigntool_cpp_patched/
      static constexpr int MIN_COMPATIBLE_VERSION_FOR_SCHEMA_V3 = 8;
      static const std::vector<int8_t> HAP_SIGNING_BLOCK_MAGIC_V2;
 diff -ruN hapsigntool_cpp/hap/utils/src/hap_utils.cpp hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp
---- hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-07-26 01:33:04.317351407 +0800
-+++ hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp	2026-07-26 01:33:04.405351563 +0800
+--- hapsigntool_cpp/hap/utils/src/hap_utils.cpp	2026-07-26 11:31:41.693194219 +0800
++++ hapsigntool_cpp_patched/hap/utils/src/hap_utils.cpp	2026-07-26 11:31:41.781190313 +0800
 @@ -17,8 +17,11 @@
  #include <algorithm>
  #include <stdexcept>
@@ -678,3 +689,17 @@ diff -ruN hapsigntool_cpp/hap/utils/src/hap_utils.cpp hapsigntool_cpp_patched/ha
  } // namespace SignatureTools
  } // namespace OHOS
 \ No newline at end of file
+diff -ruN hapsigntool_cpp/profile/include/pkcs7_data.h hapsigntool_cpp_patched/profile/include/pkcs7_data.h
+--- hapsigntool_cpp/profile/include/pkcs7_data.h	2026-07-26 11:31:41.581192501 +0800
++++ hapsigntool_cpp_patched/profile/include/pkcs7_data.h	2026-07-26 11:31:41.805189532 +0800
+@@ -57,8 +57,8 @@
+ 
+ namespace OHOS {
+ namespace SignatureTools {
+-#define  PKCS7_NODETACHED_FLAGS  (PKCS7_BINARY | PKCS7_NOVERIFY)
+-#define  PKCS7_DETACHED_FLAGS    (PKCS7_BINARY | PKCS7_NOVERIFY | PKCS7_DETACHED)
++#define  PKCS7_NODETACHED_FLAGS  (PKCS7_BINARY | PKCS7_NOVERIFY | PKCS7_NOCHAIN | PKCS7_NOINTERN)
++#define  PKCS7_DETACHED_FLAGS    (PKCS7_BINARY | PKCS7_NOVERIFY | PKCS7_NOCHAIN | PKCS7_NOINTERN | PKCS7_DETACHED)
+ struct PKCS7Attr {
+     int nid;
+     int atrtype;

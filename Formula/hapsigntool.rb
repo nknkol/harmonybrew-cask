@@ -11,25 +11,21 @@ class Hapsigntool < Formula
   depends_on "gpatch" => :build
   depends_on "perl" => :build
 
-  # OpenSSL 1.1.1w — statically linked to avoid OpenSSL 3 PKCS7_verify incompatibility
   resource "openssl" do
     url "https://www.openssl.org/source/openssl-1.1.1w.tar.gz"
     sha256 "cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
   end
 
-  # cJSON — lightweight JSON parser (used by upstream)
   resource "cjson" do
     url "https://github.com/openharmony/third_party_cJSON/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "6ef947c705441da11bc0a733cde685eea23a2a155f6b2f22cf3b50d64428a55a"
   end
 
-  # zlib (includes contrib/minizip — unzip.c / ioapi.c)
   resource "zlib" do
     url "https://github.com/openharmony/third_party_zlib/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "460afdfb94df2cd2d92e2372d5d154940874f771b57827f7eca65c428a8ff3a4"
   end
 
-  # bounds_checking_function — OpenHarmony secure C functions (memcpy_s etc.)
   resource "bounds_checking_function" do
     url "https://github.com/openharmony/third_party_bounds_checking_function/archive/refs/tags/OpenHarmony-v7.0-Beta1.tar.gz"
     sha256 "3b4500e94df63f475733c6dcaeb9a5efe67e955938392bfa3bcb5471ed78b296"
@@ -40,26 +36,22 @@ class Hapsigntool < Formula
 
     tap_root = Pathname.new(__FILE__).dirname.parent
 
-    # Patch 1 — HNP code-signing (6 files, uses upstream cJSON)
     patch1 = tap_root/"patches/hapsigntool/0001-add-hnp-signing.patch"
     cd buildpath do
       system "patch -f -p0 -i #{patch1} || [ $? -le 1 ]"
     end
 
-    # Patch 2 — standalone Makefile + compat.h
     patch2 = tap_root/"patches/hapsigntool/0002-add-standalone-makefile.patch"
     cd buildpath do
       system "patch -f -p1 -i #{patch2} || [ $? -le 1 ]"
     end
 
-    # ── Unpack third-party resources into expected paths ──────────
     (buildpath/"third_party").mkpath
     (buildpath/"third_party/openssl").install resource("openssl")
     (buildpath/"third_party/third_party_cJSON").install resource("cjson")
     (buildpath/"third_party/third_party_zlib").install resource("zlib")
     (buildpath/"third_party/third_party_bounds_checking_function").install resource("bounds_checking_function")
 
-    # ── Build ─────────────────────────────────────────────────────
     zlib_prefix = Formula["zlib-ng-compat"].opt_prefix
 
     cd buildpath do
@@ -70,7 +62,6 @@ class Hapsigntool < Formula
              "PROJ=#{buildpath}"
     end
 
-    # ── Install ───────────────────────────────────────────────────
     bin.install "build/hap-sign-tool" => "hap-sign-tool-fix"
   end
 
