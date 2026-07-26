@@ -1,0 +1,8 @@
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/adler2-30ff5f49949182fb.d: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/algo.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libadler2-30ff5f49949182fb.rlib: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/algo.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libadler2-30ff5f49949182fb.rmeta: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/algo.rs
+
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/lib.rs:
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/src/algo.rs:

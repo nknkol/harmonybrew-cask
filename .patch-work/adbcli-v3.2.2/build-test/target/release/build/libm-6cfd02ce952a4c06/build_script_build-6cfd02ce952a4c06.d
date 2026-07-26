@@ -1,0 +1,6 @@
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/build/libm-6cfd02ce952a4c06/build_script_build-6cfd02ce952a4c06.d: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/build.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/configure.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/build/libm-6cfd02ce952a4c06/build_script_build-6cfd02ce952a4c06: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/build.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/configure.rs
+
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/build.rs:
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/libm-0.2.16/configure.rs:

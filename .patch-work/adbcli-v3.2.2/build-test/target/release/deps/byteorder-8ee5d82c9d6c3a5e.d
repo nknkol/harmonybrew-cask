@@ -1,0 +1,8 @@
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/byteorder-8ee5d82c9d6c3a5e.d: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/io.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libbyteorder-8ee5d82c9d6c3a5e.rlib: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/io.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libbyteorder-8ee5d82c9d6c3a5e.rmeta: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/io.rs
+
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/lib.rs:
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/byteorder-1.5.0/src/io.rs:

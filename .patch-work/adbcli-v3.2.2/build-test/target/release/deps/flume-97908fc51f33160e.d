@@ -1,0 +1,8 @@
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/flume-97908fc51f33160e.d: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libflume-97908fc51f33160e.rlib: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/storage/Users/currentUser/workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/build-test/target/release/deps/libflume-97908fc51f33160e.rmeta: /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs /storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs
+
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/lib.rs:
+/storage/Users/currentUser/Workspace/harmonybrew-cask/.patch-work/adbcli-v3.2.2/cargo-home/registry/src/index.crates.io-1949cf8c6b5b557f/flume-0.11.1/src/signal.rs:
