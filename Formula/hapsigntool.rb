@@ -59,6 +59,7 @@ class Hapsigntool < Formula
              "CXX=clang++",
              "CXXFLAGS=-std=c++17 -fno-rtti -target aarch64-linux-ohos",
              "ZLIB_PREFIX=#{zlib_prefix}",
+             "AR_PATH=#{HOMEBREW_PREFIX}/bin/llvm-ar",
              "PROJ=#{buildpath}"
     end
 
