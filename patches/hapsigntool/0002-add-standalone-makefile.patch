@@ -1,7 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 12:10:46.897198594 +0800
-@@ -0,0 +1,185 @@
++++ a_build/Makefile	2026-07-26 12:19:41.141189376 +0800
+@@ -0,0 +1,184 @@
 +PROJ ?= .
 +ZLIB_PREFIX ?= /opt/zlib
 +
@@ -177,19 +177,18 @@ diff -ruN a/Makefile a_build/Makefile
 +
 +$(OPENSSL_CONF):
 +	@echo "[CONF] OpenSSL 1.1.1"
-+	cd $(T)/openssl && AR=llvm-ar ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
++	cd $(T)/openssl && AR=$$(which llvm-ar) ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
 +	cd $(T)/openssl && perl -I. -Mconfigdata util/dofile.pl -oMakefile include/openssl/opensslconf.h.in > include/openssl/opensslconf.h
 +	@test -f $(OPENSSL_CONF) || (echo "FATAL: opensslconf.h not generated" && exit 1)
 +
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a: $(OPENSSL_CONF)
-+	ln -sf $$(which llvm-ar) $(T)/openssl/ar
-+	PATH=$(T)/openssl:$$PATH $(MAKE) -C $(T)/openssl -j4 AR=ar
++	$(MAKE) -C $(T)/openssl -j4
 +
 +clean:
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 12:10:46.881194063 +0800
++++ a_build/compat.h	2026-07-26 12:19:41.129193907 +0800
 @@ -0,0 +1,30 @@
 +// compatibility header for standalone compilation
 +#ifndef STANDALONE_COMPAT_H
