@@ -1,7 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 12:48:24.185190157 +0800
-@@ -0,0 +1,186 @@
++++ a_build/Makefile	2026-07-26 13:19:35.681193594 +0800
+@@ -0,0 +1,183 @@
 +PROJ ?= .
 +ZLIB_PREFIX ?= /opt/zlib
 +
@@ -175,12 +175,9 @@ diff -ruN a/Makefile a_build/Makefile
 +	@echo "[LD]  $@"
 +	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(LDFLAGS) -Wl,--whole-archive $(OPENSSL_LIBS) -Wl,--no-whole-archive -o $@
 +
-+LLVM_AR := $(shell which llvm-ar 2>/dev/null || echo /usr/bin/ar)
-+
-+$(OPENSSL_CONF):
-+	@echo "[CONF] OpenSSL 1.1.1 (AR=$(LLVM_AR))"
-+	cd $(T)/openssl && AR=$(LLVM_AR) ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
++	cd $(T)/openssl && AR=ar ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
 +	cd $(T)/openssl && perl -I. -Mconfigdata util/dofile.pl -oMakefile include/openssl/opensslconf.h.in > include/openssl/opensslconf.h
++	sed -i "s|^AR=.*|AR=$$(dirname $$(which $(CXX)))/llvm-ar|" $(T)/openssl/Makefile
 +	@test -f $(OPENSSL_CONF) || (echo "FATAL: opensslconf.h not generated" && exit 1)
 +
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a: $(OPENSSL_CONF)
@@ -190,7 +187,7 @@ diff -ruN a/Makefile a_build/Makefile
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 12:48:24.173201251 +0800
++++ a_build/compat.h	2026-07-26 13:19:35.665189063 +0800
 @@ -0,0 +1,30 @@
 +// compatibility header for standalone compilation
 +#ifndef STANDALONE_COMPAT_H
