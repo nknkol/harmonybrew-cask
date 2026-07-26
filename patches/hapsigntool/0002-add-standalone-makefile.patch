@@ -1,7 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 11:32:20.205200313 +0800
-@@ -0,0 +1,179 @@
++++ a_build/Makefile	2026-07-26 11:43:40.297196563 +0800
+@@ -0,0 +1,183 @@
 +PROJ ?= .
 +ZLIB_PREFIX ?= /opt/zlib
 +
@@ -152,6 +152,7 @@ diff -ruN a/Makefile a_build/Makefile
 +SEC_OBJS := $(patsubst %.c, $(BLD)/%.o, $(SEC_SRCS))
 +
 +OPENSSL_LIBS := $(T)/openssl/libssl.a $(T)/openssl/libcrypto.a
++OPENSSL_CONF := $(T)/openssl/include/openssl/opensslconf.h
 +LDFLAGS := -L$(ZLIB_PREFIX)/lib -lz -ldl -lpthread
 +
 +TARGET := $(BLD)/hap-sign-tool
@@ -160,12 +161,12 @@ diff -ruN a/Makefile a_build/Makefile
 +
 +all: $(TARGET)
 +
-+$(BLD)/%.o: %.cpp
++$(BLD)/%.o: %.cpp | $(OPENSSL_CONF)
 +	@mkdir -p $(dir $@)
 +	@echo "[CXX] $<"
 +	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 +
-+$(BLD)/%.o: %.c
++$(BLD)/%.o: %.c | $(OPENSSL_CONF)
 +	@mkdir -p $(dir $@)
 +	@echo "[CC]  $<"
 +	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
@@ -174,16 +175,19 @@ diff -ruN a/Makefile a_build/Makefile
 +	@echo "[LD]  $@"
 +	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(LDFLAGS) -Wl,--whole-archive $(OPENSSL_LIBS) -Wl,--no-whole-archive -o $@
 +
-+$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
-+	@echo "[BUILD] OpenSSL 1.1.1"
++$(OPENSSL_CONF):
++	@echo "[CONF] OpenSSL 1.1.1"
 +	cd $(T)/openssl && AR=llvm-ar ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
++	@test -f $(OPENSSL_CONF) || (echo "FATAL: opensslconf.h not generated" && exit 1)
++
++$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a: $(OPENSSL_CONF)
 +	$(MAKE) -C $(T)/openssl -j4
 +
 +clean:
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 11:32:20.197189844 +0800
++++ a_build/compat.h	2026-07-26 11:43:40.285194532 +0800
 @@ -0,0 +1,30 @@
 +// compatibility header for standalone compilation
 +#ifndef STANDALONE_COMPAT_H
