@@ -1,10 +1,7 @@
 diff -ruN a/Makefile a_build/Makefile
 --- a/Makefile	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/Makefile	2026-07-26 02:26:50.965353438 +0800
-@@ -0,0 +1,186 @@
-+# Makefile for standalone compilation of hapsigntool_cpp
-+# Usage: make CXX=clang++ ZLIB_PREFIX=/path/to/zlib PROJ=/path/to/repo
-+
++++ a_build/Makefile	2026-07-26 11:32:20.205200313 +0800
+@@ -0,0 +1,179 @@
 +PROJ ?= .
 +ZLIB_PREFIX ?= /opt/zlib
 +
@@ -131,7 +128,6 @@ diff -ruN a/Makefile a_build/Makefile
 +  $(H)/zip/src/zip_signer.cpp \
 +  $(H)/zip/src/zip_utils.cpp
 +
-+# Third-party sources
 +CJSON_SRC := $(T)/third_party_cJSON/cJSON.c
 +MINIZIP_SRCS := \
 +  $(T)/third_party_zlib/contrib/minizip/ioapi.c \
@@ -164,13 +160,11 @@ diff -ruN a/Makefile a_build/Makefile
 +
 +all: $(TARGET)
 +
-+# Rule for .cpp -> .o
 +$(BLD)/%.o: %.cpp
 +	@mkdir -p $(dir $@)
 +	@echo "[CXX] $<"
 +	@$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 +
-+# Rule for .c -> .o
 +$(BLD)/%.o: %.c
 +	@mkdir -p $(dir $@)
 +	@echo "[CC]  $<"
@@ -180,7 +174,6 @@ diff -ruN a/Makefile a_build/Makefile
 +	@echo "[LD]  $@"
 +	@$(CXX) $(CXXFLAGS) $(OBJS) $(CJSON_OBJ) $(MINIZIP_OBJS) $(SEC_OBJS) $(LDFLAGS) -Wl,--whole-archive $(OPENSSL_LIBS) -Wl,--no-whole-archive -o $@
 +
-+# Build OpenSSL 1.1.1 static libraries (header-only, system libs not used)
 +$(T)/openssl/libssl.a $(T)/openssl/libcrypto.a:
 +	@echo "[BUILD] OpenSSL 1.1.1"
 +	cd $(T)/openssl && AR=llvm-ar ./Configure linux-aarch64 no-shared no-tests --prefix=$(T)/openssl/install --openssldir=$(T)/openssl/install
@@ -190,10 +183,9 @@ diff -ruN a/Makefile a_build/Makefile
 +	rm -rf $(BLD)
 diff -ruN a/compat.h a_build/compat.h
 --- a/compat.h	1970-01-01 08:00:00.000000000 +0800
-+++ a_build/compat.h	2026-07-26 02:26:50.965353438 +0800
-@@ -0,0 +1,31 @@
++++ a_build/compat.h	2026-07-26 11:32:20.197189844 +0800
+@@ -0,0 +1,30 @@
 +// compatibility header for standalone compilation
-+// force-included to fix missing includes in the OpenHarmony codebase
 +#ifndef STANDALONE_COMPAT_H
 +#define STANDALONE_COMPAT_H
 +
@@ -215,7 +207,7 @@ diff -ruN a/compat.h a_build/compat.h
 +#include <cstdlib>
 +#include <cmath>
 +
-+// OpenSSL 1.1.1 compatibility: ERR_set_error was added in OpenSSL 3.0
++// OpenSSL 1.1.1 compat: ERR_set_error was added in 3.0
 +#include <openssl/err.h>
 +#ifndef ERR_set_error
 +#define ERR_set_error(lib, reason, fmt, ...) \
