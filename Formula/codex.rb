@@ -1,8 +1,8 @@
 class Codex < Formula
   desc "OpenAI Codex CLI"
   homepage "https://github.com/openai/codex"
-  url "https://github.com/openai/codex/releases/download/rust-v0.144.5/codex-aarch64-unknown-linux-musl.tar.gz"
-  sha256 "5433789cd66e0db3b78cccd218d894471ed9e92fe93465120d1356508952084d"
+  url "https://github.com/openai/codex/releases/download/rust-v0.147.0/codex-aarch64-unknown-linux-musl.tar.gz"
+  sha256 "eb677c80f666b1ab8b4b1d083b66e8d614b1281d960bb6f9fd8ca98f58b38b90"
   license "Apache-2.0"
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
