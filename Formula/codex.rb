@@ -5,6 +5,11 @@ class Codex < Formula
   sha256 "eb677c80f666b1ab8b4b1d083b66e8d614b1281d960bb6f9fd8ca98f58b38b90"
   license "Apache-2.0"
 
+  resource "code-mode-host" do
+    url "https://github.com/openai/codex/releases/download/rust-v0.147.0/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
+    sha256 "dfd4ff98ea4db30ed078af9c31b6f86e3da4836d0573aa87e225e5a5b54d3c7c"
+  end
+
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "llvm@21" => :build
 
@@ -42,6 +47,12 @@ class Codex < Formula
     codex = buildpath/"codex-aarch64-unknown-linux-musl"
     sign_elf! codex
     bin.install codex => "codex"
+
+    resource("code-mode-host").stage do
+      cmh = Pathname.pwd/"codex-code-mode-host-aarch64-unknown-linux-musl"
+      sign_elf! cmh
+      bin.install cmh => "codex-code-mode-host"
+    end
   end
 
   def post_install
