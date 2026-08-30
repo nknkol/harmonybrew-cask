@@ -6,6 +6,11 @@ class Antigravity < Formula
   license "Apache-2.0"
   version "1.1.22"
 
+  bottle do
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fantigravity"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: ""
+  end
+
   # The upstream binary is linked against glibc (Go + cgo with Chromium
   # components), which cannot run on the musl-based HarmonyOS system natively.
   # We depend on the keg-only patched glibc runtime and rewrite the binary's
