@@ -8,6 +8,7 @@ class Antigravity < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fantigravity"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "62871d974e16198e24acb9a1dd99ca20cf4465b9bc9c65ece4a68ad01340fa1d"
   end
 
   # The upstream binary is linked against glibc (Go + cgo with Chromium
