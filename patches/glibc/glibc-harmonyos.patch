@@ -1,0 +1,139 @@
+diff -ruN a/elf/dl-map-segments.h b/elf/dl-map-segments.h
+--- a/elf/dl-map-segments.h	2026-08-31 00:53:46.854465468 +0800
++++ b/elf/dl-map-segments.h	2026-08-31 00:53:46.874467031 +0800
+@@ -23,10 +23,10 @@
+ 
+ static __always_inline ElfW(Addr)
+ _dl_map_segment (const struct loadcmd *c, ElfW(Addr) mappref,
+-		 const size_t maplength, int fd)
++		 const size_t maplength, int fd, int prot)
+ {
+   if (__glibc_likely (c->mapalign <= GLRO(dl_pagesize)))
+-    return (ElfW(Addr)) __mmap ((void *) mappref, maplength, c->prot,
++    return (ElfW(Addr)) __mmap ((void *) mappref, maplength, prot,
+ 				MAP_COPY|MAP_FILE, fd, c->mapoff);
+ 
+   /* If the segment alignment > the page size, allocate enough space to
+@@ -43,7 +43,7 @@
+ 
+   ElfW(Addr) map_start_aligned = ALIGN_UP (map_start, c->mapalign);
+   map_start_aligned = (ElfW(Addr)) __mmap ((void *) map_start_aligned,
+-					   maplength, c->prot,
++					   maplength, prot,
+ 					   MAP_COPY|MAP_FILE|MAP_FIXED,
+ 					   fd, c->mapoff);
+   if (__glibc_unlikely ((void *) map_start_aligned == MAP_FAILED))
+@@ -97,11 +97,28 @@
+         = (ELF_PREFERRED_ADDRESS (loader, maplength, c->mapstart)
+            - MAP_BASE_ADDR (l));
+ 
+-      /* Remember which part of the address space this object uses.  */
+-      l->l_map_start = _dl_map_segment (c, mappref, maplength, fd);
++      /* HarmonyOS workaround: the HongMeng kernel rejects any PROT_EXEC
++	 mmap whose range extends beyond the first executable LOAD segment.
++	 The glibc fast path maps the whole span (all segments) in one mmap
++	 using the first segment's PROT_EXEC, over-extending the executable
++	 range.  Map the whole span WITHOUT PROT_EXEC instead, then re-map the
++	 first (executable) segment with MAP_FIXED to restore PROT_EXEC on just
++	 that segment's exact range.  */
++      l->l_map_start = _dl_map_segment (c, mappref, maplength, fd,
++					c->prot & ~PROT_EXEC);
+       if (__glibc_unlikely ((void *) l->l_map_start == MAP_FAILED))
+         return DL_MAP_SEGMENTS_ERROR_MAP_SEGMENT;
+ 
++      if (__glibc_unlikely (c->prot & PROT_EXEC))
++	{
++	  void *exe = __mmap ((void *) l->l_map_start,
++			      c->mapend - c->mapstart, c->prot,
++			      MAP_FIXED|MAP_COPY|MAP_FILE,
++			      fd, c->mapoff);
++	  if (__glibc_unlikely (exe == MAP_FAILED))
++	    return DL_MAP_SEGMENTS_ERROR_MAP_SEGMENT;
++	}
++
+       l->l_map_end = l->l_map_start + maplength;
+       l->l_addr = l->l_map_start - c->mapstart;
+ 
+diff -ruN a/sysdeps/unix/sysv/linux/clone-internal.c b/sysdeps/unix/sysv/linux/clone-internal.c
+--- a/sysdeps/unix/sysv/linux/clone-internal.c	2026-08-31 00:53:46.970465781 +0800
++++ b/sysdeps/unix/sysv/linux/clone-internal.c	2026-08-31 00:53:46.990463906 +0800
+@@ -103,16 +103,10 @@
+ __clone_internal (struct clone_args *cl_args,
+ 		  int (*func) (void *arg), void *arg)
+ {
+-#ifdef HAVE_CLONE3_WRAPPER
+-  int saved_errno = errno;
+-  int ret = __clone3_internal (cl_args, func, arg);
+-  if (ret != -1 || errno != ENOSYS)
+-    return ret;
+-
+-  /* NB: Restore errno since errno may be checked against non-zero
+-     return value.  */
+-  __set_errno (saved_errno);
+-#endif
++  /* HarmonyOS workaround: the HongMeng kernel does not implement clone3
++     and sends SIGSYS instead of returning ENOSYS, so glibc's normal
++     fallback (only on ENOSYS) is never reached.  Bypass clone3 entirely and
++     always use the legacy clone path.  */
+ 
+   return __clone_internal_fallback (cl_args, func, arg);
+ }
+diff -ruN a/sysdeps/unix/sysv/linux/rseq-internal.h b/sysdeps/unix/sysv/linux/rseq-internal.h
+--- a/sysdeps/unix/sysv/linux/rseq-internal.h	2026-08-31 00:53:46.922465937 +0800
++++ b/sysdeps/unix/sysv/linux/rseq-internal.h	2026-08-31 00:53:46.946462656 +0800
+@@ -1,20 +1,3 @@
+-/* Restartable Sequences internal API.  Linux implementation.
+-   Copyright (C) 2021-2023 Free Software Foundation, Inc.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <https://www.gnu.org/licenses/>.  */
+-
+ #ifndef RSEQ_INTERNAL_H
+ #define RSEQ_INTERNAL_H
+ 
+@@ -25,28 +8,17 @@
+ #include <stdio.h>
+ #include <sys/rseq.h>
+ 
+-#ifdef RSEQ_SIG
+-static inline bool
+-rseq_register_current_thread (struct pthread *self, bool do_rseq)
+-{
+-  if (do_rseq)
+-    {
+-      int ret = INTERNAL_SYSCALL_CALL (rseq, &self->rseq_area,
+-                                       sizeof (self->rseq_area),
+-                                       0, RSEQ_SIG);
+-      if (!INTERNAL_SYSCALL_ERROR_P (ret))
+-        return true;
+-    }
+-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+-  return false;
+-}
+-#else /* RSEQ_SIG */
++/* HarmonyOS workaround: the HongMeng kernel implements neither the rseq
++   syscall nor a graceful ENOSYS for it; issuing the syscall triggers a
++   fatal SIGSYS (via its seccomp path) instead of a return value.  Avoid
++   the syscall entirely and always report registration as failed, which is
++   exactly what glibc does when rseq is unavailable.  */
+ static inline bool
+ rseq_register_current_thread (struct pthread *self, bool do_rseq)
+ {
++  (void) do_rseq;
+   THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+   return false;
+ }
+-#endif /* RSEQ_SIG */
+ 
+ #endif /* rseq-internal.h */
