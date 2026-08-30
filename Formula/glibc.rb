@@ -13,7 +13,7 @@ class Glibc < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fglibc"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "90dcb9fc18e7b7b1649823cc563db59e715d4678dfe761e12af7a799085d8362"
+      sha256 cellar: :any_skip_relocation, arm64_ohos: "d33b596bf47146b412bd28a18caf365240de201a64e2dc16059e96c85e960105"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
