@@ -17,9 +17,9 @@
 +			try {
 +				await link(tmp, finalPath);
 +			} catch (error) {
-+				// hmdfs filesystem does not support hard links (EPERM); rename is an equivalent atomic publish here
++				// hmdfs filesystem does not support hard links (EACCES/EPERM); rename is an equivalent atomic publish here
 +				// (rejectExistingLog already guards against overwriting).
-+				if (!(error instanceof Error && (error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
++				if (!(error instanceof Error && (error.code === "EACCES" || error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
 +				await rename(tmp, finalPath);
 +			}
  			linked = true;
@@ -43,10 +43,10 @@
  			await linkFile(tempPath, absolutePath);
  		} catch (error) {
 -			await throwGuardedCreateFailure(error, absolutePath, createIfAbsent.displayPath, inspectPublicationTarget);
-+			// hmdfs filesystem does not support hard links (EPERM); publish via copy, keeping the
++			// hmdfs filesystem does not support hard links (EACCES/EPERM); publish via copy, keeping the
 +			// create-if-absent semantics (COPYFILE_EXCL keeps EEXIST flowing
 +			// into throwGuardedCreateFailure).
-+			if (error instanceof Error && (error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS")) {
++			if (error instanceof Error && (error.code === "EACCES" || error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS")) {
 +				await copyFile(tempPath, absolutePath, fsConstants.COPYFILE_EXCL);
 +			} else {
 +				await throwGuardedCreateFailure(error, absolutePath, createIfAbsent.displayPath, inspectPublicationTarget);
@@ -73,10 +73,10 @@
 +			try {
 +				await link(source, target);
 +			} catch (error) {
-+				// hmdfs filesystem does not support hard links (EPERM); publish via copy. COPYFILE_EXCL
++				// hmdfs filesystem does not support hard links (EACCES/EPERM); publish via copy. COPYFILE_EXCL
 +				// keeps EEXIST flowing into the outer catch, so a concurrent
 +				// duplicate still goes through the sha256 integrity check.
-+				if (!(error instanceof Error && (error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
++				if (!(error instanceof Error && (error.code === "EACCES" || error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
 +				await copyFile(source, target, constants.COPYFILE_EXCL);
 +			}
  		} catch (error) {
@@ -90,10 +90,10 @@
 +			try {
 +				await link(staged.path, target);
 +			} catch (error) {
-+				// hmdfs filesystem does not support hard links (EPERM); publish via copy. COPYFILE_EXCL
++				// hmdfs filesystem does not support hard links (EACCES/EPERM); publish via copy. COPYFILE_EXCL
 +				// keeps EEXIST flowing into the outer catch, so a concurrent
 +				// duplicate still goes through the sha256 integrity check.
-+				if (!(error instanceof Error && (error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
++				if (!(error instanceof Error && (error.code === "EACCES" || error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
 +				await copyFile(staged.path, target, constants.COPYFILE_EXCL);
 +			}
  		} catch (error) {
