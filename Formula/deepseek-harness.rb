@@ -21,7 +21,7 @@ class DeepseekHarness < Formula
 
   depends_on "cmake" => :build
   depends_on "nknkol/cask/binary-sign-tool" => :build
-  depends_on "llvm@21" => :build
+  depends_on "ohos-sdk" => :build
   depends_on "bash"
   depends_on "node"
   depends_on "ripgrep"
@@ -31,7 +31,7 @@ class DeepseekHarness < Formula
   end
 
   def llvm_objcopy
-    Formula["llvm@21"].opt_bin/"llvm-objcopy"
+    Formula["ohos-sdk"].opt_prefix/"native/llvm/bin/llvm-objcopy"
   end
 
   def elf_file?(path)
