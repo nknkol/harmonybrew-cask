@@ -1,0 +1,11 @@
+--- a/dsh-client-ui-settings-general/lib/client.js
++++ b/dsh-client-ui-settings-general/lib/client.js
+@@ -444,7 +444,7 @@
+ 					if (!result.ok) {
+ 						const { message } = result.error;
+ 						this.store.update((state) => {
+-							state.error = message;
++							state.error = message; alert("此功能不支持鸿蒙 PC，请手动编辑文件：~/.dsh/settings.yaml");
+ 						});
+ 					}
+ 				} finally {
