@@ -111,8 +111,8 @@ for name, info in data.items():
         content = f.read()
     # Replace or insert sha256 line in bottle block
     new_line = f'    sha256 cellar: :any_skip_relocation, arm64_ohos: \"{sha}\"'
-    if re.search(r'sha256 cellar:', content):
-        content = re.sub(r'  sha256 cellar:.*arm64_ohos:.*', new_line, content)
+    if re.search(r'^\s*sha256 cellar:', content, flags=re.MULTILINE):
+        content = re.sub(r'^\s*sha256 cellar:.*arm64_ohos:.*$', new_line, content, flags=re.MULTILINE)
     else:
         content = re.sub(r'(  bottle do\n.*root_url.*\n)', r'\1' + new_line + '\n', content)
     with open(formula_path, 'w') as f:
