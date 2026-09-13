@@ -8,6 +8,7 @@ class DeepseekHarness < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fdeepseek-harness"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "31b93488669c50477d6f79652e0930480a56e731eb5f5a56d6f6480bbb8d6303"
   end
 
   # The npm `next` dist-tag carries the rc line while `latest` lags behind it.
