@@ -4,7 +4,7 @@ class DeepseekHarness < Formula
   url "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.5-rc.2.tgz"
   sha256 "f4c54839d69e82bf1c3a5a41a910c3ce1405cd9e9d97d753c0c04f406c7d7480"
   license "MIT"
-  revision 2
+  revision 3
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fdeepseek-harness"
