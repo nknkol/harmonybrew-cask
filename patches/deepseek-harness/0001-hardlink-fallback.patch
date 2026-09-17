@@ -3,12 +3,55 @@
 @@ -1,7 +1,7 @@
  import z from "@deepseek-ai/schemastery";
  import { SessionFormatUnsupportedMigrationError, sessionFormatCatalog } from "@deepseek-ai/dsh-session-format-catalog";
- import { readdirSync } from "node:fs";
+-import { readdirSync } from "node:fs";
 -import { link, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, truncate } from "node:fs/promises";
-+import { link, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, stat, truncate } from "node:fs/promises";
++import { constants as fsConstants, readdirSync } from "node:fs";
++import { copyFile, link, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rename, rm, stat, truncate } from "node:fs/promises";
  import { basename, dirname, isAbsolute, join, parse, resolve, toNamespacedPath } from "node:path";
  import { performance } from "node:perf_hooks";
  import { scheduler } from "node:timers/promises";
+@@ -1605,7 +1605,8 @@
+ 	readdir: (path) => readdir(path),
+ 	stat: (path) => stat(path, { bigint: true }),
+ 	lstat: (path) => lstat(path),
+ 	link,
++	copyFile,
+ 	rm: (path) => rm(path, { force: true })
+ };
+ const defaultInternals = {
+@@ -2028,14 +2029,29 @@
+ 		/* v8 ignore next -- the filesystem error is already complete. */
+ 		throw error;
+ 	}
+ 	try {
+ 		await internals.fs.link(staged, currentPath);
+ 	} catch (error) {
+-		/* v8 ignore else -- a non-collision filesystem error propagates unchanged. */
+ 		if (isEEXIST(error)) return false;
+-		/* v8 ignore next -- the filesystem error is already complete. */
+-		throw error;
++		// hmdfs does not support hard links. Preserve exclusive publication with
++		// COPYFILE_EXCL so a concurrent migrator still loses as EEXIST instead of
++		// overwriting the already-published current generation.
++		if (!(error instanceof Error && (error.code === "EACCES" || error.code === "EPERM" || error.code === "ENOTSUP" || error.code === "ENOSYS"))) throw error;
++		try {
++			await internals.fs.copyFile(staged, currentPath, fsConstants.COPYFILE_EXCL);
++		} catch (copyError) {
++			if (isEEXIST(copyError)) return false;
++			throw copyError;
++		}
++		// The staged inode was already synced, but the fallback created a new
++		// inode. Sync it before publishing the directory entry durably.
++		const handle = await internals.fs.open(currentPath, "r");
++		try {
++			await handle.sync();
++		} finally {
++			await handle.close();
++		}
+ 	}
+ 	await syncDirectory(dirname(currentPath), internals);
+ 	return true;
+ }
 @@ -2970,7 +2970,14 @@
  		const tmp = await this.writeSyncedTempFile(finalPath, content);
  		let linked = false;
