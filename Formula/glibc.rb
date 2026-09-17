@@ -1,20 +1,16 @@
 class Glibc < Formula
-  desc "GNU C Library (glibc) 2.38 runtime for HarmonyOS, patched to load 2MiB-aligned ELF binaries"
+  desc "GNU glibc and GCC runtime libraries for running Linux binaries on HarmonyOS"
   homepage "https://www.gnu.org/software/libc/"
-  url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/glibc-2.38-harmonyos-arm64.tar.gz"
-  sha256 "c268b80d19b50cfb5e9f9c397173ef654c4ecbada7e920bd34ee709f325332e2"
-  license "LGPL-2.1-or-later"
+  url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/glibc-2.38-gcc-12.3.1-harmonyos-arm64.tar.gz"
+  sha256 "08cd2f236e6f7df377f925ed7f7d4fbb15ec638e1444209d4eb42737d3c87fd8"
+  license all_of: ["LGPL-2.1-or-later", "GPL-3.0-or-later" => { with: "GCC-exception-3.1" }]
   version "2.38"
+  revision 1
 
   # keg_only: this is a glibc runtime used to run glibc-linked binaries
   # (e.g. Google Antigravity CLI) on the musl-based HarmonyOS system.  It must
   # not be linked into the system, which would conflict with the native musl.
   keg_only "glibc runtime for glibc-linked binaries; not meant to replace musl"
-
-  bottle do
-    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fglibc"
-      sha256 cellar: :any_skip_relocation, arm64_ohos: "d33b596bf47146b412bd28a18caf365240de201a64e2dc16059e96c85e960105"
-  end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "llvm@21" => :build
@@ -50,9 +46,15 @@ class Glibc < Formula
   end
 
   def install
-    # The tarball contains the stripped, patched glibc runtime libraries:
+    # The tarball contains the stripped, patched glibc 2.38 runtime libraries:
     #   ld-linux-aarch64.so.1  libc.so.6  libm.so.6  libpthread.so.0
     #   libdl.so.2             libresolv.so.2  librt.so.1
+    # and the openEuler GCC 12.3.1 glibc runtime libraries:
+    #   libgcc_s.so.1          libstdc++.so.6    libatomic.so.1
+    #
+    # Keep the canonical SONAME files as regular files. HarmonyOS validates
+    # the file opened by the loader, and materialized files avoid hmdfs symlink
+    # and signature inconsistencies.
     # All must be signed before they can be executed on HarmonyOS.
     lib.mkpath
     Dir[buildpath/"*.so*"].each do |so|
@@ -63,7 +65,16 @@ class Glibc < Formula
   end
 
   test do
-    assert_predicate lib/"ld-linux-aarch64.so.1", :exist?
-    assert_predicate lib/"libc.so.6", :exist?
+    %w[
+      ld-linux-aarch64.so.1
+      libc.so.6
+      libgcc_s.so.1
+      libstdc++.so.6
+      libatomic.so.1
+    ].each do |runtime|
+      assert_predicate lib/runtime, :exist?
+    end
+
+    assert_match "GNU C Library", shell_output("#{lib}/ld-linux-aarch64.so.1 --version")
   end
 end

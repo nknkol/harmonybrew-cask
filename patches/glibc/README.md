@@ -51,7 +51,7 @@ mkdir build && cd build
 make -j$(nproc)
 ```
 
-产物（strip 后）：
+glibc 产物（strip 后）：
 - `elf/ld.so` → `ld-linux-aarch64.so.1`
 - `libc.so` → `libc.so.6`
 - `math/libm.so` → `libm.so.6`
@@ -60,9 +60,31 @@ make -j$(nproc)
 - `resolv/libresolv.so` → `libresolv.so.2`
 - `rt/librt.so` → `librt.so.1`
 
+为了让这套运行时不仅能运行纯 C/Go glibc ELF，还能运行依赖 GNU C++
+运行时的 Linux ARM64 工具（例如 HarmonyOS command-line-tools），归档还从
+同一 openEuler 24.03 LTS-SP3 环境收集以下 GCC 12.3.1 glibc 运行库：
+
+- `libgcc-12.3.1-111.oe2403sp3` → `libgcc_s.so.1`
+- `libstdc++-12.3.1-111.oe2403sp3` → `libstdc++.so.6`
+- `libatomic-12.3.1-111.oe2403sp3` → `libatomic.so.1`
+
+安装和核对来源包：
+
+```sh
+sudo dnf install -y libgcc libstdc++ libatomic
+rpm -q glibc libgcc libstdc++ libatomic
+```
+
+三个文件都是 GCC 同一次构建拆分出的运行时包，必须使用 glibc 版本；不能用
+HarmonyOS/Alpine 的 musl 版本替代。当前 `libstdc++.so.6` 提供到
+`GLIBCXX_3.4.30`。
+
 ## 关键结论
 
 - 鸿蒙 ELF/共享库都必须签名（`binary-sign-tool-fix sign -selfSign 1`）。
 - 文件需放在非 hmdfs 锁权限的挂载（如 `/data/storage/el2/base/files`），
   或通过 HAP 沙盒权限决定执行权限。
 - 符号链接需要实体化（鸿蒙按文件名实体做签名校验）。
+- `glibc.rb` 将所有 glibc/GCC 运行库安装到同一个 keg，后续 Linux ELF 只需
+  将解释器指向该 keg 的 `ld-linux-aarch64.so.1`，并把该 `lib` 目录加入
+  RUNPATH。
