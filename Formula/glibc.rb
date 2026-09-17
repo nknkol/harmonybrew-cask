@@ -2,7 +2,7 @@ class Glibc < Formula
   desc "GNU glibc and GCC runtime libraries for running Linux binaries on HarmonyOS"
   homepage "https://www.gnu.org/software/libc/"
   url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/glibc-2.38-gcc-12.3.1-harmonyos-arm64.tar.gz"
-  sha256 "08cd2f236e6f7df377f925ed7f7d4fbb15ec638e1444209d4eb42737d3c87fd8"
+  sha256 "35d328c8c2698488ec02d144267e59e497de2181532e6fb8b60c94d466e5e79b"
   license all_of: ["LGPL-2.1-or-later", "GPL-3.0-or-later" => { with: "GCC-exception-3.1" }]
   version "2.38"
   revision 1
