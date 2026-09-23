@@ -14,6 +14,8 @@ class Glibc < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fglibc"
+    rebuild 1
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "90dd90fd4f7fe6324e785d43a113087af9e21e621c7d41cae765f68156814137"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -79,6 +81,6 @@ class Glibc < Formula
       assert_predicate lib/runtime, :exist?
     end
 
-    assert_match "GNU C Library", shell_output("#{lib}/ld-linux-aarch64.so.1 --version")
+    assert_match(/GNU (?:C Library|libc)/, shell_output("#{lib}/ld-linux-aarch64.so.1 --version"))
   end
 end
