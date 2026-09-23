@@ -12,6 +12,10 @@ class Glibc < Formula
   # not be linked into the system, which would conflict with the native musl.
   keg_only "glibc runtime for glibc-linked binaries; not meant to replace musl"
 
+  bottle do
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fglibc"
+  end
+
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "llvm@21" => :build
 
