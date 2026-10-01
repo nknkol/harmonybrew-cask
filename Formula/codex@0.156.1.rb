@@ -1,17 +1,14 @@
-class Codex < Formula
+class CodexAT01561 < Formula
   desc "OpenAI Codex CLI"
   homepage "https://github.com/openai/codex"
-  url "https://github.com/openai/codex/releases/download/rust-v0.159.3/codex-aarch64-unknown-linux-musl.tar.gz"
-  sha256 "cd5f307b3fcd6080773e684b86c3114a67d4f1c61dc447be09876b552eb4bea7"
+  url "https://github.com/openai/codex/releases/download/rust-v0.156.1/codex-aarch64-unknown-linux-musl.tar.gz"
+  sha256 "558e12aaa6dacb335ec47240bf9721db8a54746806d64f01185a403f44f79b72"
   license "Apache-2.0"
-
-  bottle do
-    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fcodex"
-  end
+  keg_only :versioned_formula
 
   resource "code-mode-host" do
-    url "https://github.com/openai/codex/releases/download/rust-v0.159.3/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
-    sha256 "7cbb47c472c2dc115abfeebf52ff11bf66eb364bf8f5d14659742615919b8e6f"
+    url "https://github.com/openai/codex/releases/download/rust-v0.156.1/codex-code-mode-host-aarch64-unknown-linux-musl.tar.gz"
+    sha256 "40198138b03798ffa8c0da4c827a8ca5896774ea104b7110c2a2c0c7560cbe94"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
