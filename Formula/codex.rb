@@ -7,6 +7,8 @@ class Codex < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fcodex"
+    rebuild 1
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "866051e4553531630a45b02da2873ea0eb7bdc83d3b360d4721f35c3925d02f9"
   end
 
   resource "code-mode-host" do
