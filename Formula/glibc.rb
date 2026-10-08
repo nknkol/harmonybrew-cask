@@ -2,10 +2,10 @@ class Glibc < Formula
   desc "GNU glibc and GCC runtime libraries for running Linux binaries on HarmonyOS"
   homepage "https://www.gnu.org/software/libc/"
   url "https://raw.githubusercontent.com/nknkol/harmonybrew-cask/main/bootstrap/glibc-2.38-gcc-12.3.1-harmonyos-arm64.tar.gz"
-  sha256 "35d328c8c2698488ec02d144267e59e497de2181532e6fb8b60c94d466e5e79b"
+  sha256 "8016ba148894328bdd583c79741f07acf44e2a0496ef17bbe90c668a9e4778f6"
   license all_of: ["LGPL-2.1-or-later", "GPL-3.0-or-later" => { with: "GCC-exception-3.1" }]
   version "2.38"
-  revision 1
+  revision 2
 
   # keg_only: this is a glibc runtime used to run glibc-linked binaries
   # (e.g. Google Antigravity CLI) on the musl-based HarmonyOS system.  It must
@@ -15,7 +15,7 @@ class Glibc < Formula
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fglibc"
     rebuild 1
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "90dd90fd4f7fe6324e785d43a113087af9e21e621c7d41cae765f68156814137"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "ebc51862944ca45bd96b9203e2d18fcde63c16bedca0719f3665efd2430f5117"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
