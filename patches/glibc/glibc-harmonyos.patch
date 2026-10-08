@@ -1,6 +1,6 @@
 diff -ruN a/elf/dl-map-segments.h b/elf/dl-map-segments.h
---- a/elf/dl-map-segments.h	2026-08-31 00:53:46.854465468 +0800
-+++ b/elf/dl-map-segments.h	2026-08-31 00:53:46.874467031 +0800
+--- a/elf/dl-map-segments.h
++++ b/elf/dl-map-segments.h
 @@ -23,10 +23,10 @@
  
  static __always_inline ElfW(Addr)
@@ -54,9 +54,47 @@ diff -ruN a/elf/dl-map-segments.h b/elf/dl-map-segments.h
        l->l_map_end = l->l_map_start + maplength;
        l->l_addr = l->l_map_start - c->mapstart;
  
+diff -ruN a/sysdeps/unix/sysv/linux/rseq-internal.h b/sysdeps/unix/sysv/linux/rseq-internal.h
+--- a/sysdeps/unix/sysv/linux/rseq-internal.h
++++ b/sysdeps/unix/sysv/linux/rseq-internal.h
+@@ -25,28 +25,17 @@
+ #include <stdio.h>
+ #include <sys/rseq.h>
+ 
+-#ifdef RSEQ_SIG
++/* HarmonyOS workaround: the HongMeng kernel implements neither the rseq
++   syscall nor a graceful ENOSYS for it; issuing the syscall triggers a
++   fatal SIGSYS (via its seccomp path) instead of a return value.  Avoid
++   the syscall entirely and always report registration as failed, which is
++   exactly what glibc does when rseq is unavailable.  */
+ static inline bool
+ rseq_register_current_thread (struct pthread *self, bool do_rseq)
+ {
+-  if (do_rseq)
+-    {
+-      int ret = INTERNAL_SYSCALL_CALL (rseq, &self->rseq_area,
+-                                       sizeof (self->rseq_area),
+-                                       0, RSEQ_SIG);
+-      if (!INTERNAL_SYSCALL_ERROR_P (ret))
+-        return true;
+-    }
++  (void) do_rseq;
+   THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+   return false;
+ }
+-#else /* RSEQ_SIG */
+-static inline bool
+-rseq_register_current_thread (struct pthread *self, bool do_rseq)
+-{
+-  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
+-  return false;
+-}
+-#endif /* RSEQ_SIG */
+ 
+ #endif /* rseq-internal.h */
 diff -ruN a/sysdeps/unix/sysv/linux/clone-internal.c b/sysdeps/unix/sysv/linux/clone-internal.c
---- a/sysdeps/unix/sysv/linux/clone-internal.c	2026-08-31 00:53:46.970465781 +0800
-+++ b/sysdeps/unix/sysv/linux/clone-internal.c	2026-08-31 00:53:46.990463906 +0800
+--- a/sysdeps/unix/sysv/linux/clone-internal.c
++++ b/sysdeps/unix/sysv/linux/clone-internal.c
 @@ -103,16 +103,10 @@
  __clone_internal (struct clone_args *cl_args,
  		  int (*func) (void *arg), void *arg)
@@ -78,62 +116,49 @@ diff -ruN a/sysdeps/unix/sysv/linux/clone-internal.c b/sysdeps/unix/sysv/linux/c
  
    return __clone_internal_fallback (cl_args, func, arg);
  }
-diff -ruN a/sysdeps/unix/sysv/linux/rseq-internal.h b/sysdeps/unix/sysv/linux/rseq-internal.h
---- a/sysdeps/unix/sysv/linux/rseq-internal.h	2026-08-31 00:53:46.922465937 +0800
-+++ b/sysdeps/unix/sysv/linux/rseq-internal.h	2026-08-31 00:53:46.946462656 +0800
-@@ -1,20 +1,3 @@
--/* Restartable Sequences internal API.  Linux implementation.
--   Copyright (C) 2021-2023 Free Software Foundation, Inc.
--
--   The GNU C Library is free software; you can redistribute it and/or
--   modify it under the terms of the GNU Lesser General Public
--   License as published by the Free Software Foundation; either
--   version 2.1 of the License, or (at your option) any later version.
--
--   The GNU C Library is distributed in the hope that it will be useful,
--   but WITHOUT ANY WARRANTY; without even the implied warranty of
--   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
--   Lesser General Public License for more details.
--
--   You should have received a copy of the GNU Lesser General Public
--   License along with the GNU C Library; if not, see
--   <https://www.gnu.org/licenses/>.  */
--
- #ifndef RSEQ_INTERNAL_H
- #define RSEQ_INTERNAL_H
+diff -ruN a/sysdeps/unix/sysv/linux/spawni.c b/sysdeps/unix/sysv/linux/spawni.c
+--- a/sysdeps/unix/sysv/linux/spawni.c
++++ b/sysdeps/unix/sysv/linux/spawni.c
+@@ -264,8 +264,10 @@
+ 	    case spawn_do_closefrom:
+ 	      {
+ 		int lowfd = action->action.closefrom_action.from;
+-	        int r = INLINE_SYSCALL_CALL (close_range, lowfd, ~0U, 0);
+-		if (r != 0 && !__closefrom_fallback (lowfd, false))
++		/* HarmonyOS: the HongMeng kernel does not implement close_range and
++		   delivers SIGSYS instead of returning ENOSYS, so the syscall must
++		   be bypassed and the fallback used unconditionally.  */
++		if (!__closefrom_fallback (lowfd, false))
+ 		  goto fail;
+ 	      } break;
  
-@@ -25,28 +8,17 @@
- #include <stdio.h>
- #include <sys/rseq.h>
- 
--#ifdef RSEQ_SIG
--static inline bool
--rseq_register_current_thread (struct pthread *self, bool do_rseq)
--{
--  if (do_rseq)
--    {
--      int ret = INTERNAL_SYSCALL_CALL (rseq, &self->rseq_area,
--                                       sizeof (self->rseq_area),
--                                       0, RSEQ_SIG);
--      if (!INTERNAL_SYSCALL_ERROR_P (ret))
--        return true;
--    }
--  THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
--  return false;
--}
--#else /* RSEQ_SIG */
-+/* HarmonyOS workaround: the HongMeng kernel implements neither the rseq
-+   syscall nor a graceful ENOSYS for it; issuing the syscall triggers a
-+   fatal SIGSYS (via its seccomp path) instead of a return value.  Avoid
-+   the syscall entirely and always report registration as failed, which is
-+   exactly what glibc does when rseq is unavailable.  */
- static inline bool
- rseq_register_current_thread (struct pthread *self, bool do_rseq)
- {
-+  (void) do_rseq;
-   THREAD_SETMEM (self, rseq_area.cpu_id, RSEQ_CPU_ID_REGISTRATION_FAILED);
-   return false;
- }
--#endif /* RSEQ_SIG */
- 
- #endif /* rseq-internal.h */
+@@ -389,13 +391,10 @@
+       .stack = (uintptr_t) stack,
+       .stack_size = stack_size,
+     };
+-#ifdef HAVE_CLONE3_WRAPPER
+-  args.use_clone3 = true;
+-  new_pid = __clone3 (&clone_args, sizeof (clone_args), __spawni_child,
+-		      &args);
+-  /* clone3 was added in 5.3 and CLONE_CLEAR_SIGHAND in 5.5.  */
+-  if (new_pid == -1 && (errno == ENOSYS || errno == EINVAL))
+-#endif
++  /* HarmonyOS workaround: the HongMeng kernel does not implement clone3
++     and delivers SIGSYS instead of returning ENOSYS, so the direct clone3
++     attempt (and its ENOSYS/EINVAL fallback) can never complete.  Use the
++     legacy clone fallback unconditionally.  */
+     {
+       args.use_clone3 = false;
+       new_pid = __clone_internal_fallback (&clone_args, __spawni_child,
+diff -ruN a/sysdeps/unix/sysv/linux/syscalls.list b/sysdeps/unix/sysv/linux/syscalls.list
+--- a/sysdeps/unix/sysv/linux/syscalls.list
++++ b/sysdeps/unix/sysv/linux/syscalls.list
+@@ -105,4 +105,7 @@
+ pkey_free	EXTRA	pkey_free	i:i	pkey_free
+ gettid          EXTRA   gettid          Ei:     __gettid	gettid
+ tgkill          EXTRA   tgkill          i:iii   __tgkill	tgkill
+-close_range     -       close_range     i:iii   __close_range   close_range
++# HarmonyOS: the kernel kills the process with SIGSYS instead of
++# returning ENOSYS for close_range.  Do not generate the syscall stub;
++# the portable close(2) loop in io/close_range.c is used instead.
++# close_range     -       close_range     i:iii   __close_range   close_range
