@@ -7,7 +7,7 @@ class Starship < Formula
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fstarship"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "7b28a14b59de51a7e862fbbadc2c759107d6827c047b157fadaa76121f8259ba"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "4a52d0db5b59f1c3dee4951d31fe9acb44f95da5b582e4abe62299a20ff5b61d"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -78,7 +78,7 @@ class Starship < Formula
           fpath=("$_starship_ohos_f2" $fpath)
       fi
 
-      autoload -Uz compinit && compinit -u 2>/dev/null
+      autoload -Uz compinit && compinit -C 2>/dev/null
       # Init unconditionally zmodload zsh/mathfunc (missing in the system zsh); fallback below overrides __starship_get_time.
       eval "$($_starship_ohos_brew/bin/starship init zsh)" 2>/dev/null
       if ! zmodload -e zsh/mathfunc 2>/dev/null; then
