@@ -4,10 +4,11 @@ class Codex < Formula
   url "https://github.com/openai/codex/releases/download/rust-v0.162.1/codex-package-aarch64-unknown-linux-musl.tar.gz"
   sha256 "53a9ce0b94beb27a63fdeb2f7704d95199e17b3898aa33b60461a1a93ac0d88b"
   license "Apache-2.0"
+  revision 1
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fcodex"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "0ab9e98f3b409d71d2630ff5bdd99d6b877f767de76ff9179d4bb0888920ccae"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "3fe3db1dab4a9dfc52b50c48fe0762e94c111ee7eac944284bb1085e61f44d10"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -99,7 +100,7 @@ class Codex < Formula
     chmod 0755, libexec/"codex-path/ps"
 
     tap_root = Pathname.new(__FILE__).dirname.parent
-    system RbConfig.ruby, tap_root/"patches/codex/patch-daemon-socket-root.rb", libexec/"bin/codex"
+    system RbConfig.ruby, tap_root/"patches/codex/patch-harmonyos.rb", libexec/"bin/codex"
 
     libexec.find do |path|
       next unless path.file? && !path.symlink?
@@ -112,6 +113,49 @@ class Codex < Formula
 
   def post_install
     Pathname.new("/data/storage/el2/base/files/.codex").mkpath
+  end
+
+  # Exercise the same non-PTY setup path that failed with SIGSYS on HarmonyOS.
+  def assert_pipe_command(executable)
+    require "socket"
+    require "timeout"
+
+    control, child_control = Socket.pair(:UNIX, :STREAM, 0)
+    output, child_output = IO.pipe
+    shell = Formula["zsh"].opt_bin/"zsh"
+    parent_pid = Process.pid
+    # Explicit fork/exec avoids the OHOS Ruby posix_spawn descriptor remapping.
+    pid = fork do
+      control.close
+      output.close
+      child_control.close_on_exec = false
+      Process.exec({}, executable.to_s, "--codex-run-as-process-setup",
+                   child_control.fileno.to_s, parent_pid.to_s, "pipe", "",
+                   testpath.to_s, shell.to_s, "zsh", "-fc",
+                   "printf 'stdout\\n'; printf 'stderr\\n' >&2; exit 7",
+                   out: child_output, err: child_output,
+                   close_others: false, unsetenv_others: true)
+    end
+    child_control.close
+    child_output.close
+    Timeout.timeout(15) do
+      control.write([0].pack("V"))
+      assert_equal "\x00", control.read
+      assert_equal "stdout\nstderr\n", output.read
+      _, status = Process.wait2(pid)
+      pid = nil
+      assert_equal 7, status.exitstatus
+    end
+  rescue Errno::EPIPE, Errno::ECONNRESET => e
+    _, status = Process.wait2(pid)
+    pid = nil
+    raise "pipe setup failed (#{status.inspect}): #{e.message}; #{output.read}"
+  ensure
+    if pid
+      Process.kill("KILL", pid) rescue nil
+      Process.wait(pid) rescue nil
+    end
+    [control, child_control, output, child_output].compact.each { |io| io.close unless io.closed? }
   end
 
   def caveats
@@ -138,6 +182,7 @@ class Codex < Formula
     assert_match "fork", shell_output("#{bin}/codex fork --help")
     assert_match "ripgrep", shell_output("#{libexec}/codex-path/rg --version")
     assert_equal "ok", shell_output("#{libexec}/codex-resources/zsh/bin/zsh -fc 'printf ok'")
+    assert_pipe_command libexec/"bin/codex"
 
     # Exercise the package discovery and copying that --version does not cover.
     begin
@@ -146,6 +191,7 @@ class Codex < Formula
       package = testpath/"codex-home/packages/app-server-daemon/current"
       assert_path_exists package/"codex-package.json"
       assert_match "codex-cli #{version}", shell_output("#{package}/bin/codex --version")
+      assert_pipe_command package/"bin/codex"
     ensure
       system bin/"codex", "app-server", "daemon", "stop"
     end

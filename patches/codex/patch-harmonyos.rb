@@ -36,6 +36,18 @@ init_header = section_headers + section_size
 abort "unexpected .init layout" unless section_size == 64 &&
   data[init_header + 16, 24].unpack("Q<3") == [0x400190, 0x190, 0x10]
 
+# HarmonyOS kills close_range with SIGSYS instead of returning an errno.
+# Make both calls report failure so upstream uses /proc/self/fd + fcntl.
+# Verify the syscall number, arguments, call and conditional fallback first.
+close_range_sites = {
+  0xa2e2f78 => "8036805283008052f6b5679480fbffb4",
+  0xa2e2f8c => "80368052610080520200801283008052efb56794402200b4",
+}
+close_range_sites.each do |site, hex|
+  expected_code = [hex].pack("H*")
+  abort "close_range instruction mismatch at #{site.to_s(16)}" unless data[site, expected_code.bytesize] == expected_code
+end
+
 prefix = "/data/storage/el2/base/cache/cd-"
 literal = [prefix.bytesize].pack("C") + prefix + "\xc0\x00".b
 abort "daemon socket path too long" unless prefix.bytesize + 10 + 1 + 64 < 108
@@ -49,5 +61,8 @@ imm = page_delta & 0x1fffff
 adrp = 0x90000000 | ((imm & 3) << 29) | ((imm >> 2) << 5)
 add = 0x91000000 | (0x1a0 << 10)
 data[offset, 8] = [adrp, add].pack("V2")
+# MOV X0, #-1 replaces only BL syscall. The following CBZ selects fallback.
+[0xa2e2f80, 0xa2e2f9c].each { |site| data[site, 4] = [0x92800000].pack("V") }
 File.binwrite(path, data)
 warn "patched Codex daemon socket root to #{prefix}<uid>"
+warn "patched both close_range calls to use upstream descriptor cleanup fallback"
