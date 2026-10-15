@@ -128,9 +128,9 @@ fi
 # ── Collect artifacts ───────────────────────────────────────────────
 log_step "Collect bottle artifacts"
 found_artifact=0
-for path in ./"$FORMULA"-*.tar.gz ./"$FORMULA"-*.json; do
-  if [ -f "$path" ]; then
-    cp "$path" "$OUTPUT_DIR/"
+for artifact_path in ./"$FORMULA"-*.tar.gz ./"$FORMULA"-*.json; do
+  if [ -f "$artifact_path" ]; then
+    cp "$artifact_path" "$OUTPUT_DIR/"
     found_artifact=1
   fi
 done
