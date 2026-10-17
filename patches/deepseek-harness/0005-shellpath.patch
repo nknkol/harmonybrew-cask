@@ -1,6 +1,7 @@
 --- a/dsh-terminal-bash/lib/index.js
 +++ b/dsh-terminal-bash/lib/index.js
-@@ -7,7 +7,7 @@
+@@ -6,7 +6,7 @@
+ //#region lib/types/config.js
  /** Validated configuration for the local PTY backend. */
  /** Bash dialect default executable. */
 -const DEFAULT_BASH_SHELL = "/bin/bash";
