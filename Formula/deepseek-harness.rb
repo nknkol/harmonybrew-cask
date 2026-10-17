@@ -1,14 +1,13 @@
 class DeepseekHarness < Formula
   desc "Open-source agent harness developed by DeepSeek AI"
   homepage "https://github.com/deepseek-ai/deepseek-harness"
-  url "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.5-rc.2.tgz"
-  sha256 "f4c54839d69e82bf1c3a5a41a910c3ce1405cd9e9d97d753c0c04f406c7d7480"
+  url "https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.2.1-rc.2.tgz"
+  sha256 "40e3d025c0240c4316ff42dee9bedc7709c0fb38aea10543b47076ed2af52e1d"
   license "MIT"
-  revision 3
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fdeepseek-harness"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "18b767df465288dd97ecf992a9b50041f0a5d05b3ca76d077ecc151521d88495"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "95c8f577490993c9082b35e8ce9db3bb5556bdaeaf7cafa8820537f054811207"
   end
 
   # The npm `next` dist-tag carries the rc line while `latest` lags behind it.
@@ -85,7 +84,18 @@ class DeepseekHarness < Formula
       # requested C++20 mode while building koffi.
       koffi_cmake = "node_modules/koffi/src/koffi/CMakeLists.txt"
       inreplace koffi_cmake, "set(CMAKE_CXX_STANDARD 20)",
-                "set(CMAKE_CXX_STANDARD 20)\nset(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++20\")"
+                "set(CMAKE_CXX_STANDARD 20)\n" \
+                "set(CMAKE_POSITION_INDEPENDENT_CODE ON)\n" \
+                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS} -fPIC\")\n" \
+                "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++20 -fPIC\")\n" \
+                "set(CMAKE_ASM_FLAGS \"${CMAKE_ASM_FLAGS} -fPIC\")"
+
+      # koffi takes the statx(2) path unconditionally on Linux, but OHOS musl
+      # exposes no struct statx/STATX_* constants; use its portable stat path.
+      koffi_base = "node_modules/koffi/lib/native/base/base.cc"
+      inreplace koffi_base, "#if defined(__linux__)\n    const char *pathname = filename;",
+                "#if defined(__linux__) && !defined(__OHOS__)\n    const char *pathname = filename;"
+
       system "npm", "rebuild", "koffi", "node-pty"
     end
 
@@ -96,6 +106,22 @@ class DeepseekHarness < Formula
     Dir[File.join(patch_dir, "*.patch")].sort.each do |patch_file|
       system "patch", "-p1", "-d", dsh_modules, "-i", patch_file
     end
+
+    # OpenHarmony has no prebuilt binding for node-addon-require-builtin and the
+    # npm package ships no native source. The launcher already runs node with
+    # --expose-internals, so a JS shim exposes the same internal modules.
+    narb = libexec/"lib/node_modules/@deepseek-ai/dsh/node_modules/node-addon-require-builtin/lib/index.js"
+    File.write(narb, <<~'JS')
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.requireBuiltin = requireBuiltin;
+      exports.isAllowedInternalId = isAllowedInternalId;
+      exports.getBindingInfo = getBindingInfo;
+      function requireBuiltin(moduleId) { return require(moduleId); }
+      function isAllowedInternalId(moduleId) { return typeof moduleId === "string" && moduleId.startsWith("internal/"); }
+      function getBindingInfo() { return { source: "js-fallback", backend: "expose-internals", abi: "n/a" }; }
+      exports.default = { requireBuiltin, isAllowedInternalId, getBindingInfo };
+    JS
 
     # Native Node add-ons are ELF shared objects and must carry an OpenHarmony
     # code signature before the bottle is packed.

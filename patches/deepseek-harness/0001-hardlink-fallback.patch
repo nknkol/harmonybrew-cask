@@ -2,7 +2,7 @@
 +++ b/dsh-session-persistence-jsonl/lib/index.js
 @@ -1,7 +1,7 @@
  import z from "@deepseek-ai/schemastery";
- import { SessionFormatUnsupportedMigrationError, sessionFormatCatalog } from "@deepseek-ai/dsh-session-format-catalog";
+ import { SessionFormatUnsupportedMigrationError, createSessionFormatCatalogWithChildren, historicalSessionFormatCatalog, sessionFormatCatalog } from "@deepseek-ai/dsh-session-format-catalog";
 -import { readdirSync } from "node:fs";
 -import { link, lstat, mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, truncate } from "node:fs/promises";
 +import { constants as fsConstants, readdirSync } from "node:fs";
@@ -10,8 +10,7 @@
  import { basename, dirname, isAbsolute, join, parse, resolve, toNamespacedPath } from "node:path";
  import { performance } from "node:perf_hooks";
  import { scheduler } from "node:timers/promises";
-@@ -1605,7 +1605,8 @@
- 	readdir: (path) => readdir(path),
+@@ -1613,6 +1613,7 @@
  	stat: (path) => stat(path, { bigint: true }),
  	lstat: (path) => lstat(path),
  	link,
@@ -19,14 +18,9 @@
  	rm: (path) => rm(path, { force: true })
  };
  const defaultInternals = {
-@@ -2028,14 +2029,29 @@
- 		/* v8 ignore next -- the filesystem error is already complete. */
- 		throw error;
- 	}
- 	try {
- 		await internals.fs.link(staged, currentPath);
+@@ -2040,8 +2041,24 @@
  	} catch (error) {
--		/* v8 ignore else -- a non-collision filesystem error propagates unchanged. */
+ 		/* v8 ignore else -- a non-collision filesystem error propagates unchanged. */
  		if (isEEXIST(error)) return false;
 -		/* v8 ignore next -- the filesystem error is already complete. */
 -		throw error;
@@ -51,8 +45,7 @@
  	}
  	await syncDirectory(dirname(currentPath), internals);
  	return true;
- }
-@@ -2970,7 +2970,14 @@
+@@ -3223,7 +3240,14 @@
  		const tmp = await this.writeSyncedTempFile(finalPath, content);
  		let linked = false;
  		try {
@@ -70,18 +63,18 @@
  			/* v8 ignore next -- link failure is the TOCTOU/IO race guarded above; not reachable in test */
 --- a/dsh-fs-local/lib/index.js
 +++ b/dsh-fs-local/lib/index.js
-@@ -4,8 +4,8 @@
+@@ -6,8 +6,8 @@
  import z from "@deepseek-ai/schemastery";
  import { FileSystem, FsError, FsTargetKey, FsVersion } from "@deepseek-ai/dsh-fs";
  import { randomUUID } from "node:crypto";
--import { createReadStream } from "node:fs";
--import { chmod, link, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat } from "node:fs/promises";
-+import { createReadStream, constants as fsConstants } from "node:fs";
-+import { chmod, copyFile, link, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat } from "node:fs/promises";
- import { TextDecoder } from "node:util";
+-import { createReadStream, realpath } from "node:fs";
+-import { chmod, link, lstat, mkdir, open, readFile, readdir, rename, rm, stat } from "node:fs/promises";
++import { createReadStream, constants as fsConstants, realpath } from "node:fs";
++import { chmod, copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, stat } from "node:fs/promises";
+ import { TextDecoder, promisify } from "node:util";
  //#region lib/types/win32.js
  /**
-@@ -532,7 +532,14 @@
+@@ -550,7 +550,14 @@
  		if (createIfAbsent !== void 0) try {
  			await linkFile(tempPath, absolutePath);
  		} catch (error) {
@@ -100,15 +93,15 @@
 --- a/dsh-attachment-local/lib/index.js
 +++ b/dsh-attachment-local/lib/index.js
 @@ -4,7 +4,7 @@
- import { resolveDshHome } from "@deepseek-ai/dsh-home-paths";
+ import { dshCachePath, resolveDshHome } from "@deepseek-ai/dsh-home-paths";
  import { createHash, randomUUID } from "node:crypto";
  import { constants, createReadStream } from "node:fs";
 -import { chmod, link, mkdir, open, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
 +import { chmod, copyFile, link, mkdir, open, readFile, rename, rm, unlink, writeFile } from "node:fs/promises";
- import sharp from "sharp";
+ import { createLazyRequire } from "@deepseek-ai/dsh-lazy-require";
  //#region lib/types/compression-limiter.js
  /** Instance-owned concurrency bound for native image transformations. */
-@@ -469,7 +469,15 @@
+@@ -477,7 +477,15 @@
  	try {
  		await ensureDurableDirectory(parent, await ensureDurableHome(dirname(dirname(resolve(root)))));
  		try {
@@ -125,7 +118,7 @@
  		} catch (error) {
  			/* v8 ignore next -- Private same-filesystem directories make EEXIST the only recoverable link race. */
  			if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
-@@ -530,7 +538,15 @@
+@@ -538,7 +546,15 @@
  	try {
  		await ensureDurableDirectory(parent, staged.boundary);
  		try {
