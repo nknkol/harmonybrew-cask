@@ -1,6 +1,6 @@
-# Codex 0.162.1 on HarmonyOS
+# Codex 0.167.0 on HarmonyOS
 
-Upstream: https://github.com/openai/codex/releases/tag/rust-v0.162.1
+Upstream: https://github.com/openai/codex/releases/tag/rust-v0.167.0
 
 The formula installs the complete `codex-package-aarch64-unknown-linux-musl`
 archive under `libexec`. Keeping `codex-package.json`, `bin`, `codex-path`, and
@@ -15,7 +15,7 @@ The resulting root remains fixed, independent of CWD, HOME, TMPDIR, and CODEX_HO
 Both socket creation and sandbox directory exclusion use this same function.
 The existing owner, mode 0700, socket, and peer checks remain in place.
 
-The patch changes two AArch64 instructions at file offset `0xa2470b0` to point
+The patch changes two AArch64 instructions at file offset `0xb3d1320` to point
 to a new Rust format literal at `0x1a0`. The literal occupies verified zero
 padding after `.init`'s return; extending `.init` to `0x70` bytes preserves it
 through llvm-objcopy and signing, without moving any load segments. The shortened
@@ -29,14 +29,14 @@ requires inspection and updated guards. All ELF files are signed after patching.
 
 The same guarded patch replaces the two `BL syscall` instructions used for
 `close_range(..., CLOSE_RANGE_CLOEXEC)` with `MOV X0, #-1` at file offsets
-`0xa2e2f80` and `0xa2e2f9c` (virtual addresses `0xa6e2f80` and `0xa6e2f9c`).
+`0xb4717bc` and `0xb4717d8` (virtual addresses `0xb8717bc` and `0xb8717d8`).
 Both calls and their surrounding arguments/branches are verified before writing.
 The existing conditional branches then select upstream's `/proc/self/fd` +
 `fcntl(FD_CLOEXEC)` fallback, preserving descriptor cleanup and the keep-list.
 HarmonyOS terminates syscall 436 with SIGSYS, so waiting for an errno cannot
 reach that fallback. No syscall wrapper or unrelated call is changed.
 
-On the affected host, unpatched 0.159.3 and 0.162.1 both fail before shell exec
+On the affected host, unpatched 0.159.3 and 0.167.0 both fail before shell exec
 through the non-PTY setup path. PTY execution succeeds through its alternate
 launch path. A re-signed isolated patch restores ordinary pipes, stdout/stderr,
 exit-code propagation and nested shell execution. This failure is in CLI process
@@ -56,3 +56,18 @@ code, and repeats this test using the daemon's copied package.
 Host validation must use CODEX_HOME in
 the app's private `/data/storage/el2/base/files` directory: shared `/storage`
 directories do not provide the socket ownership/mode semantics Codex requires.
+
+The historical `codex@0.162.1` formula uses the frozen
+`patch-harmonyos-0.162.1.rb` patcher and retains revision 1.
+
+Upstream 0.167.0 also ships `bin/codex-exec-server`. The formula patches and
+signs both executables and exercises both through the private non-PTY setup
+protocol, including the daemon's copied package. The exec-server profile uses
+pristine SHA-256
+`020b3f9a9ee5cf589a4c5b8e9cb1d48a755693b3534943cc38e59bbe7261e4e7`,
+format pointer offset `0x1f660a4`, literal offset `0x3128485`, and syscall-call
+offsets `0x1f98b44` / `0x1f98b60`. Each profile has independent exact hash and
+instruction guards. Both preserve the same upstream descriptor cleanup fallback.
+
+The archive no longer includes zsh; the formula creates the resource directory
+before writing its native-zsh wrapper.

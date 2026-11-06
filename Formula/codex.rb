@@ -1,14 +1,13 @@
 class Codex < Formula
   desc "OpenAI Codex CLI"
   homepage "https://github.com/openai/codex"
-  url "https://github.com/openai/codex/releases/download/rust-v0.162.1/codex-package-aarch64-unknown-linux-musl.tar.gz"
-  sha256 "53a9ce0b94beb27a63fdeb2f7704d95199e17b3898aa33b60461a1a93ac0d88b"
+  url "https://github.com/openai/codex/releases/download/rust-v0.167.0/codex-package-aarch64-unknown-linux-musl.tar.gz"
+  sha256 "0de261ecf1e7f3028a7952f03fca2093f749277d38590b78bb32f8567756bbb7"
   license "Apache-2.0"
-  revision 1
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fcodex"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "3fe3db1dab4a9dfc52b50c48fe0762e94c111ee7eac944284bb1085e61f44d10"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "a94d6841168f94c5b06144deba6d83315956ba000fe2aa36c79b6d42565c436f"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -68,7 +67,8 @@ class Codex < Formula
 
     # Use native zsh: the bundled Linux zsh also requires Linux libtinfo.
     zsh = libexec/"codex-resources/zsh/bin/zsh"
-    rm zsh
+    rm_f zsh
+    zsh.dirname.mkpath
     zsh.write <<~SH
       #!/bin/sh
       exec "#{Formula["zsh"].opt_bin}/zsh" "$@"
@@ -100,7 +100,9 @@ class Codex < Formula
     chmod 0755, libexec/"codex-path/ps"
 
     tap_root = Pathname.new(__FILE__).dirname.parent
-    system RbConfig.ruby, tap_root/"patches/codex/patch-harmonyos.rb", libexec/"bin/codex"
+    %w[codex codex-exec-server].each do |executable|
+      system RbConfig.ruby, tap_root/"patches/codex/patch-harmonyos.rb", libexec/"bin"/executable
+    end
 
     libexec.find do |path|
       next unless path.file? && !path.symlink?
@@ -183,6 +185,7 @@ class Codex < Formula
     assert_match "ripgrep", shell_output("#{libexec}/codex-path/rg --version")
     assert_equal "ok", shell_output("#{libexec}/codex-resources/zsh/bin/zsh -fc 'printf ok'")
     assert_pipe_command libexec/"bin/codex"
+    assert_pipe_command libexec/"bin/codex-exec-server"
 
     # Exercise the package discovery and copying that --version does not cover.
     begin
@@ -192,6 +195,7 @@ class Codex < Formula
       assert_path_exists package/"codex-package.json"
       assert_match "codex-cli #{version}", shell_output("#{package}/bin/codex --version")
       assert_pipe_command package/"bin/codex"
+      assert_pipe_command package/"bin/codex-exec-server"
     ensure
       system bin/"codex", "app-server", "daemon", "stop"
     end

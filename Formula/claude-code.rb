@@ -1,13 +1,13 @@
 class ClaudeCode < Formula
   desc "Anthropic's agentic coding tool"
   homepage "https://www.anthropic.com/claude-code"
-  url "https://downloads.claude.ai/claude-code-releases/2.1.292/linux-arm64-musl/claude"
-  sha256 "a17c919b13df206371a55de716ab81e3dcd7c039f66b79003ed87b7665fdc15f"
-  version "2.1.292"
+  url "https://downloads.claude.ai/claude-code-releases/2.1.318/linux-arm64-musl/claude"
+  sha256 "a5ec862f882101dbe3e959ec166ab144e902a8e8e76215a2345b3860fe92ad28"
+  version "2.1.318"
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fclaude-code"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "fd3248e8db7d692cfca2784ef3d0f88c318f3589a6a21a88c0ce28b8d88a9e50"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "2230fa2e7af411145442b138697277d5b09d718ceb62f436f9b4d97faf0e056b"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build

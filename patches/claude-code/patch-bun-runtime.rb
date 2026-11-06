@@ -14,25 +14,33 @@ abort "usage: #{$PROGRAM_NAME} ELF" unless ARGV.length == 1
 
 path = ARGV.fetch(0)
 data = File.binread(path)
+abort "expected aarch64 ELF64 ET_EXEC" unless data[0, 6] == "\x7fELF\x02\x01" &&
+  data[16, 4].unpack("v2") == [2, 183]
 nop = ["1f2003d5"].pack("H*")
 bytes = ->(hex) { [hex].pack("H*") }
 
 targets = {
   "Bun close_range fallback" => [
+    ["80368052e103152a0200b0128300805232028e94d61e01f0000100b4", { 4 => nop }],
     ["80368052e103142a0200b012830080528c54b294000100b4", { 4 => nop }],
     ["80368052e103142a0200b01283008052c9d0b294000100b4", { 4 => nop }],
   ],
   "Bun close_range wrapper" => [
+    ["fd7bbfa9fd030091e303022ae203012ae103002a80368052fd7bc1a8e9b79214",
+     { 5 => bytes.call("00008092"), 7 => bytes.call("c0035fd6") }],
     ["fd7bbfa9fd030091e303022ae203012ae103002a80368052fd7bc1a88152b214",
      { 5 => bytes.call("00008092"), 7 => bytes.call("c0035fd6") }],
     ["fd7bbfa9fd030091e303022ae203012ae103002a80368052fd7bc1a8a9ceb214",
      { 5 => bytes.call("00008092"), 7 => bytes.call("c0035fd6") }],
   ],
   "Bun close_range fd 3" => [
+    ["8036805261008052020080128300805203094d94", { 4 => nop }],
     ["803680526100805202008012830080525952b294", { 4 => nop }],
     ["8036805261008052020080128300805281ceb294", { 4 => nop }],
   ],
   "Bun process init" => [
+    ["88ac00b0007d41f9e1031faa42008052e3031faaf3031eaa80064d9488ac00b0007941f9e1031faa42008052e3031faa7a064d94",
+     { 6 => nop, 12 => nop }],
     [
       [
         "887601f000b945f9e1031faa42008052e3031faabf52b294",
@@ -53,6 +61,12 @@ targets = {
     ],
   ],
 }
+
+if data.include?(bytes.call("88ac00b0007d41f9e1031faa42008052e3031faaf3031eaa80064d94"))
+  targets["Bun process init close_range"] = [
+    ["8036805281008052020080128300805285054d94f0044d94", { 4 => nop }],
+  ]
+end
 
 targets.each do |name, candidates|
   matches = candidates.filter_map do |signature_hex, replacements|
