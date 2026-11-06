@@ -1,14 +1,14 @@
 class Antigravity < Formula
   desc "Google Antigravity CLI — AI coding agent for the terminal"
   homepage "https://github.com/google-antigravity/antigravity-cli"
-  url "https://github.com/google-antigravity/antigravity-cli/releases/download/1.4.2/agy_cli_linux_arm64.tar.gz"
-  sha256 "08dd4a2ca52d531fef1dfae4ec2fbafcd56342bfa694c8193a60da2b26fb1898"
+  url "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.2/agy_cli_linux_arm64.tar.gz"
+  sha256 "cd155ecd9bc962037423e6826ed0b61d3b16d84d350cdc9a8c14478f24f5f235"
   license "Apache-2.0"
-  version "1.4.2"
+  version "1.5.2"
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fantigravity"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "e77c38364370f5097cfd5e84cbea49c8bee9d6734a7439057a680eb2a8f61db1"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "5aac6183d80e866f17a85b189f858f8dbc976d7724ab3b36014bad7097588dda"
   end
 
   # The upstream binary is linked against glibc (Go + cgo with Chromium
@@ -79,6 +79,6 @@ class Antigravity < Formula
   end
 
   test do
-    assert_match "1.4.2", shell_output("#{bin}/agy --version")
+    assert_match version.to_s, shell_output("#{bin}/agy --version")
   end
 end
