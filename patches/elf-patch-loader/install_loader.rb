@@ -5,13 +5,13 @@
 #
 # Usage from a Homebrew Formula:
 #   tap_root = Pathname.new(__FILE__).dirname.parent
-#   system RbConfig.ruby, tap_root/"patches/elf-patch-loader/install_loader.rb",
-#          "--binary", buildpath/"antigravity",
-#          "--config", tap_root/"patches/antigravity/agy.elfpatch",
-#          "--prefix", prefix,
+#   system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+#          "--binary", (buildpath/"antigravity").to_s,
+#          "--config", (tap_root/"patches/antigravity/agy.elfpatch").to_s,
+#          "--prefix", prefix.to_s,
 #          "--name", "agy",
-#          "--glibc-lib", Formula["nknkol/cask/glibc"].opt_lib,
-#          "--sign-tool", Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+#          "--glibc-lib", Formula["nknkol/cask/glibc"].opt_lib.to_s,
+#          "--sign-tool", sign_tool.to_s
 
 require "fileutils"
 require "optparse"
@@ -25,7 +25,11 @@ OptionParser.new do |opts|
   opts.on("--binary PATH", "Path to upstream unmodified ELF binary") { |v| options[:binary] = Pathname.new(v) }
   opts.on("--config PATH", "Path to .elfpatch configuration template") { |v| options[:config] = Pathname.new(v) }
   opts.on("--prefix PATH", "Formula prefix path") { |v| options[:prefix] = Pathname.new(v) }
-  opts.on("--name NAME", "Installed wrapper executable name in bin/") { |v| options[:name] = v }
+  opts.on("--bin-dir PATH", "Optional wrapper directory (default: <prefix>/bin)") { |v| options[:bin_dir] = Pathname.new(v) }
+  opts.on("--libexec-dir PATH", "Optional payload/config directory (default: <prefix>/libexec)") { |v| options[:libexec_dir] = Pathname.new(v) }
+  opts.on("--payload-name NAME", "Optional installed payload filename") { |v| options[:payload_name] = v }
+  opts.on("--program-rel PATH", "Optional @PROGRAM@ substitution value") { |v| options[:program_rel] = v }
+  opts.on("--name NAME", "Installed wrapper executable name") { |v| options[:name] = v }
   opts.on("--glibc-lib PATH", "Path to glibc opt_lib directory") { |v| options[:glibc_lib] = Pathname.new(v) }
   opts.on("--sign-tool PATH", "Path to binary-sign-tool-fix") { |v| options[:sign_tool] = Pathname.new(v) }
   opts.on("--objcopy PATH", "Optional path to llvm-objcopy") { |v| options[:objcopy] = Pathname.new(v) }
@@ -40,21 +44,22 @@ loader_dir = Pathname.new(__FILE__).dirname.realpath
 loader_src = loader_dir/"elf_patch_loader.c"
 loader_prebuilt = loader_dir/"elf-patch-loader"
 
-bin_dir = options[:prefix]/"bin"
-libexec_dir = options[:prefix]/"libexec"
+bin_dir = options[:bin_dir] || (options[:prefix]/"bin")
+libexec_dir = options[:libexec_dir] || (options[:prefix]/"libexec")
 FileUtils.mkdir_p([bin_dir, libexec_dir])
 
-# 1. Install the upstream ELF binary untouched into libexec/
-payload_name = options[:binary].basename.to_s
+# 1. Install the upstream ELF binary untouched into libexec_dir/
+payload_name = options[:payload_name] || options[:binary].basename.to_s
 payload_dst = libexec_dir/payload_name
 FileUtils.cp(options[:binary], payload_dst)
 FileUtils.chmod(0644, payload_dst)
 
-# 2. Render .elfpatch configuration into libexec/<name>.elfpatch
+# 2. Render .elfpatch configuration into libexec_dir/<name>.elfpatch
 conf_text = File.read(options[:config])
 glibc_lib = options[:glibc_lib]&.to_s || "/storage/Users/currentUser/.harmonybrew/opt/glibc/lib"
+program_rel = options[:program_rel] || "libexec/#{payload_name}"
 conf_text = conf_text
-  .gsub("@PROGRAM@", "libexec/#{payload_name}")
+  .gsub("@PROGRAM@", program_rel)
   .gsub("@GLIBC_INTERP@", "#{glibc_lib}/ld-linux-aarch64.so.1")
   .gsub("@GLIBC_LIB@", glibc_lib)
 
@@ -62,7 +67,7 @@ conf_dst = libexec_dir/"#{options[:name]}.elfpatch"
 File.write(conf_dst, conf_text)
 FileUtils.chmod(0644, conf_dst)
 
-# 3. Build or copy the tiny AArch64 ELF patch loader into bin/<name>
+# 3. Build or copy the tiny AArch64 ELF patch loader into bin_dir/<name>
 wrapper_dst = bin_dir/options[:name]
 unsigned_path = Pathname.new("#{wrapper_dst}.unsigned")
 signed_path = Pathname.new("#{wrapper_dst}.signed")

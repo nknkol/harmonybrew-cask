@@ -4,10 +4,11 @@ class Codex < Formula
   url "https://github.com/openai/codex/releases/download/rust-v0.167.0/codex-package-aarch64-unknown-linux-musl.tar.gz"
   sha256 "0de261ecf1e7f3028a7952f03fca2093f749277d38590b78bb32f8567756bbb7"
   license "Apache-2.0"
+  revision 1
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fcodex"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "a94d6841168f94c5b06144deba6d83315956ba000fe2aa36c79b6d42565c436f"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "268a8336811f75ef8e9876f1beb404b72150be48bbce2fd7a2199b5ed36cb9d0"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -101,11 +102,24 @@ class Codex < Formula
 
     tap_root = Pathname.new(__FILE__).dirname.parent
     %w[codex codex-exec-server].each do |executable|
-      system RbConfig.ruby, tap_root/"patches/codex/patch-harmonyos.rb", libexec/"bin"/executable
+      orig = buildpath/"#{executable}.orig"
+      mv libexec/"bin"/executable, orig
+      system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+             "--binary", orig.to_s,
+             "--payload-name", "#{executable}.elf",
+             "--program-rel", "bin/#{executable}.elf",
+             "--config", (tap_root/"patches/codex/codex.elfpatch").to_s,
+             "--prefix", libexec.to_s,
+             "--bin-dir", (libexec/"bin").to_s,
+             "--libexec-dir", (libexec/"bin").to_s,
+             "--name", executable,
+             "--sign-tool", sign_tool.to_s
     end
 
     libexec.find do |path|
       next unless path.file? && !path.symlink?
+      next if path.extname == ".elf" || path.extname == ".elfpatch"
+      next if path == libexec/"bin/codex" || path == libexec/"bin/codex-exec-server"
       next unless path.open("rb") { |file| file.read(4) } == "\x7FELF"
 
       sign_elf! path
@@ -162,7 +176,9 @@ class Codex < Formula
 
   def caveats
     <<~EOS
-      Daemon sockets use /data/storage/el2/base/cache/cd-<uid> on HarmonyOS.
+      Codex and codex-exec-server run via the HarmonyOS ELF in-memory patch
+      loader with daemon socket path redirection (/data/storage/el2/base/cache/cd-<uid>)
+      and close_range fallbacks patched in memory before execution.
 
       Sandbox unavailable on HarmonyOS; Codex runs unconfined.
       To suppress the warning:
@@ -177,6 +193,8 @@ class Codex < Formula
     ENV["CODEX_NO_SANDBOX"] = "1"
     (testpath/"codex-home").mkpath
     ENV["CODEX_HOME"] = (testpath/"codex-home").to_s
+    assert_match "verification passed", shell_output("ELFPATCH_VERIFY=1 #{bin}/codex 2>&1")
+    assert_match "verification passed", shell_output("ELFPATCH_VERIFY=1 #{libexec}/bin/codex-exec-server 2>&1")
     assert_match "codex-cli #{version}", shell_output("#{bin}/codex --version")
 
     assert_match "codex-cli #{version}", shell_output("#{bin}/codex --no-daemon --version")

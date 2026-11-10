@@ -176,6 +176,7 @@ enum cand_type {
     CAND_SEARCH_ALL_SEGS = 2,
     CAND_GO_SYM = 3,
     CAND_OFFSET = 4,
+    CAND_REDIRECT_ADRP = 5,
 };
 
 struct patch_candidate {
@@ -399,6 +400,20 @@ static void parse_config(const char *conf_path, const char *prefix_dir, struct l
                 parse_masked_hex(pat_s, c->pattern, c->mask, &c->pat_len) < 0 ||
                 parse_masked_hex(rep_s, c->replace, c->rep_mask, &c->rep_len) < 0 || c->rep_len == 0)
                 die("invalid arguments in OFFSET", cur_target->name);
+        } else if (z_strcmp(tok, "REDIRECT_ADRP") == 0) {
+            if (!cur_target) die("REDIRECT_ADRP outside TARGET", NULL);
+            if (cur_target->cand_count >= MAX_CANDIDATES) die("too many candidates", cur_target->name);
+            struct patch_candidate *c = &cur_target->cands[cur_target->cand_count++];
+            c->type = CAND_REDIRECT_ADRP;
+            char pat_s[512], rep_s[512], opt_s[64];
+            if (!next_token(&p, pat_s, sizeof(pat_s)) ||
+                !next_token(&p, rep_s, sizeof(rep_s)))
+                die("REDIRECT_ADRP syntax: REDIRECT_ADRP <orig_hex> <new_hex> [multi]", cur_target->name);
+            if (parse_masked_hex(pat_s, c->pattern, c->mask, &c->pat_len) < 0 || c->pat_len == 0 ||
+                parse_masked_hex(rep_s, c->replace, c->rep_mask, &c->rep_len) < 0 || c->rep_len == 0)
+                die("invalid arguments in REDIRECT_ADRP", cur_target->name);
+            if (next_token(&p, opt_s, sizeof(opt_s)) && z_strcmp(opt_s, "multi") == 0)
+                c->allow_multiple = 1;
         } else {
             die("unknown directive in config", tok);
         }
@@ -414,6 +429,7 @@ struct loaded_elf {
     uintptr_t entry;
     uintptr_t phdr_va;
     uintptr_t maxva;
+    size_t extra_str_off;
 };
 
 static int match_bytes(const uint8_t *mem, const uint8_t *pat, const uint8_t *mask, size_t len) {
@@ -588,6 +604,80 @@ static int apply_candidate(struct loaded_elf *elf, const struct patch_candidate 
         return 1;
     }
 
+    if (c->type == CAND_REDIRECT_ADRP) {
+        uint64_t lit_va = 0;
+        int lit_hits = 0;
+        for (int i = 0; i < elf->ehdr.e_phnum; i++) {
+            const Elf64_Phdr *ph = &elf->phdr[i];
+            if (ph->p_type != PT_LOAD || ph->p_filesz < c->pat_len) continue;
+            const uint8_t *seg = (const uint8_t *)(elf->bias + ph->p_vaddr);
+            size_t limit = ph->p_filesz - c->pat_len;
+            for (size_t off = 0; off <= limit; off++) {
+                if (match_bytes(seg + off, c->pattern, c->mask, c->pat_len)) {
+                    lit_va = ph->p_vaddr + off;
+                    lit_hits++;
+                    if (lit_hits > 1) return 0;
+                }
+            }
+        }
+        if (lit_hits != 1) return 0;
+
+        uint64_t code_hits[16];
+        int code_count = 0;
+        for (int i = 0; i < elf->ehdr.e_phnum; i++) {
+            const Elf64_Phdr *ph = &elf->phdr[i];
+            if (ph->p_type != PT_LOAD || !(ph->p_flags & PF_X) || ph->p_filesz < 8) continue;
+            const uint8_t *seg = (const uint8_t *)(elf->bias + ph->p_vaddr);
+            size_t limit = ph->p_filesz - 8;
+            for (size_t off = 0; off <= limit; off += 4) {
+                uint32_t i0 = *(const uint32_t *)(seg + off);
+                uint32_t i1 = *(const uint32_t *)(seg + off + 4);
+                if ((i0 & 0x9f000000U) == 0x90000000U && (i1 & 0xff800000U) == 0x91000000U) {
+                    uint32_t rd0 = i0 & 0x1fU;
+                    uint32_t rd1 = i1 & 0x1fU;
+                    uint32_t rn1 = (i1 >> 5) & 0x1fU;
+                    if (rd0 == rd1 && rd0 == rn1) {
+                        int64_t immlo = (int64_t)((i0 >> 29) & 0x3U);
+                        int64_t immhi = (int64_t)((i0 >> 5) & 0x7ffffU);
+                        int64_t imm = (immhi << 2) | immlo;
+                        if (imm & (1LL << 20)) imm -= (1LL << 21);
+                        uint64_t pc = ph->p_vaddr + off;
+                        uint64_t page = (pc & ~0xfffULL) + (uint64_t)(imm << 12);
+                        uint64_t add_imm = (i1 >> 10) & 0xfffU;
+                        if ((i1 >> 22) & 1U) add_imm <<= 12;
+                        if (page + add_imm == lit_va) {
+                            if (code_count < 16) code_hits[code_count] = pc;
+                            code_count++;
+                            if (!c->allow_multiple && code_count > 1) return 0;
+                        }
+                    }
+                }
+            }
+        }
+        if (code_count == 0) return 0;
+        if (!c->allow_multiple && code_count != 1) return 0;
+        if (elf->extra_str_off + c->rep_len > PAGE_SIZE) return 0;
+
+        uint64_t new_va = elf->maxva + elf->extra_str_off;
+        uint8_t *dst_str = (uint8_t *)(elf->bias + new_va);
+        apply_replacement(dst_str, c->replace, c->rep_mask, c->rep_len);
+        elf->extra_str_off = (elf->extra_str_off + c->rep_len + 7) & ~7UL;
+
+        int to_apply = code_count < 16 ? code_count : 16;
+        for (int h = 0; h < to_apply; h++) {
+            uint64_t pc = code_hits[h];
+            uint32_t *insns = (uint32_t *)(elf->bias + pc);
+            uint32_t rd = insns[0] & 0x1fU;
+            int64_t page_delta = ((int64_t)(new_va & ~0xfffULL) - (int64_t)(pc & ~0xfffULL)) >> 12;
+            uint32_t uimm = (uint32_t)page_delta & 0x1fffffU;
+            insns[0] = 0x90000000U | ((uimm & 3U) << 29) | ((uimm >> 2) << 5) | rd;
+            insns[1] = 0x91000000U | (((uint32_t)(new_va & 0xfffULL)) << 10) | (rd << 5) | rd;
+        }
+        *matched_vaddr_out = code_hits[0];
+        *match_count_out = code_count;
+        return 1;
+    }
+
     return 0;
 }
 
@@ -643,7 +733,7 @@ static void load_elf(const char *path, struct loaded_elf *out, const struct load
     minva = TRUNC_PG(minva);
     maxva = ROUND_PG(maxva);
     const char *inject_runpath = (cfg && cfg->runpath[0]) ? cfg->runpath : NULL;
-    size_t extra = inject_runpath ? PAGE_SIZE : 0;
+    size_t extra = cfg ? PAGE_SIZE : 0;
     int dyn = (out->ehdr.e_type == ET_DYN);
     void *hint = dyn ? NULL : (void *)minva;
     long base = sys_call(__NR_mmap, (long)hint, (long)(maxva - minva + extra), PROT_NONE,
@@ -651,6 +741,7 @@ static void load_elf(const char *path, struct loaded_elf *out, const struct load
     if (base < 0 && base > -4096) die("mmap reserve failed", path);
     out->bias = dyn ? ((uintptr_t)base - minva) : 0;
     out->maxva = maxva;
+    out->extra_str_off = 3072;
 
     for (int i = 0; i < out->ehdr.e_phnum; i++) {
         const Elf64_Phdr *ph = &out->phdr[i];
@@ -684,14 +775,15 @@ static void load_elf(const char *path, struct loaded_elf *out, const struct load
     }
 
     if (cfg) {
+        uintptr_t extra_va = out->bias + maxva;
+        long p = sys_call(__NR_mmap, (long)extra_va, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                          MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (p < 0 && p > -4096) die("mmap extra page failed", path);
         apply_all_patches(out, cfg, verbose);
     }
 
     if (inject_runpath && out->phdr_va) {
         uintptr_t extra_va = out->bias + maxva;
-        long p = sys_call(__NR_mmap, (long)extra_va, PAGE_SIZE, PROT_READ | PROT_WRITE,
-                          MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (p < 0 && p > -4096) die("mmap extra page failed", path);
         Elf64_Phdr *mem_phdr = (Elf64_Phdr *)out->phdr_va;
         for (int i = 0; i < out->ehdr.e_phnum; i++) {
             if (mem_phdr[i].p_type == PT_DYNAMIC) {
