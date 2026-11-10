@@ -131,3 +131,93 @@ TARGET <target_name> [REQUIRED|OPTIONAL]
 - `ELFPATCH_VERIFY=1`：仅加载目标 ELF 并在内存中执行所有补丁校验，打印每个 `TARGET` 命中的候选序号与虚拟地址后立即以 `0` 退出（不真正启动目标程序）。
 - `ELFPATCH_DEBUG=1`：打印补丁命中日志后正常启动目标程序。
 - `ELFPATCH_CONFIG=/path/to/custom.elfpatch`：临时指定自定义 `.elfpatch` 配置文件路径进行测试。
+
+---
+
+## 7. 源码重编译 vs 内存补丁加载：选型与适配经验总结
+
+结合本仓库与官方 `harmonybrew/core` 在 `bun`、`codex`、`claude-code`、`antigravity` 上的实践，总结以下选型与适配经验：
+
+### 7.1 各软件维护策略对比
+
+1. **闭源软件（`antigravity`、`claude-code`）—— 必须使用内存补丁加载器**
+   - 无上游源码可供重编译；其中 `claude-code` 本质上是内嵌了 `.bun` 段的 Bun Standalone 单文件可执行程序，其底层 Bun 运行时在鸿蒙内核上触发的 `close_range` 等系统调用崩溃只能通过内存补丁解决。
+2. **包含复杂沙箱/套接字路径依赖的软件（`codex`）—— 内存补丁加载器功能更完整**
+   - 官方 `harmonybrew/core/codex` 采用源码编译，但因主目录所在的 `hmdfs` 不支持 Unix Domain Socket，直接打补丁禁用了 `daemon_auto_start`（导致 `codex agents`、`codex queue`、远程控制不可用），且未打包 `codex-exec-server`。
+   - 本仓库通过 `REDIRECT_ADRP` 在内存中将套接字目录模板 `\x0dcodex-daemon-\xc0\x00` 重定向至支持 Unix Socket 的 `/data/storage/el2/base/cache/cd-`，配合 `CODEX_HOME` 桥接完整保留了 `app-server daemon` 全部特性，且免去了漫长的 Rust/V8 编译耗时。
+3. **重度依赖系统底层特性的大型运行时（`bun`）—— 双轨互补**
+   - 官方 `harmonybrew/core/bun` 维护了 70+ 个源码补丁以编译原生 OHOS musl 版本（包含内置 `ohos_sign` 支持 `bun build --compile` 自动签名、复杂的 `epoll` 状态机防空转等）；
+   - 本仓库的 `nknkol/cask/bun` 直接复用上游 `glibc` 预编译包 + 内存补丁，与 `claude-code` 共享同一套 Bun 补丁规则，可在上游发布新版本时实现 5 秒内零编译快速跟进。
+
+### 7.2 鸿蒙移植补丁的 4 类必要性分级（以 Bun 71 个补丁为例）
+
+在分析一个大型 Linux 软件迁移到鸿蒙所需补丁时，可按以下 4 类评估是否需要以及如何用内存补丁实现：
+
+| 分类 | 典型问题举例 | 对 `glibc` 预编译二进制是否必须？ | 内存补丁注入方式 |
+| :--- | :--- | :--- | :--- |
+| **1. 编译链与 musl 符号缺失** | `--abi=ohos` 构建配置、OHOS `libc.so` `stdout` 链接桩需 `-fPIC`、`zstd` 缺 `qsort_r`、`c-ares` 缺 `getservbyport_r`、TinyCC 宏、N-API `libc++` 符号修饰 | **完全不需要**<br>上游二进制链接完整的 `glibc 2.38`，天然不存在 musl 缺函数与编译期问题。 | 无需注入 |
+| **2. 鸿蒙 seccomp `SIGSYS` 系统调用拦截** | • `close_range` (`436`)<br>• `openat2` (`437`)<br>• `epoll_pwait2` (`441`)<br>• `fchmodat2` (`452`) | **必须处理（触发即 `SIGSYS` 崩溃）**<br>上游代码中通常已有 `ENOSYS` 回退逻辑，只因鸿蒙内核返回 `SIGSYS` 而非 `ENOSYS` 导致崩溃。 | **极易注入**：既可用 `SEARCH` 将 `svc #0` 改为返回 `-ENOSYS`（`mov x0, #-38`），也可用下文的 **`SIGSYS` 信号陷阱 Hook** 全局拦截。 |
+| **3. 鸿蒙内核单点行为差异开关** | • **对 `memfd` 调 `fstat(2)` 返回 `EACCES`**（导致 `Bun.spawn` 大 Buffer stdio 失败）<br>• **`pidfd + epoll` 丢失子进程退出事件**（导致异步 `Bun.spawn` 偶发挂死）<br>• **PTY Master `tcsetattr(TCSADRAIN)` 报 `EACCES`**（导致终端 `setRawMode` 报错，影响 TUI）<br>• **`/tmp` 只读** | **重要（影响子进程与终端 TUI 稳定性）** | **可通过内存补丁注入**：<br>• `can_use_memfd()` 入口改 `mov w0, #0; ret`<br>• `SHOULD_USE_WAITER_THREAD` 静态布尔值置 `1`（或让 `pidfd_open` 返回 `-ENOSYS`）<br>• `tcsetattr` 的 `TCSADRAIN`/`TCSAFLUSH` 参数置 `0` (`TCSANOW`)<br>• `/tmp` 路径常量用 `REDIRECT_ADRP` 重定向 |
+| **4. 新增独立模块或大规模状态机重构** | • `bun build --compile` 自动写入 `.codesign` 自签名 + `/proc/self/maps` 免读自身文件<br>• `epoll` 空缓冲区 `EPOLLOUT` 防空转状态机重构（400+ 行） | **非核心脚本必须，按需取舍** | 难以仅靠几字节指令替换完成；若需注入复杂逻辑，需采用下文的 **层级 2 / 层级 3 Hook 方案**。 |
+
+---
+
+## 8. 进阶演进：基于 `elf-patch-loader` 的三层 Hook 架构设计
+
+`elf-patch-loader` 本质上是一个**在目标程序入口执行前完全掌控进程地址空间的加载与 Hook 容器**。因为加载器自身的代码段（`.text`）在跳转到目标程序后**依然常驻在进程内存中**，当遇到比单纯改几条指令更复杂的适配需求时，可按稳定性和复杂度从高到低采用以下三层 Hook 机制：
+
+### 层级 1：`SIGSYS` 信号陷阱 Hook（零偏移、跨版本 100% 稳定）
+
+**实测结论**：鸿蒙内核 seccomp 对受限系统调用（如 `436` `close_range`、`437` `openat2`、`441` `epoll_pwait2`、`452` `fchmodat2`）并非采用不可捕获的 `SECCOMP_RET_KILL_PROCESS`，而是发送**可被用户态捕获的 `SIGSYS` 信号（`SECCOMP_RET_TRAP`）**。
+
+在 `elf-patch-loader` 跳转到目标入口前，通过 `rt_sigaction(SIGSYS, ...)` 注册一个常驻在加载器代码段中的 `SA_SIGINFO` 处理函数：
+
+```c
+static void sigsys_handler(int sig, siginfo_t *info, void *ucontext) {
+    ucontext_t *uc = (ucontext_t *)ucontext;
+    // info->si_syscall (或 uc->uc_mcontext.regs[8]) 为被拦截的系统调用号
+    // uc->uc_mcontext.regs[0..5] 为系统调用的 6 个参数
+    // 将返回值寄存器 x0 设为 -ENOSYS (-38)，libc 包装函数会自动设置 errno = ENOSYS 并返回 -1
+    uc->uc_mcontext.regs[0] = (unsigned long long)(-38);
+}
+```
+
+- **核心优势**：
+  1. **彻底免除特征码与偏移维护**：无需在目标二进制中查找任何 `svc #0` 指令位置，跨版本 100% 稳定。
+  2. **跨 `fork()` 自动继承**：`sigaction` 注册的信号处理函数在 `fork()` 出的子进程（`execve` 之前）中依然有效，天然覆盖子进程在 `fork()` 后、`execve()` 前调用 `close_range` 清理文件描述符的场景。
+  3. **支持在信号处理函数中直接用 C 模拟系统调用**：不仅能返回 `-ENOSYS`，还可以根据 `info->si_syscall` 和 `regs[0..5]` 在信号处理函数里直接用 C 代码模拟对应的系统调用行为（例如用户态模拟 `close_range` 或 `openat2`）并把结果写回 `regs[0]`。
+
+### 层级 2：`ld.so --preload` 动态符号级 Hook（针对 `glibc` 动态链接程序，不污染子进程）
+
+传统的 `LD_PRELOAD` 环境变量之所以不能在鸿蒙上直接使用，是因为环境变量会继承给子进程（如 `/bin/sh`、`git` 等鸿蒙原生 musl 程序），导致动态库加载失败。
+
+但由于 `elf-patch-loader` 是直接将 `ld-linux-aarch64.so.1` 作为入口点启动并构造栈参数的，可以直接在加载器传给 `ld.so` 的命令行参数中使用 `--preload`：
+
+```text
+ld-linux-aarch64.so.1 --library-path <glibc>/lib --preload <libohos_hook.so> <target.elf> [args...]
+```
+
+- **核心优势**：
+  1. **零环境变量污染**：`--preload` 仅对当前这次 `ld.so` 启动的进程生效，派生出的任何子进程均不受影响。
+  2. **用标准 C 语言实现任意复杂逻辑**：可在 `libohos_hook.so` 中通过 `dlsym(RTLD_NEXT, ...)` 按符号名拦截任意 `glibc` 函数，例如：
+     - 拦截 `tcsetattr`：当 `optional_actions` 包含 `TCSADRAIN`/`TCSAFLUSH` 且返回 `EACCES` 时，自动以 `TCSANOW` 重试；
+     - 拦截 `linkat`：当在 `hmdfs` 上硬链接失败时，自动回退为文件复制；
+     - 拦截 `fstat`：针对 `memfd` 特殊处理。
+  3. **跨版本 100% 稳定**：绑定的是 `glibc` 标准 ABI 导出符号名，无论上游如何升级版本或重排代码，均无需修改偏移。
+
+### 层级 3：Inline Trampoline（内联跳板 Hook，针对静态编译或未导出内部函数）
+
+对于静态链接程序（如 `claude-code`）或编译器直接内联 `svc #0`、不经过 `glibc` 符号表的内部函数：
+
+- **实现方式**：
+  1. 在 `elf-patch-loader` 的 `.text` 段（或 `maxva` 顶部额外映射的 `PROT_READ | PROT_EXEC` 跳板页）中编写 C 语言 Hook 函数。
+  2. 在目标函数入口（或特定点位）写入 4 条指令（16 字节）长跳转跳板：
+     ```asm
+     ldr x16, #8      // 50 00 00 58
+     br  x16          // 00 02 1f d6
+     .quad <hook_va>  // 8 字节目标虚拟地址
+     ```
+- **稳定性评估与注意事项**：
+  - **高稳定场景**：拦截函数入口并直接按标准 ARM64 AAPCS64 调用约定（参数 `x0~x7`，返回值 `x0`）替换整个函数行为（例如将 `can_use_memfd()` 入口替换为返回 `0`）。
+  - **存在跨版本风险的场景**：拦截函数中间指令，或 Hook 被 LTO 内联优化 / 采用自定义寄存器分配的 Rust/Zig 内部私有函数。此类场景在跨大版本升级时可能因寄存器分配变化而需要重新核对反汇编，因此**优先推荐使用层级 1（`SIGSYS` 陷阱）和层级 2（`ld.so --preload` 符号拦截）**，仅在必要时使用层级 3。
+
