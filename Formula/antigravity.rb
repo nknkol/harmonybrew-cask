@@ -1,84 +1,47 @@
 class Antigravity < Formula
-  desc "Google Antigravity CLI — AI coding agent for the terminal"
-  homepage "https://github.com/google-antigravity/antigravity-cli"
-  url "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.2/agy_cli_linux_arm64.tar.gz"
-  sha256 "cd155ecd9bc962037423e6826ed0b61d3b16d84d350cdc9a8c14478f24f5f235"
-  license "Apache-2.0"
-  version "1.5.2"
+  desc "Google Antigravity agentic coding CLI"
+  homepage "https://antigravity.google/docs/cli"
+  url "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.4/agy_cli_linux_arm64.tar.gz"
+  sha256 "aa8870d1b93b646ed52fd0862752b3ec8c5e91afd22d943eb2a9a0b0671fd939"
+  version "1.5.4"
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fantigravity"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "5aac6183d80e866f17a85b189f858f8dbc976d7724ab3b36014bad7097588dda"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "5d28802c0169a4e776aabc8d71e2e3164b130f4a3f0e061398c370e444b46cd3"
   end
 
-  # The upstream binary is linked against glibc (Go + cgo with Chromium
-  # components), which cannot run on the musl-based HarmonyOS system natively.
-  # We depend on the keg-only patched glibc runtime and rewrite the binary's
-  # interpreter to point at it.
-  depends_on "nknkol/cask/glibc"
   depends_on "nknkol/cask/binary-sign-tool" => :build
-  depends_on "llvm@21" => :build
-  depends_on "patchelf" => :build
+  depends_on "nknkol/cask/glibc"
 
   def sign_tool
     Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
 
-  def llvm_objcopy
-    Formula["llvm@21"].opt_bin/"llvm-objcopy"
-  end
-
-  def glibc
-    Formula["nknkol/cask/glibc"]
-  end
-
-  def sign_elf!(path)
-    unsigned = path.sub_ext("#{path.extname}.unsigned")
-    signed = path.sub_ext("#{path.extname}.signed")
-
-    rm_f unsigned
-    rm_f signed
-    chmod 0755, path
-
-    if quiet_system llvm_objcopy, "--remove-section=.codesign", path, unsigned
-      chmod 0755, unsigned
-    else
-      cp path, unsigned
-    end
-
-    system sign_tool, "sign", "-selfSign", "1", "-inFile", unsigned, "-outFile", signed
-    chmod 0755, signed
-    mv signed, path, force: true
-  ensure
-    rm_f unsigned if defined?(unsigned) && unsigned
-    rm_f signed if defined?(signed) && signed
-  end
-
   def install
-    agy = buildpath/"antigravity"
-
-    # Rewrite the ELF interpreter to the keg-only glibc loader, and set the
-    # RUNPATH so the glibc shared libraries are found at runtime.
-    glibc_lib = glibc.opt_lib
-    system "patchelf", "--set-interpreter", "#{glibc_lib}/ld-linux-aarch64.so.1", agy.to_s
-    system "patchelf", "--set-rpath", glibc_lib.to_s, agy.to_s
-
-    sign_elf! agy
-
-    bin.install agy => "agy"
+    tap_root = Pathname.new(__FILE__).dirname.parent
+    system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+           "--binary", (buildpath/"antigravity").to_s,
+           "--config", (tap_root/"patches/antigravity/agy.elfpatch").to_s,
+           "--prefix", prefix.to_s,
+           "--name", "agy",
+           "--glibc-lib", Formula["nknkol/cask/glibc"].opt_lib.to_s,
+           "--sign-tool", sign_tool.to_s
   end
 
   def caveats
     <<~EOS
-      Antigravity runs against the keg-only glibc runtime (#{glibc.opt_lib}).
-      It has been patched to use that loader directly, so no LD_LIBRARY_PATH
-      is needed.
+      Antigravity runs via the HarmonyOS ELF in-memory patch loader against the
+      keg-only glibc runtime (#{Formula["nknkol/cask/glibc"].opt_lib}) with
+      auto-update disabled in memory before execution. The upstream ELF binary
+      in #{opt_libexec}/antigravity remains unmodified on disk.
 
       Sandbox unavailable on HarmonyOS; Antigravity runs unconfined.
     EOS
   end
 
   test do
+    assert_match "verification passed", shell_output("ELFPATCH_VERIFY=1 #{bin}/agy 2>&1")
     assert_match version.to_s, shell_output("#{bin}/agy --version")
+    assert_match "Usage of agy:", shell_output("#{bin}/agy --help 2>&1")
   end
 end
