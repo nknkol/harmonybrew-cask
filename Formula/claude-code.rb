@@ -1,60 +1,41 @@
 class ClaudeCode < Formula
   desc "Anthropic's agentic coding tool"
   homepage "https://www.anthropic.com/claude-code"
-  url "https://downloads.claude.ai/claude-code-releases/2.1.318/linux-arm64-musl/claude"
-  sha256 "a5ec862f882101dbe3e959ec166ab144e902a8e8e76215a2345b3860fe92ad28"
-  version "2.1.318"
+  url "https://downloads.claude.ai/claude-code-releases/2.1.322/linux-arm64-musl/claude"
+  sha256 "b8a07ebb71cd612bd1ed80eabd2084ded98cadbae298d068a4a1307f0448c40c"
+  version "2.1.322"
 
   bottle do
     root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fclaude-code"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "2230fa2e7af411145442b138697277d5b09d718ceb62f436f9b4d97faf0e056b"
+    sha256 cellar: :any_skip_relocation, arm64_ohos: "30b6085243378d0c5d3a465db2af2c4ee32206dba950f2b978d777bf5b4cf615"
   end
 
   depends_on "nknkol/cask/binary-sign-tool" => :build
-  depends_on "llvm@21" => :build
 
   def sign_tool
     Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
 
-  def llvm_objcopy
-    Formula["llvm@21"].opt_bin/"llvm-objcopy"
-  end
-
-  def sign_elf!(path)
-    unsigned = path.sub_ext("#{path.extname}.unsigned")
-    signed = path.sub_ext("#{path.extname}.signed")
-
-    rm_f unsigned
-    rm_f signed
-    chmod 0755, path
-
-    if quiet_system llvm_objcopy, "--remove-section=.codesign", path, unsigned
-      chmod 0755, unsigned
-    else
-      cp path, unsigned
-    end
-
-    system sign_tool, "sign", "-selfSign", "1", "-inFile", unsigned, "-outFile", signed
-    chmod 0755, signed
-    mv signed, path, force: true
-  ensure
-    rm_f unsigned if defined?(unsigned) && unsigned
-    rm_f signed if defined?(signed) && signed
-  end
-
   def install
-    claude = buildpath/"claude"
     tap_root = Pathname.new(__FILE__).dirname.parent
-    patcher = tap_root/"patches/claude-code/patch-bun-runtime.rb"
+    system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+           "--binary", (buildpath/"claude").to_s,
+           "--config", (tap_root/"patches/claude-code/claude.elfpatch").to_s,
+           "--prefix", prefix.to_s,
+           "--name", "claude",
+           "--sign-tool", sign_tool.to_s
+  end
 
-    chmod 0755, claude
-    system RbConfig.ruby, patcher, claude
-    sign_elf! claude
-    bin.install claude
+  def caveats
+    <<~EOS
+      Claude Code runs via the HarmonyOS ELF in-memory patch loader with Bun
+      musl/seccomp startup syscalls patched in memory before execution. The
+      upstream ELF binary in #{opt_libexec}/claude remains unmodified on disk.
+    EOS
   end
 
   test do
+    assert_match "verification passed", shell_output("ELFPATCH_VERIFY=1 #{bin}/claude 2>&1")
     assert_match version.to_s, shell_output("#{bin}/claude --version")
     assert_match "Usage:", shell_output("#{bin}/claude --help")
   end
