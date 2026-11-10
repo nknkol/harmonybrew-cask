@@ -1,0 +1,25 @@
+# Antigravity CLI in-memory ELF patch configuration
+PROGRAM @PROGRAM@
+INTERP  @GLIBC_INTERP@
+RUNPATH @GLIBC_LIB@
+ENV     AGY_CLI_DISABLE_AUTO_UPDATE=true
+
+# 1. Disable triggerUpdateShared (background & foreground update check)
+#    Candidate #1 (Auto): Go .gopclntab symbol lookup -> return (skipped=true, err=nil)
+#    Candidate #2 (Auto): Unique instruction signature for env=="true" check -> force w3=1
+#    Candidate #3 (Manual fallback): Exact 1.5.4 virtual address 0x9d7af70
+#    Candidate #4 (Manual fallback): Exact 1.5.2 virtual address 0x9ab3d30
+TARGET disable_trigger_update REQUIRED
+  GO_SYM google3/third_party/jetski/cli/updater/updater.triggerUpdateShared 0 900b40f9 200080d2e1031faae2031faac0035fd6
+  SEARCH 3f1000f1e1000054030040b9844e8ed2a4aeacf27f00046be3179f9a 0 230080d207000014
+  OFFSET 0x9d7af70 900b40f9f14310d13f0210eb 200080d2e1031faae2031faac0035fd6
+  OFFSET 0x9ab3d30 900b40f9f14310d13f0210eb 200080d2e1031faae2031faac0035fd6
+
+# 2. Disable runUpdateShared (prevents --bg-updater or manual update from replacing binary)
+#    Candidate #1 (Auto): Go .gopclntab symbol lookup -> immediate ret
+#    Candidate #2 (Manual fallback): Exact 1.5.4 virtual address 0x9d7c270
+#    Candidate #3 (Manual fallback): Exact 1.5.2 virtual address 0x9ab5030
+TARGET disable_run_update REQUIRED
+  GO_SYM google3/third_party/jetski/cli/updater/updater.runUpdateShared 0 900b40f9 c0035fd6
+  OFFSET 0x9d7c270 900b40f9f1431cd13f0210eb c0035fd6
+  OFFSET 0x9ab5030 900b40f9f1431cd13f0210eb c0035fd6
