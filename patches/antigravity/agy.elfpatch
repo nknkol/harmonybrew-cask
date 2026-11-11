@@ -3,6 +3,7 @@ PROGRAM @PROGRAM@
 INTERP  @GLIBC_INTERP@
 RUNPATH @GLIBC_LIB@
 ENV     AGY_CLI_DISABLE_AUTO_UPDATE=true
+TRAP_SIGSYS
 
 # 1. Disable triggerUpdateShared (background & foreground update check)
 #    Candidate #1 (Auto): Go .gopclntab symbol lookup -> return (skipped=true, err=nil)

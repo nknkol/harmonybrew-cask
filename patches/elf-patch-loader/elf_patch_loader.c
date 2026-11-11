@@ -206,6 +206,7 @@ struct loader_config {
     char runpath[MAX_PATH_LEN];
     char envs[MAX_ENVS][256];
     int env_count;
+    int trap_sigsys;
     struct patch_target targets[MAX_TARGETS];
     int target_count;
 };
@@ -340,6 +341,8 @@ static void parse_config(const char *conf_path, const char *prefix_dir, struct l
             if (!next_token(&p, tok, sizeof(tok))) die("ENV missing KEY=VALUE", NULL);
             if (cfg->env_count >= MAX_ENVS) die("too many ENV entries", NULL);
             z_strcpy(cfg->envs[cfg->env_count++], tok, sizeof(cfg->envs[0]));
+        } else if (z_strcmp(tok, "TRAP_SIGSYS") == 0) {
+            cfg->trap_sigsys = 1;
         } else if (z_strcmp(tok, "TARGET") == 0) {
             if (!next_token(&p, tok, sizeof(tok))) die("TARGET missing name", NULL);
             if (cfg->target_count >= MAX_TARGETS) die("too many TARGET entries", NULL);
@@ -681,6 +684,207 @@ static int apply_candidate(struct loaded_elf *elf, const struct patch_candidate 
     return 0;
 }
 
+__attribute__((visibility("hidden"))) uintptr_t g_got_sigaction;
+__attribute__((visibility("hidden"))) uintptr_t g_got_pthread_sigmask;
+__attribute__((visibility("hidden"))) uintptr_t g_got_sigprocmask;
+__attribute__((visibility("hidden"))) uintptr_t g_got_sigfillset;
+
+extern const uint8_t __sigsys_restorer[] __attribute__((visibility("hidden")));
+extern const uint8_t __sigsys_handler[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_go_rt_sigaction[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_go_rtsigprocmask[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_plt_sigaction[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_plt_pthread_sigmask[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_plt_sigprocmask[] __attribute__((visibility("hidden")));
+extern const uint8_t __hook_plt_sigfillset[] __attribute__((visibility("hidden")));
+
+static void write_abs_jump16(uint8_t *dst, uintptr_t target_addr) {
+    uint32_t j0 = 0x58000050U; /* ldr x16, #8 */
+    uint32_t j1 = 0xd61f0200U; /* br  x16     */
+    uint64_t dst64 = (uint64_t)target_addr;
+    z_memcpy(dst, &j0, 4);
+    z_memcpy(dst + 4, &j1, 4);
+    z_memcpy(dst + 8, &dst64, 8);
+}
+
+static int find_got_slot_for_sym(const struct loaded_elf *elf, const char *sym_name, uint64_t *got_va_out) {
+    size_t slen = z_strlen(sym_name);
+    for (int i = 0; i < elf->ehdr.e_phnum; i++) {
+        if (elf->phdr[i].p_type != PT_DYNAMIC) continue;
+        const Elf64_Dyn *dyn = (const Elf64_Dyn *)vaddr_to_ptr(elf, elf->phdr[i].p_vaddr, sizeof(Elf64_Dyn));
+        if (!dyn) return 0;
+        uint64_t symtab_va = 0, strtab_va = 0, strsz = 0;
+        uint64_t jmprel_va = 0, pltrelsz = 0, rela_va = 0, relasz = 0;
+        for (; dyn->d_tag != DT_NULL; dyn++) {
+            switch (dyn->d_tag) {
+            case DT_SYMTAB:   symtab_va = dyn->d_un.d_ptr; break;
+            case DT_STRTAB:   strtab_va = dyn->d_un.d_ptr; break;
+            case DT_STRSZ:    strsz     = dyn->d_un.d_val; break;
+            case DT_JMPREL:   jmprel_va = dyn->d_un.d_ptr; break;
+            case DT_PLTRELSZ: pltrelsz  = dyn->d_un.d_val; break;
+            case DT_RELA:     rela_va   = dyn->d_un.d_ptr; break;
+            case DT_RELASZ:   relasz    = dyn->d_un.d_val; break;
+            }
+        }
+        if (!symtab_va || !strtab_va || !strsz) return 0;
+        const char *strtab = (const char *)vaddr_to_ptr(elf, strtab_va, strsz);
+        if (!strtab) return 0;
+
+        uint64_t tables[2][2] = {{jmprel_va, pltrelsz}, {rela_va, relasz}};
+        for (int t = 0; t < 2; t++) {
+            uint64_t t_va = tables[t][0], t_sz = tables[t][1];
+            if (!t_va || !t_sz) continue;
+            const Elf64_Rela *rela = (const Elf64_Rela *)vaddr_to_ptr(elf, t_va, t_sz);
+            if (!rela) continue;
+            size_t count = t_sz / sizeof(Elf64_Rela);
+            for (size_t r = 0; r < count; r++) {
+                uint32_t rtype = (uint32_t)(rela[r].r_info & 0xffffffffU);
+                if (rtype != 1026U && rtype != 1025U) continue; /* JUMP_SLOT or GLOB_DAT */
+                uint32_t sidx = (uint32_t)(rela[r].r_info >> 32);
+                const Elf64_Sym *sym = (const Elf64_Sym *)vaddr_to_ptr(
+                    elf, symtab_va + (uint64_t)sidx * sizeof(Elf64_Sym), sizeof(Elf64_Sym));
+                if (!sym || sym->st_name >= strsz) continue;
+                const char *sname = strtab + sym->st_name;
+                if (z_strncmp(sname, sym_name, slen) == 0 &&
+                    (sname[slen] == '\0' || sname[slen] == '@')) {
+                    *got_va_out = rela[r].r_offset;
+                    return 1;
+                }
+            }
+        }
+        break;
+    }
+    return 0;
+}
+
+static int hook_plt_symbol(struct loaded_elf *elf, const char *sym_name,
+                           uintptr_t hook_addr, uintptr_t *got_runtime_out, int verbose) {
+    uint64_t got_va = 0;
+    if (!find_got_slot_for_sym(elf, sym_name, &got_va)) return 0;
+
+    uint64_t hit_va = 0;
+    int hits = 0;
+    for (int i = 0; i < elf->ehdr.e_phnum; i++) {
+        const Elf64_Phdr *ph = &elf->phdr[i];
+        if (ph->p_type != PT_LOAD || !(ph->p_flags & PF_X) || ph->p_filesz < 16) continue;
+        const uint8_t *seg = (const uint8_t *)(elf->bias + ph->p_vaddr);
+        size_t limit = ph->p_filesz - 16;
+        for (size_t off = 0; off <= limit; off += 4) {
+            const uint32_t *insns = (const uint32_t *)(seg + off);
+            uint32_t i0 = insns[0], i1 = insns[1], i2 = insns[2], i3 = insns[3];
+            if ((i0 & 0x9f00001fU) == 0x90000010U &&
+                (i1 & 0xffc003ffU) == 0xf9400211U &&
+                (i3 == 0xd61f0220U || i2 == 0xd61f0220U)) {
+                int64_t immlo = (int64_t)((i0 >> 29) & 0x3U);
+                int64_t immhi = (int64_t)((i0 >> 5) & 0x7ffffU);
+                int64_t imm = (immhi << 2) | immlo;
+                if (imm & (1LL << 20)) imm -= (1LL << 21);
+                uint64_t pc = ph->p_vaddr + off;
+                uint64_t page = (pc & ~0xfffULL) + (uint64_t)(imm << 12);
+                uint64_t ldr_off = (uint64_t)((i1 >> 10) & 0xfffU) * 8ULL;
+                if (page + ldr_off == got_va) {
+                    hit_va = pc;
+                    hits++;
+                }
+            }
+        }
+    }
+    if (hits != 1) return 0;
+
+    *got_runtime_out = elf->bias + got_va;
+    write_abs_jump16((uint8_t *)(elf->bias + hit_va), hook_addr);
+    if (verbose) {
+        write_str(2, "[elf-patch] sigsys-guard hooked PLT '");
+        write_str(2, sym_name);
+        write_str(2, "' at vaddr ");
+        write_hex(2, hit_va);
+        write_str(2, "\n");
+    }
+    return 1;
+}
+
+static void apply_sigsys_guards(struct loaded_elf *elf, int verbose) {
+    /* 1. Guard Go runtime.rt_sigaction (abi0) if present */
+    uint64_t go_sa_va = 0;
+    if (find_go_symbol(elf, "runtime.rt_sigaction", &go_sa_va)) {
+        static const uint8_t exp_sa[16] = {
+            0xe0, 0x07, 0x40, 0xf9, /* ldr x0, [sp, #8]  */
+            0xe1, 0x0b, 0x40, 0xf9, /* ldr x1, [sp, #16] */
+            0xe2, 0x0f, 0x40, 0xf9, /* ldr x2, [sp, #24] */
+            0xe3, 0x13, 0x40, 0xf9  /* ldr x3, [sp, #32] */
+        };
+        static const uint8_t full_mask[16] = {
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        };
+        uint8_t *ptr = vaddr_to_ptr(elf, go_sa_va, 16);
+        if (ptr && match_bytes(ptr, exp_sa, full_mask, 16)) {
+            write_abs_jump16(ptr, (uintptr_t)__hook_go_rt_sigaction);
+            if (verbose) {
+                write_str(2, "[elf-patch] sigsys-guard hooked Go 'runtime.rt_sigaction' at vaddr ");
+                write_hex(2, go_sa_va);
+                write_str(2, "\n");
+            }
+        }
+    }
+
+    /* 2. Guard Go runtime.rtsigprocmask (abi0) if present */
+    uint64_t go_spm_va = 0;
+    if (find_go_symbol(elf, "runtime.rtsigprocmask", &go_spm_va)) {
+        static const uint8_t exp_spm[16] = {
+            0xe0, 0x0b, 0x80, 0xb9, /* ldrsw x0, [sp, #8]  */
+            0xe1, 0x0b, 0x40, 0xf9, /* ldr   x1, [sp, #16] */
+            0xe2, 0x0f, 0x40, 0xf9, /* ldr   x2, [sp, #24] */
+            0xe3, 0x23, 0x80, 0xb9  /* ldrsw x3, [sp, #32] */
+        };
+        static const uint8_t full_mask[16] = {
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        };
+        uint8_t *ptr = vaddr_to_ptr(elf, go_spm_va, 16);
+        if (ptr && match_bytes(ptr, exp_spm, full_mask, 16)) {
+            write_abs_jump16(ptr, (uintptr_t)__hook_go_rtsigprocmask);
+            if (verbose) {
+                write_str(2, "[elf-patch] sigsys-guard hooked Go 'runtime.rtsigprocmask' at vaddr ");
+                write_hex(2, go_spm_va);
+                write_str(2, "\n");
+            }
+        }
+    }
+
+    /* 3. Guard glibc/PLT signal handlers & masks if dynamically imported */
+    hook_plt_symbol(elf, "sigaction", (uintptr_t)__hook_plt_sigaction, &g_got_sigaction, verbose);
+    hook_plt_symbol(elf, "pthread_sigmask", (uintptr_t)__hook_plt_pthread_sigmask, &g_got_pthread_sigmask, verbose);
+    hook_plt_symbol(elf, "sigprocmask", (uintptr_t)__hook_plt_sigprocmask, &g_got_sigprocmask, verbose);
+    hook_plt_symbol(elf, "sigfillset", (uintptr_t)__hook_plt_sigfillset, &g_got_sigfillset, verbose);
+}
+
+struct kernel_sigaction_hm {
+    uintptr_t sa_handler;
+    unsigned long sa_flags;
+    uintptr_t sa_restorer;
+    uint64_t sa_mask;
+};
+
+static void install_sigsys_trap(int verbose) {
+    /* Ensure SIGSYS (31 -> bit 30) is unblocked before registering handler */
+    uint64_t sigsys_bit = (1ULL << 30);
+    sys_call(__NR_rt_sigprocmask, 1 /* SIG_UNBLOCK */, (long)&sigsys_bit, 0, 8, 0, 0);
+
+    struct kernel_sigaction_hm ksa;
+    ksa.sa_handler = (uintptr_t)__sigsys_handler;
+    /* SA_SIGINFO(4) | SA_RESTORER(0x04000000) | SA_ONSTACK(0x08000000) | SA_RESTART(0x10000000) | SA_NODEFER(0x40000000) */
+    ksa.sa_flags = 0x5c000004UL;
+    ksa.sa_restorer = (uintptr_t)__sigsys_restorer;
+    ksa.sa_mask = 0;
+
+    long rc = sys_call(__NR_rt_sigaction, 31 /* SIGSYS */, (long)&ksa, 0, 8, 0, 0);
+    if (rc < 0)
+        die("rt_sigaction(SIGSYS) failed", NULL);
+    if (verbose)
+        write_str(2, "[elf-patch] installed resident SIGSYS -> -ENOSYS trap handler\n");
+}
+
 static void apply_all_patches(struct loaded_elf *elf, const struct loader_config *cfg, int verbose) {
     for (int t = 0; t < cfg->target_count; t++) {
         const struct patch_target *tgt = &cfg->targets[t];
@@ -780,6 +984,8 @@ static void load_elf(const char *path, struct loaded_elf *out, const struct load
                           MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if (p < 0 && p > -4096) die("mmap extra page failed", path);
         apply_all_patches(out, cfg, verbose);
+        if (cfg->trap_sigsys)
+            apply_sigsys_guards(out, verbose);
     }
 
     if (inject_runpath && out->phdr_va) {
@@ -858,6 +1064,156 @@ __asm__(
 "    mov x29, #0\n"
 "    mov x30, #0\n"
 "    br x2\n"
+".align 4\n"
+".hidden __sigsys_restorer\n"
+".globl __sigsys_restorer\n"
+"__sigsys_restorer:\n"
+"    mov x8, #139\n"
+"    svc #0\n"
+".align 4\n"
+".hidden __sigsys_handler\n"
+".globl __sigsys_handler\n"
+"__sigsys_handler:\n"
+"    mov x3, #-38\n"
+"    str x3, [x2, #184]\n"
+"    ret\n"
+".align 4\n"
+".hidden __hook_go_rt_sigaction\n"
+".globl __hook_go_rt_sigaction\n"
+"__hook_go_rt_sigaction:\n"
+"    ldr x0, [sp, #8]\n"
+"    ldr x1, [sp, #16]\n"
+"    ldr x2, [sp, #24]\n"
+"    cmp x0, #31\n"
+"    b.eq 2f\n"
+"    ldr x3, [sp, #32]\n"
+"    mov x8, #134\n"
+"    svc #0\n"
+"    str w0, [sp, #40]\n"
+"    ret\n"
+"2:\n"
+"    cbz x2, 3f\n"
+"    stp xzr, xzr, [x2]\n"
+"    stp xzr, xzr, [x2, #16]\n"
+"3:\n"
+"    str wzr, [sp, #40]\n"
+"    ret\n"
+".align 4\n"
+".hidden __hook_go_rtsigprocmask\n"
+".globl __hook_go_rtsigprocmask\n"
+"__hook_go_rtsigprocmask:\n"
+"    ldrsw x0, [sp, #8]\n"
+"    ldr   x1, [sp, #16]\n"
+"    ldr   x2, [sp, #24]\n"
+"    ldrsw x3, [sp, #32]\n"
+"    cbz   x1, 4f\n"
+"    cmp   w0, #1\n"
+"    b.eq  4f\n"
+"    ldr   x4, [x1]\n"
+"    bic   x4, x4, #0x40000000\n"
+"    str   x4, [sp, #-16]!\n"
+"    mov   x1, sp\n"
+"    mov   x8, #135\n"
+"    svc   #0\n"
+"    add   sp, sp, #16\n"
+"    b     5f\n"
+"4:\n"
+"    mov   x8, #135\n"
+"    svc   #0\n"
+"5:\n"
+"    cmn   x0, #4095\n"
+"    b.lo  6f\n"
+"    mov   x0, xzr\n"
+"    str   x0, [x0]\n"
+"6:\n"
+"    ret\n"
+".align 4\n"
+".hidden __hook_plt_sigaction\n"
+".globl __hook_plt_sigaction\n"
+"__hook_plt_sigaction:\n"
+"    cmp  w0, #31\n"
+"    b.eq 7f\n"
+"    adrp x16, g_got_sigaction\n"
+"    ldr  x16, [x16, :lo12:g_got_sigaction]\n"
+"    ldr  x17, [x16]\n"
+"    br   x17\n"
+"7:\n"
+"    cbz  x2, 9f\n"
+"    mov  x3, #152\n"
+"8:\n"
+"    subs x3, x3, #8\n"
+"    str  xzr, [x2, x3]\n"
+"    b.hi 8b\n"
+"9:\n"
+"    mov  w0, #0\n"
+"    ret\n"
+".align 4\n"
+".hidden __hook_plt_pthread_sigmask\n"
+".globl __hook_plt_pthread_sigmask\n"
+"__hook_plt_pthread_sigmask:\n"
+"    adrp x16, g_got_pthread_sigmask\n"
+"    ldr  x16, [x16, :lo12:g_got_pthread_sigmask]\n"
+"    b    10f\n"
+".align 4\n"
+".hidden __hook_plt_sigprocmask\n"
+".globl __hook_plt_sigprocmask\n"
+"__hook_plt_sigprocmask:\n"
+"    adrp x16, g_got_sigprocmask\n"
+"    ldr  x16, [x16, :lo12:g_got_sigprocmask]\n"
+"10:\n"
+"    cbz  x1, 11f\n"
+"    cmp  w0, #1\n"
+"    b.eq 11f\n"
+"    sub  sp, sp, #144\n"
+"    str  x30, [sp, #128]\n"
+"    ldp  x3, x4, [x1]\n"
+"    bic  x3, x3, #0x40000000\n"
+"    stp  x3, x4, [sp]\n"
+"    ldp  x3, x4, [x1, #16]\n"
+"    stp  x3, x4, [sp, #16]\n"
+"    ldp  x3, x4, [x1, #32]\n"
+"    stp  x3, x4, [sp, #32]\n"
+"    ldp  x3, x4, [x1, #48]\n"
+"    stp  x3, x4, [sp, #48]\n"
+"    ldp  x3, x4, [x1, #64]\n"
+"    stp  x3, x4, [sp, #64]\n"
+"    ldp  x3, x4, [x1, #80]\n"
+"    stp  x3, x4, [sp, #80]\n"
+"    ldp  x3, x4, [x1, #96]\n"
+"    stp  x3, x4, [sp, #96]\n"
+"    ldp  x3, x4, [x1, #112]\n"
+"    stp  x3, x4, [sp, #112]\n"
+"    mov  x1, sp\n"
+"    ldr  x17, [x16]\n"
+"    blr  x17\n"
+"    ldr  x30, [sp, #128]\n"
+"    add  sp, sp, #144\n"
+"    ret\n"
+"11:\n"
+"    ldr  x17, [x16]\n"
+"    br   x17\n"
+".align 4\n"
+".hidden __hook_plt_sigfillset\n"
+".globl __hook_plt_sigfillset\n"
+"__hook_plt_sigfillset:\n"
+"    cbz  x0, 13f\n"
+"    stp  x0, x30, [sp, #-16]!\n"
+"    adrp x16, g_got_sigfillset\n"
+"    ldr  x16, [x16, :lo12:g_got_sigfillset]\n"
+"    ldr  x17, [x16]\n"
+"    blr  x17\n"
+"    ldp  x2, x30, [sp], #16\n"
+"    cbnz w0, 12f\n"
+"    ldr  x3, [x2]\n"
+"    bic  x3, x3, #0x40000000\n"
+"    str  x3, [x2]\n"
+"12:\n"
+"    ret\n"
+"13:\n"
+"    adrp x16, g_got_sigfillset\n"
+"    ldr  x16, [x16, :lo12:g_got_sigfillset]\n"
+"    ldr  x17, [x16]\n"
+"    br   x17\n"
 );
 
 void jump_to_entry(uintptr_t entry, unsigned long *sp);
@@ -1019,6 +1375,9 @@ void c_entry(unsigned long *sp) {
         case AT_EXECFN: av->a_un.a_val = (uint64_t)argv[0]; break;
         }
     }
+
+    if (cfg.trap_sigsys)
+        install_sigsys_trap(verbose);
 
     sys_call(__NR_prctl, PR_SET_NAME, (long)exe_name, 0, 0, 0, 0);
     jump_to_entry(has_interp ? interp.entry : prog.entry, new_sp);
