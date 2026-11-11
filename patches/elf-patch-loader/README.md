@@ -36,6 +36,7 @@
 | `INTERP <path>` | 可选。覆盖 ELF 的 `PT_INTERP` 动态链接器（模板中可用 `@GLIBC_INTERP@`） | `INTERP @GLIBC_INTERP@` |
 | `RUNPATH <path>` | 可选。在内存中向 `PT_DYNAMIC` 注入 `DT_RUNPATH`（模板中可用 `@GLIBC_LIB@`） | `RUNPATH @GLIBC_LIB@` |
 | `ENV <KEY=VALUE>` | 可选。在跳入入口点前向进程初始栈 `envp` 注入或覆盖环境变量 | `ENV AGY_CLI_DISABLE_AUTO_UPDATE=true` |
+| `TRAP_SIGSYS` | 可选。启用常驻 `SIGSYS -> -ENOSYS` 零栈汇编信号陷阱，并自动挂载 Go / PLT 信号防覆盖与防屏蔽守卫 | `TRAP_SIGSYS` |
 
 ### 3.2 补丁目标与候选规则（`TARGET`）
 
@@ -166,26 +167,30 @@ TARGET <target_name> [REQUIRED|OPTIONAL]
 
 `elf-patch-loader` 本质上是一个**在目标程序入口执行前完全掌控进程地址空间的加载与 Hook 容器**。因为加载器自身的代码段（`.text`）在跳转到目标程序后**依然常驻在进程内存中**，当遇到比单纯改几条指令更复杂的适配需求时，可按稳定性和复杂度从高到低采用以下三层 Hook 机制：
 
-### 层级 1：`SIGSYS` 信号陷阱 Hook（零偏移、跨版本 100% 稳定）
+### 层级 1：`TRAP_SIGSYS` 信号陷阱与双守卫架构（已内置，零偏移、跨版本 100% 稳定）
 
-**实测结论**：鸿蒙内核 seccomp 对受限系统调用（如 `436` `close_range`、`437` `openat2`、`441` `epoll_pwait2`、`452` `fchmodat2`）并非采用不可捕获的 `SECCOMP_RET_KILL_PROCESS`，而是发送**可被用户态捕获的 `SIGSYS` 信号（`SECCOMP_RET_TRAP`）**。
+**实测结论**：鸿蒙内核 seccomp 对所有现代受限 Linux 系统调用（包括 `97` `unshare`、`293` `rseq`、`435` `clone3`、`436` `close_range`、`437` `openat2`、`441` `epoll_pwait2`、`444` `landlock_create_ruleset`、`449` `futex_waitv`、`452` `fchmodat2`）并非采用不可捕获的 `SECCOMP_RET_KILL_PROCESS`，而是全部采用**可捕获的 `SECCOMP_RET_TRAP`（发送 `SIGSYS` 信号 31，且 `pc` 已自动推进至 `svc #0` 下一条指令）**。
 
-在 `elf-patch-loader` 跳转到目标入口前，通过 `rt_sigaction(SIGSYS, ...)` 注册一个常驻在加载器代码段中的 `SA_SIGINFO` 处理函数：
+只需在 `.elfpatch` 中添加一行 `TRAP_SIGSYS`，`elf-patch-loader` 即自动启用完整的三合一拦截闭环：
 
-```c
-static void sigsys_handler(int sig, siginfo_t *info, void *ucontext) {
-    ucontext_t *uc = (ucontext_t *)ucontext;
-    // info->si_syscall (或 uc->uc_mcontext.regs[8]) 为被拦截的系统调用号
-    // uc->uc_mcontext.regs[0..5] 为系统调用的 6 个参数
-    // 将返回值寄存器 x0 设为 -ENOSYS (-38)，libc 包装函数会自动设置 errno = ENOSYS 并返回 -1
-    uc->uc_mcontext.regs[0] = (unsigned long long)(-38);
-}
-```
+1. **零栈开销常驻 AArch64 汇编处理器（`__sigsys_handler`）**：
+   ```asm
+   __sigsys_handler:
+       mov x3, #-38           // -ENOSYS
+       str x3, [x2, #184]     // ucontext->uc_mcontext.regs[0] = -ENOSYS
+       ret
+   ```
+   - 以 `SA_SIGINFO | SA_ONSTACK | SA_NODEFER | SA_RESTART | SA_RESTORER` 注册：
+     - **0 字节栈消耗、0 全局变量/TLS 访问**：天然兼容 Go 2KB 协程栈（配合 `SA_ONSTACK` 走 Go `sigaltstack`）、C++ 工作线程以及 `clone(CLONE_VM | CLONE_VFORK)` 子进程（`execve` 之前共享父进程地址空间）。
+     - 返回后 Go 运行时与 `glibc` `syscall()` 均将其视为标准内核返回 `-ENOSYS`（自动置 `errno = ENOSYS` 并走上游回退路径，例如 `clone3 -> clone`、`close_range -> /proc/self/fd`、`fchmodat2 -> fchmodat`）。
 
-- **核心优势**：
-  1. **彻底免除特征码与偏移维护**：无需在目标二进制中查找任何 `svc #0` 指令位置，跨版本 100% 稳定。
-  2. **跨 `fork()` 自动继承**：`sigaction` 注册的信号处理函数在 `fork()` 出的子进程（`execve` 之前）中依然有效，天然覆盖子进程在 `fork()` 后、`execve()` 前调用 `close_range` 清理文件描述符的场景。
-  3. **支持在信号处理函数中直接用 C 模拟系统调用**：不仅能返回 `-ENOSYS`，还可以根据 `info->si_syscall` 和 `regs[0..5]` 在信号处理函数里直接用 C 代码模拟对应的系统调用行为（例如用户态模拟 `close_range` 或 `openat2`）并把结果写回 `regs[0]`。
+2. **关键踩坑与自动防覆盖守卫（Trap A：`sigaction(SIGSYS)` 被运行时覆盖）**：
+   - **问题根因**：Go 运行时启动时 `runtime.initsig` 会遍历信号 `1..64` 调用 `sigaction(31, ...)` 注册致命的 `_SigThrow` 处理器（触发 `dieFromSignal(SIGSYS)` 直接 core dump）；C++ Abseil/Crashpad 也会通过 `sigaction@plt` 覆盖信号处理器。若仅在跳入 `e_entry` 前注册一次 `rt_sigaction(SIGSYS)`，启动后瞬间就会被目标程序覆盖失效。
+   - **内置方案**：`TRAP_SIGSYS` 在加载阶段自动通过 `.gopclntab` 定位 Go `runtime.rt_sigaction` 并通过 `PT_DYNAMIC` 符号重定位表定位 `sigaction@plt`，挂载常驻守卫跳板——对非 `31` 号信号 100% 透传（完全兼容 `LD_BIND_NOW` 与惰性 PLT 绑定），对 `SIGSYS (31)` 静默忽略修改并向 `oldact` 返回 `SIG_DFL`，彻底防止处理器被篡改。
+
+3. **关键踩坑与自动防屏蔽守卫（Trap B：`SIGSYS` 被信号掩码屏蔽导致内核强制杀死进程）**：
+   - **问题根因**：Linux / 鸿蒙内核 `force_sig_seccomp()` 有一个极隐蔽机制——**当线程触发 `SECCOMP_RET_TRAP` 时，如果 `SIGSYS`（第 30 bit，`0x40000000`）当前处于被 `rt_sigprocmask` 屏蔽（Blocked）状态，内核会强制将 `SIGSYS` 重置为 `SIG_DFL` 并直接杀死进程，即使已注册了 `SIGSYS` 处理器也无法生还！** 而 Go 的 `syscall.forkAndExecInChild1` 和 C++ 沙箱/子进程启动器在 `fork`/`clone` 前都会调用 `rtsigprocmask` / `sigfillset` + `pthread_sigmask(SIG_SETMASK, &all)` 屏蔽所有信号，紧接着调用 `clone3` / `close_range` / `unshare` 就会瞬间触发内核强杀（表现为执行外部命令时 `zsh: invalid system call (core dumped)`）。
+   - **内置方案**：`TRAP_SIGSYS` 在跳入目标前先执行 `rt_sigprocmask(SIG_UNBLOCK)` 解除 `SIGSYS` 继承屏蔽，并自动挂载 Go `runtime.rtsigprocmask` 以及 `pthread_sigmask@plt`、`sigprocmask@plt`、`sigfillset@plt` 守卫——在栈上拷贝信号集并清除第 30 bit（绝不原地修改可能位于只读 `.rodata` 段的 `const sigset_t` 如 Go `sigset_all`），保证 `SIGSYS` 在整个进程生命周期的任意线程与子进程创建临界区永不被屏蔽。
 
 ### 层级 2：`ld.so --preload` 动态符号级 Hook（针对 `glibc` 动态链接程序，不污染子进程）
 
