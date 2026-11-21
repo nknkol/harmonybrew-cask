@@ -1,13 +1,18 @@
-# HarmonyOS 通用内存 ELF 补丁加载器 (`elf-patch-loader`) 维护指南
+# HarmonyOS 通用内存 ELF 补丁加载器 (`elf-patch-loader`) / In-Memory ELF Patch Loader
 
-本目录提供 Harmonybrew Cask 通用的 **AArch64 内存态 ELF 补丁加载器**，用于在 **不修改上游二进制文件（零 `patchelf`、零磁盘字节改动、无需对大体积主程序重新签名）** 的前提下，在运行前内存中完成动态链接器切换、`DT_RUNPATH` 注入、环境变量注入以及指令/数据热补丁。
+> [!NOTE]
+> **个人自用说明 / Personal Tap Notice**：本组件属于个人自用 Homebrew Tap `nknkol/cask`，用于在鸿蒙 PC（HarmonyOS / OpenHarmony `arm64_ohos`）上以零磁盘改动方式运行并修补上游 Linux AArch64 ELF 二进制。
+>
+> **English Summary**: `elf-patch-loader` is a standalone, zero-dependency, 29 KB AArch64 PIE loader (`-nostdlib -Wl,--no-dynamic-linker`) that loads pristine upstream Linux ARM64 ELFs into anonymous memory, injects `DT_RUNPATH`/`PT_INTERP` without polluting child `LD_LIBRARY_PATH`, applies declarative in-memory patches (`GO_SYM`, `REDIRECT_ADRP`, `SEARCH`, `OFFSET`), enables `PROT_EXEC` via HarmonyOS `prctl(PR_HM_JIT = 0x6a6974)`, and provides `TRAP_SIGSYS` — a zero-stack resident `SIGSYS -> -ENOSYS` signal trap paired with automatic Go (`runtime.rt_sigaction`/`runtime.rtsigprocmask`) and PLT (`sigaction`/`pthread_sigmask`/`sigprocmask`/`sigfillset`) guards to eliminate seccomp `SIGSYS` crashes across versions. See the detailed Chinese architecture & maintenance guide below.
+
+本目录提供 Harmonybrew Cask 通用的 **AArch64 内存态 ELF 补丁加载器**，用于在 **不修改上游二进制文件（零 `patchelf`、零磁盘字节改动、无需对大体积主程序重新签名）** 的前提下，在运行前内存中完成动态链接器切换、`DT_RUNPATH` 注入、环境变量注入、`TRAP_SIGSYS` 陷阱守卫以及指令/数据热补丁。
 
 ---
 
 ## 1. 目录结构
 
 - `elf_patch_loader.c`：AArch64 纯系统调用（`-nostdlib -fPIE -pie -Wl,--no-dynamic-linker`）加载器源码。
-- `elf-patch-loader`：预编译的无动态解释器静态 PIE 加载器模板二进制（约 23 KB）。
+- `elf-patch-loader`：预编译的无动态解释器静态 PIE 加载器模板二进制（约 29 KB）。
 - `install_loader.rb`：供 `Formula/*.rb` 在 `def install` 中调用的通用安装与构建期校验脚本。
 - 各软件补丁配置文件：
   - `patches/antigravity/agy.elfpatch`
@@ -20,7 +25,7 @@
 ## 2. 核心原理与优势
 
 1. **原文件零改动**：上游 ELF 二进制原封不动安装到 `libexec/`（权限 `0644`），不经过 `patchelf` 或 `binary-sign-tool`，彻底规避二进制自校验问题。
-2. **极速启动与签名**：HarmonyOS 内核直接 `execve` 的 `bin/<name>` 仅为 **23 KB** 的已签名加载器；主程序通过 `pread64` 读入匿名内存后，通过 HarmonyOS `prctl(PR_HM_JIT = 0x6a6974)` 切换为 `PROT_READ | PROT_EXEC` 并刷新指令缓存（`dc cvau` + `ic ivau`），省去了内核对数百 MB 二进制进行 `.codesign` 校验的开销。
+2. **极速启动与签名**：HarmonyOS 内核直接 `execve` 的 `bin/<name>` 仅为 **29 KB** 的已签名加载器；主程序通过 `pread64` 读入匿名内存后，通过 HarmonyOS `prctl(PR_HM_JIT = 0x6a6974)` 切换为 `PROT_READ | PROT_EXEC` 并刷新指令缓存（`dc cvau` + `ic ivau`），省去了内核对数百 MB 二进制进行 `.codesign` 校验的开销。
 3. **内存态 `DT_RUNPATH` 注入**：加载器在 `maxva` 顶部额外映射一页内存，拷贝原 `PT_DYNAMIC` 表并追加 `DT_RUNPATH`，直接由 `glibc` 的 `ld-linux-aarch64.so.1` 解析依赖库，**无需导出 `LD_LIBRARY_PATH`**，不会污染被加载程序派生出的 HarmonyOS 原生子进程。
 4. **多策略混合补丁匹配（自动匹配 + 跨版本精确地址兜底）**：每个 `TARGET` 支持按顺序排列多条候选规则（`GO_SYM`、`REDIRECT_ADRP`、`SEARCH`、`OFFSET`），命中第一条即生效。大多数软件小版本升级无需改动 `.elfpatch`。
 

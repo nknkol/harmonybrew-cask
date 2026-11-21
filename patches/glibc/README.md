@@ -1,4 +1,9 @@
-# glibc HarmonyOS 补丁
+# glibc HarmonyOS 补丁 / HarmonyOS glibc 2.38 Patch
+
+> [!NOTE]
+> **个人自用说明 / Personal Tap Notice**：属于个人自用 Homebrew Tap `nknkol/cask` 的运行时补丁说明。
+>
+> **English Summary**: `glibc-harmonyos.patch` patches upstream GNU `glibc 2.38` for HarmonyOS (HongMeng Kernel) so dynamically-linked Linux ARM64 ELFs can run cleanly: fixing `_dl_map_segments` `PROT_EXEC` bounds (`dl-map-segments.h`), bypassing `rseq` (`293`), forcing legacy `clone` instead of `clone3` (`435`) in both `clone-internal.c` and `spawni.c`, and disabling the `close_range` (`436`) syscall stub in `syscalls.list` / `spawni.c`. Built inside `loh` (openEuler 24.03 LTS-SP3) and bundled with GCC 12.3.1 runtime libraries into `bootstrap/glibc-2.38-gcc-12.3.1-harmonyos-arm64.tar.gz`.
 
 `glibc-harmonyos.patch` 是相对于 **glibc 2.38 官方源码** 的补丁（`diff -ruN a b`
 格式，用 `patch -p1` 应用），用于让 glibc 能在 HarmonyOS（HongMeng 内核）上正确

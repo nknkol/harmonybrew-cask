@@ -1,6 +1,9 @@
-# CLI 配方更新：2026-11-06
+# CLI 配方更新记录：2026-11-06 / Historical Release Log (2026-11-06)
 
-| 配方 | 当前版本 | 保留的历史配方 |
+> [!NOTE]
+> **历史变更日志 / Historical Release Log**：本文件记录 2026-11-06 批次的更新快照。当前主配方已升级至 `antigravity 1.5.4_1`、`claude-code 2.1.322`、`codex 0.167.0_1`，并全部迁移至 [`elf-patch-loader`](../patches/elf-patch-loader/README.md)。
+
+| 配方 | 当时版本 | 保留的历史配方 |
 | --- | --- | --- |
 | antigravity (`agy`) | 1.5.2 | `antigravity@1.4.2` |
 | claude-code | 2.1.318 | `claude-code@2.1.292` |

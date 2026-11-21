@@ -1,50 +1,53 @@
-# Homebrew 环境变量过滤机制（为什么本地 brew test 会失败）
+# Homebrew 环境变量过滤机制 / Homebrew Environment Filtering on HarmonyOS PC
+
+[中文](#中文) | [English](#english)
+
+---
+
+<a id="中文"></a>
+
+> [!NOTE]
+> 本仓库为个人自用 Homebrew Tap。本文解释为何无法在鸿蒙 PC 宿主机直接运行 `brew test`，以及容器内构建测试的原因。
 
 ## 机制
 
 Homebrew 启动时通过 `bin/brew` 严格过滤环境变量：
 
 ```bash
-# bin/brew#L292
+# bin/brew
 PATH="/usr/bin:/bin:/usr/sbin:/sbin"
 
 # 只用白名单变量重建环境
 exec /usr/bin/env -i "${FILTERED_ENV[@]}" /bin/bash -p brew.sh "$@"
 ```
 
-白名单只包含 `HOME`、`SHELL`、`PATH`、`USER` 等基础变量。`env -i` 清空一切，然后用白名单重建。
+白名单仅保留 `HOME`、`SHELL`、`PATH`、`USER` 等基础变量，`$(brew --prefix)/bin` 不在初始 `PATH` 中。
 
-PATH 只有四个系统路径：`/usr/bin`、`/bin`、`/usr/sbin`、`/sbin`。
+## 影响与鸿蒙 PC 特殊性
 
-Homebrew prefix 下的 `bin/`（如 `$(brew --prefix)/bin/cc`）**不在 PATH 中**。
-
-## 影响
-
-所有通过 `brew` 启动的子进程（`brew test`、`brew install-bundler-gems`、`bundle install` 等）都运行在这个受限环境里。
-
-这意味着：
-- `cc` 必须位于 `/usr/bin/cc` 或 `/bin/cc` 才能被找到
-- 放在 `$(brew --prefix)/bin/cc` 的编译器在 `brew` 子进程中不可见
-- 任何带 C 原生扩展的 gem（如 prism）在 `bundle install` 时会因找不到 `cc` 而失败
-
-## 鸿蒙 PC 的特殊性
-
-鸿蒙 PC 系统分区只读，无法写入 `/usr/bin`。因此**本地 PC 上无法通过 `brew test`**。
+所有由 `brew` 派生的子进程（`brew test`、`brew install-bundler-gems` 等）均运行在该受限环境中：
+- 依赖 `/usr/bin/cc` 或 `/bin/cc` 的扩展编译在鸿蒙 PC 宿主机上无法找到编译器（系统分区 `/usr/bin` 与 `/bin` 为只读，无法写入软链）。
+- 因此本地宿主机不直接运行 `brew test`，也不在宿主机上做绕过只读分区的 hack。
 
 ## 解决方案
 
-在 CI 容器（DockerHarmony）中提前做好软链接，因为容器文件系统可写：
+在可写根文件系统的 Docker 容器（`DockerHarmony`）中预先建立软链（已内置于 [`ci-runner/build.sh`](../ci-runner/build.sh)），并统一在容器内运行 `brew install --build-bottle`、`brew bottle` 与 `brew test`（详见 [`docs/LOCAL_BUILD.md`](LOCAL_BUILD.md)）。
 
-```sh
-# ci-runner/build.sh 中已包含
-ln -sf $(brew --prefix)/bin/cc /bin/cc
-ln -sf $(brew --prefix)/bin/make /bin/make
-```
+---
 
-`/bin` 在 PATH 白名单内，链接后 `cc` 可被 Homebrew 子进程找到。
+<a id="english"></a>
 
-## 开发规范
+> [!NOTE]
+> Maintained for this personal Harmonybrew tap. Explains why `brew test` is executed inside Docker containers rather than directly on a HarmonyOS PC host.
 
-- **本地编译验证**：`brew install -s nknkol/cask/<formula>` 正常（install 阶段不触发 gem 安装）
-- **测试验证**：推送 tag 触发 CI，在 DockerHarmony 容器中运行 `brew test`
-- **不接受**在 PC 上绕过只读限制的 hack
+## Mechanism
+
+`bin/brew` sanitizes the environment with `env -i` and resets `PATH` to `/usr/bin:/bin:/usr/sbin:/sbin`, excluding `$(brew --prefix)/bin`.
+
+## Why Local `brew test` Fails on HarmonyOS PC
+
+Subprocesses invoked by Homebrew (such as `brew test` or `bundle install` for Ruby C extensions) look for `cc` and `make` inside those four system paths. Because HarmonyOS PC mounts system partitions read-only, symlinks cannot be placed in `/usr/bin` or `/bin` on the host.
+
+## Solution
+
+Run `brew install --build-bottle`, `brew bottle`, and `brew test` inside the writable `DockerHarmony` container where [`ci-runner/build.sh`](../ci-runner/build.sh) links `cc`, `clang`, `make`, and toolchains into `/bin` (see [`docs/LOCAL_BUILD.md`](LOCAL_BUILD.md)).

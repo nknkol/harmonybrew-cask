@@ -1,4 +1,7 @@
-# bun build 嵌套依赖分析
+# bun build 嵌套依赖分析 / Historical `bun@1.3.14` Build Analysis
+
+> [!NOTE]
+> **历史归档 / Historical Note**：早期 `bun@1.3.14` 源码构建阶段的调研记录，仅供留存参考。
 
 ## 测试结论
 

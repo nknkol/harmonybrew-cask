@@ -1,115 +1,132 @@
-# 本地构建
+# 本地构建指南 / Local Bottle Build Guide
 
-`scripts/local-build.sh` 在本地（或远端 Docker 环境）完整复现 CI 的瓶子创建流程，用于开发阶段验证 formula 能否通过编译、生成瓶子、通过测试。
+[中文](#中文) | [English](#english)
 
-与 CI 的区别：不写 git、不上传 Release，只跑核心的 install → bottle → test 三步。
+---
 
-## 为什么用这个脚本
+<a id="中文"></a>
 
-| 痛点 | 解决方式 |
-|------|---------|
-| 每次 CI 跑全流程太慢 | 本地先验证通过再推 tag |
-| `docker run --rm` 每次都销毁容器 | 容器常驻复用，省去重复初始化 |
-| 远端环境不能 `-v` bind mount | 不挂载，直接用 tap 里已同步的 formula |
+> [!NOTE]
+> 本仓库为个人自用 Homebrew Tap。由于鸿蒙 PC 系统分区只读，本地无法直接跑 `brew test`（详见 [`docs/homebrew-env-filtering.md`](homebrew-env-filtering.md)），Bottle 构建与测试统一在 Docker 容器（如 `loh` 虚拟机中的 Docker）中完成。
 
-## 前置条件
+## 方式一：使用 `scripts/local-build.sh`（通用本地 Docker 构建）
+
+`scripts/local-build.sh` 复用常驻构建容器，自动完成 tap 同步 → `brew install --build-bottle` → `brew bottle --skip-relocation --json` → `brew test`。
+
+### 前置条件
 
 ```bash
-# 1. 构建镜像（只需一次）
-DOCKER_BUILDKIT=0 docker build --no-cache -t ohosci:1.0 -f ci-runner/Dockerfile .
+# 1. 构建本地 CI 镜像（注意必须在 ci-runner 目录作为构建上下文执行）
+(cd ci-runner && DOCKER_BUILDKIT=0 docker build --no-cache -t ohosci:1.0 .)
 
-# 2. 确保 tap 已同步（在容器内）
-docker run -d --name ohosci-builder ohosci:1.0 tail -f /dev/null
+# 2. 启动常驻容器并添加 tap
+docker run -d --name ohosci-builder ohosci:1.0 /bin/sh -c 'while true; do sleep 3600; done'
 docker exec -it ohosci-builder /bin/sh -lc '
   export PATH="/storage/Users/currentUser/.harmonybrew/bin:$PATH"
   brew tap --force nknkol/cask https://github.com/nknkol/harmonybrew-cask.git
 '
 ```
 
-之后容器一直保留，无需重复创建。
-
-## 用法
+### 常用命令
 
 ```bash
-# 构建指定包（全流程：install → bottle → test）
+# 构建指定配方（install → bottle → test）
 sh scripts/local-build.sh <formula>
 
-# 跳过测试
+# 跳过测试 / 卸载重装 / 跳过 brew update / 拉取产物到 ./artifacts/
 sh scripts/local-build.sh <formula> --no-test
-
-# 先卸载旧版本再构建
 sh scripts/local-build.sh <formula> --fresh
-
-# 拉取产物到 ./artifacts/
+sh scripts/local-build.sh <formula> --no-sync
 sh scripts/local-build.sh <formula> --pull
 
-# 覆盖产物目录名（默认同 formula）
-sh scripts/local-build.sh <formula> --software my-tool --pull
-
-# 镜像有改动时重建
-sh scripts/local-build.sh <formula> --rebuild
-
-# 只进容器交互调试
+# 进入容器交互调试
 sh scripts/local-build.sh <formula> --shell
 
-# 不指定包名，只确保容器运行
-sh scripts/local-build.sh
+# 重建镜像
+sh scripts/local-build.sh <formula> --rebuild
 ```
 
-## 选项
-
-| 选项 | 作用 |
-|------|------|
-| `--no-test` | 跳过 `brew test` |
-| `--fresh` | 先 `brew uninstall` 再安装 |
-| `--shell` | 不构建，只进入容器 shell |
-| `--rebuild` | 重新 `docker build` 镜像 |
-| `--pull` | 把 `.tar.gz` / `.json` 拉到 `./artifacts/` |
-| `--software <n>` | 产物子目录名（默认同 formula） |
-
-## 环境变量
+### 环境变量
 
 | 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `IMAGE` | `ohosci:1.0` | 镜像名 |
-| `CONTAINER` | `ohosci-builder` | 容器名 |
-| `TAP` | `nknkol/cask` | tap 全名 |
-| `EXTRA_PACKAGES` | 空 | 额外预装的 formula（空格分隔） |
+| :--- | :--- | :--- |
+| `IMAGE` | `ohosci:1.0` | Docker 镜像名 |
+| `CONTAINER` | `ohosci-builder` | 常驻容器名 |
+| `TAP` | `nknkol/cask` | Tap 全名 |
+| `EXTRA_PACKAGES` | 空 | 需预装的本 Tap 依赖（空格分隔） |
 
-## 执行步骤（对照 CI）
+---
 
-| 步骤 | 本地 | CI |
-|------|------|----|
-| 初始化工具链 | ❌ 镜像已内置 | ✅ `ci-runner/build.sh` |
-| 预装依赖 | ✅ `[1/4]` | ✅ `EXTRA_PACKAGES` |
-| 源码安装 | ✅ `[2/4] brew install --build-bottle` | ✅ |
-| 生成瓶子 | ✅ `[3/4] brew bottle --json` | ✅ |
-| 冒烟测试 | ✅ `[4/4] brew test` | ✅ |
-| 合并 sha256 到 formula | ❌ | ✅ |
-| 上传 Release | ❌ | ✅ |
-| git commit / push | ❌ | ✅ |
+## 方式二：在 `loh` 复用容器（如 `codex-bottle2`）内直接跑 `scripts/build-bottle.sh`（当前主力发布流程）
 
-## 典型工作流
+1. 将更新后的 `Formula/` 与 `patches/` 同步至容器 `/workspace` 并提交至容器本地分支，刷新容器内的 `nknkol/cask` Tap。
+2. 在容器内运行：
+   ```sh
+   docker exec -w /workspace \
+     -e HOMEBREW_NO_AUTO_UPDATE=1 \
+     -e HOMEBREW_NO_INSTALL_CLEANUP=1 \
+     -e FORMULA=<formula> \
+     -e SOFTWARE=<formula> \
+     codex-bottle2 /bin/sh scripts/build-bottle.sh
+   ```
+3. 将生成的 `.bottle.1.tar.gz` 导出到宿主机 `artifacts/<formula>-<version>/` 并规范化命名与 `.bottle.json`（`root_url` 指向 `https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2F<formula>`，`rebuild: 0`）。
+4. 将新 Bottle `sha256` 写入 `Formula/<formula>.rb`，然后增量上传至 Release（保留历史版本）：
+   ```sh
+   gh release upload bottles/<formula> \
+     artifacts/<formula>-<version>/<formula>-<version>.arm64_ohos.bottle.tar.gz \
+     artifacts/<formula>-<version>/<formula>-<version>.arm64_ohos.bottle.json \
+     --clobber -R nknkol/harmonybrew-cask
+   ```
+5. 提交并推送 `main` 分支。
+
+---
+
+<a id="english"></a>
+
+> [!NOTE]
+> This is a personal Homebrew tap. Because HarmonyOS PC's system partition is read-only, `brew test` and bottle packaging are executed inside a reusable Docker container (e.g. inside the `loh` Linux VM). See [`docs/homebrew-env-filtering.md`](homebrew-env-filtering.md).
+
+## Option 1: Using `scripts/local-build.sh`
+
+### Setup
 
 ```bash
-# 1. 开发 formula，在容器里手动试错
-sh scripts/local-build.sh my-package --shell
-# 在容器内：brew install -s nknkol/cask/my-package … 反复调试
+# 1. Build the reusable image (use ci-runner/ as the Docker build context)
+(cd ci-runner && DOCKER_BUILDKIT=0 docker build --no-cache -t ohosci:1.0 .)
 
-# 2. 本地跑全流程验证
-sh scripts/local-build.sh my-package
-
-# 3. 通过后，提交并推 tag 触发 CI
-git add Formula/my-package.rb
-git commit -m "Add my-package formula"
-git push origin main
-git tag bottles/my-package
-git push origin bottles/my-package
+# 2. Start the persistent container and tap nknkol/cask
+docker run -d --name ohosci-builder ohosci:1.0 /bin/sh -c 'while true; do sleep 3600; done'
+docker exec -it ohosci-builder /bin/sh -lc '
+  export PATH="/storage/Users/currentUser/.harmonybrew/bin:$PATH"
+  brew tap --force nknkol/cask https://github.com/nknkol/harmonybrew-cask.git
+'
 ```
 
-## 清理
+### Usage
 
 ```bash
-docker rm -f ohosci-builder      # 销毁容器
-docker rmi ohosci:1.0            # 删除镜像（如需重建）
+sh scripts/local-build.sh <formula>             # Full install -> bottle -> test
+sh scripts/local-build.sh <formula> --no-test   # Skip brew test
+sh scripts/local-build.sh <formula> --fresh     # Uninstall existing version first
+sh scripts/local-build.sh <formula> --no-sync   # Skip brew update
+sh scripts/local-build.sh <formula> --pull      # Pull .tar.gz and .json into ./artifacts/
+sh scripts/local-build.sh <formula> --shell     # Open an interactive shell in the container
 ```
+
+## Option 2: Direct `scripts/build-bottle.sh` in a Reusable Container (Primary Release Flow)
+
+1. Sync updated `Formula/` and `patches/` into `/workspace` inside the container (e.g. `codex-bottle2` in `loh`) and update its local tap.
+2. Execute:
+   ```sh
+   docker exec -w /workspace \
+     -e HOMEBREW_NO_AUTO_UPDATE=1 \
+     -e HOMEBREW_NO_INSTALL_CLEANUP=1 \
+     -e FORMULA=<formula> \
+     -e SOFTWARE=<formula> \
+     codex-bottle2 /bin/sh scripts/build-bottle.sh
+   ```
+3. Export the `.bottle.tar.gz` and normalized `.bottle.json` (`root_url` set to `bottles%2F<formula>`, `rebuild: 0`), merge the `sha256` into `Formula/<formula>.rb`, and upload incrementally:
+   ```sh
+   gh release upload bottles/<formula> <bottle.tar.gz> <bottle.json> --clobber -R nknkol/harmonybrew-cask
+   ```
+4. Commit and push `main`.

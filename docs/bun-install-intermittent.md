@@ -1,4 +1,7 @@
-# bun install 间歇性提取失败
+# bun install 间歇性提取失败 / Historical `bun@1.3.14` Install Note
+
+> [!NOTE]
+> **历史归档 / Historical Note**：早期 `bun@1.3.14` 在 `hmdfs` 上构建时的现象记录，仅供参考。
 
 ## 现象
 

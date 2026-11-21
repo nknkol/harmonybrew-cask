@@ -1,4 +1,7 @@
-# bun on HarmonyOS 移植记录
+# bun on HarmonyOS 移植记录 / HarmonyOS Filesystem & `bun@1.3.14` Porting Notes
+
+> [!NOTE]
+> **历史归档与参考 / Historical & Reference Note**：其中的鸿蒙 PC `hmdfs` / `O_TMPFILE` / 硬链接实测结论至今仍有参考价值；下方 0001–0004 源码补丁列表仅对应历史配方 `Formula/bun@1.3.14.rb`（当前 `Formula/bun.rb` 已改用 [`elf-patch-loader`](../patches/elf-patch-loader/README.md)）。
 
 ## 鸿蒙 PC 文件系统特性
 

@@ -1,4 +1,7 @@
-# bun bootstrap 补丁说明
+# bun bootstrap 补丁说明 / Historical `bun@1.3.14` Bootstrap Patches
+
+> [!NOTE]
+> **历史归档 / Historical Note**：仅适用于历史归档配方 `Formula/bun@1.3.14.rb`；当前 `Formula/bun.rb` 已使用 [`patches/bun/bun.elfpatch`](../patches/bun/bun.elfpatch) 与 `elf-patch-loader`。
 
 按序号依次应用。所有补丁针对 `bun v1.3.14` (commit `0d9b296af`)。
 

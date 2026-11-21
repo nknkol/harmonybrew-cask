@@ -1,73 +1,51 @@
-# Codex 0.167.0 on HarmonyOS
+# OpenAI Codex on HarmonyOS
 
-Upstream: https://github.com/openai/codex/releases/tag/rust-v0.167.0
+[中文](#中文) | [English](#english)
 
-The formula installs the complete `codex-package-aarch64-unknown-linux-musl`
-archive under `libexec`. Keeping `codex-package.json`, `bin`, `codex-path`, and
-`codex-resources` together lets the daemon discover and copy its local package.
-The old two-binary installation could not pass this check.
+---
 
-`patch-harmonyos.rb` redirects the format used by
-`codex-rs/uds/src/daemon_directory.rs::shared_daemon_socket_directory` from
-`codex-daemon-<uid>` to `/data/storage/el2/base/cache/cd-<uid>`.
-The absolute right-hand side of `Path::join` replaces the canonical `/tmp` base.
-The resulting root remains fixed, independent of CWD, HOME, TMPDIR, and CODEX_HOME.
-Both socket creation and sandbox directory exclusion use this same function.
-The existing owner, mode 0700, socket, and peer checks remain in place.
+<a id="中文"></a>
 
-The patch changes two AArch64 instructions at file offset `0xb3d1320` to point
-to a new Rust format literal at `0x1a0`. The literal occupies verified zero
-padding after `.init`'s return; extending `.init` to `0x70` bytes preserves it
-through llvm-objcopy and signing, without moving any load segments. The shortened
-`cd-` prefix keeps a 10-digit UID plus the 64-digit socket name within Linux's
-108-byte `sockaddr_un.sun_path` limit, including its terminator.
+> [!NOTE]
+> 属于个人自用 Homebrew Tap `nknkol/cask` 的适配说明。
 
-Before mutation, the patcher verifies the pristine binary's SHA-256, ELF
-architecture, instruction signature, original literal, padding, and section
-layout. A different upstream binary fails without modification. A future version
-requires inspection and updated guards. All ELF files are signed after patching.
+## 当前方案（`0.167.0_1+`：`elf-patch-loader` 内存补丁）
 
-The same guarded patch replaces the two `BL syscall` instructions used for
-`close_range(..., CLOSE_RANGE_CLOEXEC)` with `MOV X0, #-1` at file offsets
-`0xb4717bc` and `0xb4717d8` (virtual addresses `0xb8717bc` and `0xb8717d8`).
-Both calls and their surrounding arguments/branches are verified before writing.
-The existing conditional branches then select upstream's `/proc/self/fd` +
-`fcntl(FD_CLOEXEC)` fallback, preserving descriptor cleanup and the keep-list.
-HarmonyOS terminates syscall 436 with SIGSYS, so waiting for an errno cannot
-reach that fallback. No syscall wrapper or unrelated call is changed.
+当前 [`Formula/codex.rb`](../../Formula/codex.rb)（`0.167.0_1`）安装上游完整的 `codex-package-aarch64-unknown-linux-musl` 包结构（保留 `codex-package.json`、`bin/`、`codex-path`、`codex-resources` 以支持 daemon 包发现与复制），并已将主程序 `codex` 与 `codex-exec-server` 全面迁移至通用内存态 ELF 补丁加载器（[`patches/elf-patch-loader`](../elf-patch-loader/README.md)）：
 
-On the affected host, unpatched 0.159.3 and 0.167.0 both fail before shell exec
-through the non-PTY setup path. PTY execution succeeds through its alternate
-launch path. A re-signed isolated patch restores ordinary pipes, stdout/stderr,
-exit-code propagation and nested shell execution. This failure is in CLI process
-setup, rather than Code Mode Host's JavaScript execution.
+- **磁盘零改动**：上游 `codex` 与 `codex-exec-server` 原封不动放在 `libexec/bin/*.real`，无需离线修改 `.init` 段、无需对大体积可执行文件重签名。
+- **内存态声明式补丁（[`codex.elfpatch`](codex.elfpatch)）**：
+  1. `daemon_socket_dir`（`REDIRECT_ADRP`）：自动定位只读格式字面量 `\x0dcodex-daemon-\xc0\x00`，将其对应的 `ADRP + ADD` 指针在内存中重定向至可创建 Unix Domain Socket 的 `/data/storage/el2/base/cache/cd-`（控制 `sockaddr_un.sun_path` 在 108 字节限制内，同时完整保留 `codex` daemon 特性）。
+  2. `close_range_site_1` / `close_range_site_2`（`SEARCH` + `OFFSET` 兜底）：将非 PTY 子进程启动路径中的两处 `close_range(..., CLOSE_RANGE_CLOEXEC)` 的 `BL syscall` 替换为 `MOV X0, #-1`，使其自动回退至上游 `/proc/self/fd` + `fcntl(FD_CLOEXEC)` 清理逻辑，避免鸿蒙 `SIGSYS` 崩溃。
+- **辅助兼容层**：
+  - 私有 `ps` shim：响应 daemon 的 `ps -p PID -o stat= -o lstart=` 查询（鸿蒙 toybox `ps` 缺少 `lstart`）。
+  - 随包自带的 `rg` 与语音辅助程序通过 `nknkol/cask/glibc` 运行，`zsh` 桥接至 Harmonybrew 原生 `zsh`。
+- **主机运行注意**：`CODEX_HOME` 建议位于应用私有目录（如 `/data/storage/el2/base/files/...`），因为共享 `/storage`（`hmdfs`）不支持 Unix Socket 所需的属主与权限语义。
 
-The package also contains a private `ps` shim for the daemon's exact
-`-p PID -o stat= -o lstart=` query. HarmonyOS toybox lacks `lstart`; the shim reads
-state and start ticks from `/proc/PID/stat`, retaining stable process identity.
-Other queries delegate to the system ps. The bundled Linux rg and voice helper
-use the private glibc loader; zsh uses the native Harmonybrew zsh.
+## 历史版本说明
 
-Build in loh's `codex-bottle2` Docker container with `scripts/build-bottle.sh`.
-The formula test covers package discovery/copying, version, rg, zsh, resume/fork
-argument parsing, and daemon start/stop. It also launches a real non-PTY shell via
-the private setup protocol, verifies its report prefix, stdout/stderr and exit
-code, and repeats this test using the daemon's copied package.
-Host validation must use CODEX_HOME in
-the app's private `/data/storage/el2/base/files` directory: shared `/storage`
-directories do not provide the socket ownership/mode semantics Codex requires.
+- 历史归档配方 `Formula/codex@0.162.1.rb` 使用独立冻结的离线补丁脚本 [`patch-harmonyos-0.162.1.rb`](patch-harmonyos-0.162.1.rb)。
+- 旧版 `0.167.0` 离线补丁脚本 [`patch-harmonyos.rb`](patch-harmonyos.rb) 已被 `codex.elfpatch` 取代，不再被当前配方引用。
 
-The historical `codex@0.162.1` formula uses the frozen
-`patch-harmonyos-0.162.1.rb` patcher and retains revision 1.
+---
 
-Upstream 0.167.0 also ships `bin/codex-exec-server`. The formula patches and
-signs both executables and exercises both through the private non-PTY setup
-protocol, including the daemon's copied package. The exec-server profile uses
-pristine SHA-256
-`020b3f9a9ee5cf589a4c5b8e9cb1d48a755693b3534943cc38e59bbe7261e4e7`,
-format pointer offset `0x1f660a4`, literal offset `0x3128485`, and syscall-call
-offsets `0x1f98b44` / `0x1f98b60`. Each profile has independent exact hash and
-instruction guards. Both preserve the same upstream descriptor cleanup fallback.
+<a id="english"></a>
 
-The archive no longer includes zsh; the formula creates the resource directory
-before writing its native-zsh wrapper.
+> [!NOTE]
+> Maintained as part of the personal Harmonybrew tap `nknkol/cask`.
+
+## Current Architecture (`0.167.0_1+`: `elf-patch-loader`)
+
+[`Formula/codex.rb`](../../Formula/codex.rb) (`0.167.0_1`) installs the full upstream `codex-package-aarch64-unknown-linux-musl` layout (keeping `codex-package.json`, `bin`, `codex-path`, and `codex-resources` intact for daemon package discovery/copying) and runs both `codex` and `codex-exec-server` through [`patches/elf-patch-loader`](../elf-patch-loader/README.md):
+
+- **Pristine Upstream ELFs**: Unmodified `codex` and `codex-exec-server` binaries live in `libexec/bin/*.real`; only the tiny loaders are signed.
+- **Declarative In-Memory Patches ([`codex.elfpatch`](codex.elfpatch))**:
+  1. `daemon_socket_dir` (`REDIRECT_ADRP`): Automatically rewrites `ADRP + ADD` references from `\x0dcodex-daemon-\xc0\x00` to `/data/storage/el2/base/cache/cd-` in memory, enabling Unix Domain Sockets while staying within the 108-byte `sockaddr_un.sun_path` limit and preserving full daemon functionality.
+  2. `close_range_site_1` / `close_range_site_2` (`SEARCH` with `OFFSET` fallback): Replaces the two `BL syscall` calls for `close_range(..., CLOSE_RANGE_CLOEXEC)` in the non-PTY launch path with `MOV X0, #-1`, activating upstream's `/proc/self/fd` + `fcntl(FD_CLOEXEC)` fallback instead of triggering HarmonyOS `SIGSYS`.
+- **Companion Shims**: Includes a private `ps` shim for `-p PID -o stat= -o lstart=` (missing from HarmonyOS toybox `ps`), runs bundled Linux `rg`/voice helpers against `nknkol/cask/glibc`, and bridges `zsh` to native Harmonybrew `zsh`.
+- **Runtime Note**: Keep `CODEX_HOME` on an app-private filesystem (e.g. `/data/storage/el2/base/files/...`) because shared `/storage` (`hmdfs`) lacks required Unix socket ownership/mode semantics.
+
+## Historical Versions
+
+- `Formula/codex@0.162.1.rb` uses the frozen offline patcher [`patch-harmonyos-0.162.1.rb`](patch-harmonyos-0.162.1.rb).
+- The previous offline `0.167.0` patcher [`patch-harmonyos.rb`](patch-harmonyos.rb) is superseded by `codex.elfpatch` and no longer referenced by active formulae.

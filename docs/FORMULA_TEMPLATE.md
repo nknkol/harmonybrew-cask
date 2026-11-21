@@ -1,6 +1,66 @@
-# Formula 配方样板
+# Formula 配方样板 / Formula Templates
 
-## 1. 源码编译
+[中文](#中文) | [English](#english)
+
+---
+
+<a id="中文"></a>
+
+> [!NOTE]
+> 以下样板适用于本**个人自用** Harmonybrew Tap（`nknkol/cask`）。
+
+## 1. 预编译 / 闭源 Linux ARM64 软件（推荐：`elf-patch-loader`）
+
+适用于需要运行在 `nknkol/cask/glibc` 或需要内存补丁 / `TRAP_SIGSYS` 拦截的软件（参考 `Formula/antigravity.rb`、`Formula/bun.rb`、`Formula/claude-code.rb`、`Formula/codex.rb`）：
+
+```ruby
+class SomeTool < Formula
+  desc "Example prebuilt or closed-source CLI"
+  homepage "https://example.com"
+  url "https://example.com/releases/tool-1.0.0-linux-arm64.tar.gz"
+  sha256 "<fill-in>"
+  version "1.0.0"
+
+  bottle do
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fsome-tool"
+  end
+
+  depends_on "nknkol/cask/binary-sign-tool" => :build
+  depends_on "nknkol/cask/glibc" # 若上游为静态 musl 二进制则省略此行
+
+  def sign_tool
+    Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
+  end
+
+  def install
+    tap_root = Pathname.new(__FILE__).dirname.parent
+    system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+           "--binary", (buildpath/"tool").to_s,
+           "--config", (tap_root/"patches/some-tool/tool.elfpatch").to_s,
+           "--prefix", prefix.to_s,
+           "--name", "tool",
+           "--glibc-lib", Formula["nknkol/cask/glibc"].opt_lib.to_s,
+           "--sign-tool", sign_tool.to_s
+  end
+
+  test do
+    verify_out = shell_output("ELFPATCH_VERIFY=1 #{bin}/tool 2>&1")
+    assert_match "verification passed", verify_out
+    assert_match version.to_s, shell_output("#{bin}/tool --version")
+  end
+end
+```
+
+配套的 `patches/some-tool/tool.elfpatch` 最小示例：
+
+```text
+PROGRAM @PROGRAM@
+INTERP  @GLIBC_INTERP@
+RUNPATH @GLIBC_LIB@
+TRAP_SIGSYS
+```
+
+## 2. 源码编译 + 补丁
 
 ```ruby
 class BinarySignTool < Formula
@@ -12,10 +72,9 @@ class BinarySignTool < Formula
   version "1.0.0"
 
   bottle do
-    root_url "https://github.com/<user>/<repo>/releases/download/bottles%2F<formula>"
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbinary-sign-tool"
   end
 
-  depends_on "cmake" => :build
   depends_on "make" => :build
   depends_on "gpatch" => :build
   depends_on "openssl@3"
@@ -32,7 +91,6 @@ class BinarySignTool < Formula
 
   def install
     ENV.deparallelize
-
     (buildpath/"third_party/third_party_elfio").install resource("elfio")
 
     system "make",
@@ -41,94 +99,108 @@ class BinarySignTool < Formula
            "OPENSSL_PREFIX=#{Formula["openssl@3"].opt_prefix}",
            "PROJ=#{buildpath}"
 
-    bin.install "build/<binary>"
+    bin.install "build/binary-sign-tool-fix"
   end
 
   test do
-    system "#{bin}/<binary>"
+    system "#{bin}/binary-sign-tool-fix", "--help"
   end
 end
 ```
 
-## 2. 预编译 / 闭源软件
+## 3. 历史版本化固钉配方（`<name>@<version>.rb`）
+
+```ruby
+# Formula/some-tool.rb       ← 最新版
+# Formula/some-tool@1.0.rb   ← 历史版本归档
+
+class SomeToolAT10 < Formula
+  desc "Example CLI (archived 1.0)"
+  homepage "https://example.com"
+  url "https://example.com/releases/tool-1.0.0-linux-arm64.tar.gz"
+  sha256 "<fill-in>"
+  version "1.0.0"
+  keg_only :versioned_formula
+
+  # 注意：不要保留指向主配方瓶子的 bottle do 块，避免按 @version 命名请求时 404
+  ...
+end
+```
+
+## 4. 附录：源码补丁制作方法
+
+1. 将官方源码包解压两份至 `a/` 与 `b/`，在 `b/` 中完成适配修改。
+2. 生成标准 unified diff 补丁：
+   ```sh
+   diff -ruN a b > 0001-add-ohos-support.patch
+   ```
+3. 放入小写 **`patches/<formula>/`** 目录，并在 Formula 中通过 `patch do` 引用：
+   ```ruby
+   patch do
+     file "patches/<formula>/0001-add-ohos-support.patch"
+   end
+   ```
+
+---
+
+<a id="english"></a>
+
+> [!NOTE]
+> Templates for this **personal** Harmonybrew tap (`nknkol/cask`).
+
+## 1. Prebuilt / Closed-Source Linux ARM64 Binary (Preferred: `elf-patch-loader`)
 
 ```ruby
 class SomeTool < Formula
-  desc "某预编译/闭源工具"
+  desc "Example prebuilt or closed-source CLI"
   homepage "https://example.com"
-  url "https://example.com/releases/tool-arm64.tar.gz"
+  url "https://example.com/releases/tool-1.0.0-linux-arm64.tar.gz"
   sha256 "<fill-in>"
   version "1.0.0"
 
   bottle do
-    root_url "https://github.com/<user>/<repo>/releases/download/bottles%2Fsome-tool"
+    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fsome-tool"
+  end
+
+  depends_on "nknkol/cask/binary-sign-tool" => :build
+  depends_on "nknkol/cask/glibc" # Omit for static musl binaries
+
+  def sign_tool
+    Formula["nknkol/cask/binary-sign-tool"].opt_bin/"binary-sign-tool-fix"
   end
 
   def install
-    bin.install "tool"
-  end
-
-  def post_install
-    # 本地签名：二进制必须先签名才能在鸿蒙运行
-    system "binary-sign-tool-fix", "sign",
-           "-inFile", bin/"tool",
-           "-outFile", bin/"tool",
-           "-selfSign", "1"
+    tap_root = Pathname.new(__FILE__).dirname.parent
+    system RbConfig.ruby, (tap_root/"patches/elf-patch-loader/install_loader.rb").to_s,
+           "--binary", (buildpath/"tool").to_s,
+           "--config", (tap_root/"patches/some-tool/tool.elfpatch").to_s,
+           "--prefix", prefix.to_s,
+           "--name", "tool",
+           "--glibc-lib", Formula["nknkol/cask/glibc"].opt_lib.to_s,
+           "--sign-tool", sign_tool.to_s
   end
 
   test do
-    system "#{bin}/tool", "--version"
+    verify_out = shell_output("ELFPATCH_VERIFY=1 #{bin}/tool 2>&1")
+    assert_match "verification passed", verify_out
+    assert_match version.to_s, shell_output("#{bin}/tool --version")
   end
 end
 ```
 
-## 3. 多版本固钉
+Minimal `patches/some-tool/tool.elfpatch`:
 
-```ruby
-# Formula/xxx.rb          ← 最新版
-# Formula/xxx@1.0.rb      ← 旧版固钉
-
-# xxx@1.0.rb:
-class XxxAT10 < Formula
-  ...
-  bottle do
-    root_url ".../releases/download/bottles%2Fxxx%401.0"
-  end
-  ...
-end
+```text
+PROGRAM @PROGRAM@
+INTERP  @GLIBC_INTERP@
+RUNPATH @GLIBC_LIB@
+TRAP_SIGSYS
 ```
 
-## 4 附录：补丁制作指南
+## 2. Source-Built Formula with Patches
 
-### 4.1 准备源码
+Place patches under lowercase **`patches/<formula>/`** (not uppercase `Patches/`) and reference them with `patch do` (`file "patches/<formula>/0001-xxx.patch"`). See the Chinese section above for a complete example.
 
-下载源码包，将源码包解压两次，得到两份干净的源码。这里假设源码目录名字分别为 a 和 b。
+## 3. Archived Versioned Formula (`<name>@<version>.rb`)
 
-
-### 4.2 制作补丁
-
-修改目录 b 中的源码，对其进行业务适配。适配完成后，需制作标准补丁文件。推荐做法如下：
-
-```sh
-# -r: 递归目录; -u: 统一格式; -N: 处理缺失文件;
-diff -ruN a b > 0001-add-ohos-support.patch
-```
-
-### 4.3 引入补丁
-
-在仓库的 `Patches` 目录下创建一个与 formula 同名的子目录，将补丁放置其中。示例：`Patches/perl/0001-add-ohos-support.patch`
-
-然后在本地 formula 中加入 `patch` 块，指向补丁文件：
-
-```rb
-  patch do
-    file "Patches/perl/0001-add-ohos-support.patch"
-  end
-```
-
-### 4.3 验证补丁
-
-执行 `brew install -s -v --include-test <formula>`、`brew test <formula>` 验证构建和测试是否通过。如果不通过，需要重新制作补丁、重新验证，直至验证通过。
-
-> 该做法每次都会对软件包进行全量构建。虽耗时长，但操作简单，适用于大多数场景和用户。对于需要调试大型软件包、有增量构建需求的用户，可自行寻找其他方法进行增量构建，提高自身调试效率。
-
+Always declare `keg_only :versioned_formula` and omit the primary formula's `bottle do` block so Homebrew does not request a non-existent `<name>@<version>--<version>` bottle tarball.

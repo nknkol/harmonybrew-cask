@@ -1,4 +1,9 @@
-# bootstrap bun 补丁指南
+# bootstrap bun 补丁指南 / Historical `bun@1.3.14` Bootstrap Patch Guide
+
+> [!NOTE]
+> **历史归档 / Historical Note**：本文档记录的是早期 `Formula/bun@1.3.14.rb` 源码自举实验期的手动补丁步骤，仅供参考。当前 `Formula/bun.rb`（`1.4.4+`）已改为基于 [`elf-patch-loader`](../patches/elf-patch-loader/README.md) 的内存补丁方案，官方 `harmonybrew/core` 也已提供源码编译版 `bun`。
+>
+> *English*: Archived notes for the legacy `bun@1.3.14` source bootstrap build. The active `Formula/bun.rb` (`1.4.4+`) now uses `elf-patch-loader` with upstream prebuilt binaries, and official `harmonybrew/core` provides a source-built `bun`.
 
 在 `bun-bun-v1.3.14` 源码中应用 4 个补丁，然后重新编译。
 

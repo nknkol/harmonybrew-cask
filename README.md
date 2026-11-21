@@ -1,81 +1,135 @@
 # Harmonybrew Cask
 
-自定义 Homebrew tap，分发鸿蒙 (OpenHarmony) 平台的命令行软件包。
+[中文](#中文) | [English](#english)
 
-## 使用
+---
+
+<a id="中文"></a>
+
+> [!NOTE]
+> **个人自用声明**：本仓库仅为作者个人在鸿蒙 PC（HarmonyOS / OpenHarmony `arm64_ohos`）上自用维护的非官方 Homebrew Tap，并非 Harmonybrew 官方仓库。配方、补丁策略及历史归档可能随时按个人需求调整或变更，不提供长期兼容性或稳定性 SLA，使用前请自行评估风险。
+
+自定义 Homebrew Tap，用于在鸿蒙（OpenHarmony / HarmonyOS）平台上分发官方 `harmonybrew/core` 尚未收录、版本滞后、闭源预编译或需要特定平台补丁（如原生 ELF TLS、内存态 `SIGSYS` 拦截等）的命令行软件包。
+
+## 快速使用
 
 ```sh
+# 添加个人 Tap
 brew tap nknkol/cask https://github.com/nknkol/harmonybrew-cask.git
-brew install binary-sign-tool
+
+# 建议使用带 Tap 前缀的完整名称，避免与 harmonybrew/core 同名配方冲突
+brew install nknkol/cask/antigravity
+brew install nknkol/cask/claude-code
+brew install nknkol/cask/codex
+brew install nknkol/cask/bun
+brew install nknkol/cask/binary-sign-tool
 ```
 
-## Formula 类型
+## 当前主要配方
 
-| 类型 | 说明 | 签名方式 |
-|------|------|----------|
-| 源码编译 + 补丁 | 从源码编译（如 binary-sign-tool、rust） | 编译时 lld 自动签名 |
-| 预编译开源软件 | 上游提供二进制，CI 签名后打包为 bottle | formula 依赖 `binary-sign-tool`，CI 签名 |
-| 闭源软件 | 二进制来源不公开 | 同预编译 |
+| 类型 | 代表配方 | 说明 |
+| :--- | :--- | :--- |
+| **内存态 ELF 补丁加载器** | `antigravity`、`bun`、`claude-code`、`codex` | 保持上游 Linux ARM64 二进制磁盘零修改，运行前通过 29 KB 的 [`elf-patch-loader`](patches/elf-patch-loader/README.md) 在内存中完成 `DT_RUNPATH` 注入、指令热补丁及 `TRAP_SIGSYS` 系统调用陷阱保护，构建期仅对加载器签名。 |
+| **源码编译 + 平台补丁** | `binary-sign-tool`、`rust`（启用原生 ELF TLS）、`adbcli`、`deepseek-harness`、`hapsigntool`、`libgcc` | 从上游源码打补丁编译；其中 `rust` 补充了原生 `GeneralDynamic` ELF TLS 补丁（官方 `harmonybrew/core` 目前仍为 `emulated` TLS）。 |
+| **运行库 / 预编译工具** | `glibc`（keg-only，含 GCC 运行库）、`magpie`、`sheldon`、`starship` | 提供鸿蒙补丁版 glibc 2.38 运行时及常用 CLI 工具（注：`deepseek-harness`、`sheldon`、`starship` 等已被 `harmonybrew/core` 收录，可直接按需选用官方版）。 |
 
-签名不再在 CI 脚本中处理，由 formula 自身声明 `depends_on "binary-sign-tool"` 并在 `post_install` 中调用。
+## 多版本历史归档
 
-## 多版本
+历史版本配方以 `<formula>@<version>.rb` 形式保留在 `Formula/` 下（均标记 `keg_only :versioned_formula`），例如：
 
-每个大版本一个配方文件：
-
-```
+```text
 Formula/
-├── binary-sign-tool.rb        ← 最新版
-└── binary-sign-tool@1.0.rb    ← 固钉旧版
+├── antigravity.rb          ← 当前最新版 (1.5.4_1)
+├── antigravity@1.5.2.rb    ← 历史归档
+└── antigravity@1.4.2.rb    ← 历史归档
 ```
 
-每个配方有独立的 `root_url` 和对应的 GitHub Release。
+## 构建与发布方式
 
-## 开发
-
-### 新增/修改 formula
-
-```sh
-# 拉取 Docker 环境
-docker pull ghcr.io/hqzing/dockerharmony:latest
-
-# 进入容器
-docker run -it --rm -v $(pwd):/workspace -w /workspace ghcr.io/hqzing/dockerharmony:latest
-
-# 在容器内 tap 本地工作区
-brew tap nknkol/cask /workspace
-
-# 编辑 formula
-vim Formula/xxx.rb
-
-# 从源码构建验证
-brew install -s -v --include-test nknkol/cask/<formula>
-
-# 测试
-brew test nknkol/cask/<formula>
-```
-
-### 构建 bottle
-
-推送 tag 触发 CI：
-
-```sh
-git tag bottle/<formula>/<version>
-git push origin bottle/<formula>/<version>
-```
-
-CI 自动：Docker 构建 → 签名 → 打包 → 上传 GitHub Release → formula 写回 main。
-
-每个软件一个 Release（`bottles/<formula>`），升级版更新同一 Release。也可手动触发：GitHub Actions → Build bottle → Run workflow。
+1. **本地容器构建（当前主力流程）**：在 `loh` 虚拟机或本地 Docker 容器中复用 `Harmonybrew` 构建环境，运行 `scripts/build-bottle.sh` 生成 Bottle 后，使用 `gh release upload bottles/<formula> ... --clobber` 向对应 Release 增量上传（避免覆盖历史瓶子）。详见 [`docs/LOCAL_BUILD.md`](docs/LOCAL_BUILD.md)。
+2. **GitHub Actions CI**：支持手动 `workflow_dispatch` 或推送 `bottles/<formula>` 标签触发。注意当前 workflow 触发上传时会删除并重建对应 Release，详见 [`docs/CI_FLOW.md`](docs/CI_FLOW.md)。
 
 ## 目录结构
 
-```
-├── Formula/              # Ruby 配方文件
-├── patches/              # 源码补丁
-├── scripts/
-│   └── build-bottle.sh   # CI 瓶构建脚本
-├── ci-runner/            # CI Docker 启动脚本
+```text
+├── Formula/                  # 当前配方与历史版本化配方（@version）
+├── patches/
+│   ├── elf-patch-loader/     # 通用 AArch64 内存态 ELF 补丁加载器、TRAP_SIGSYS 与安装脚本
+│   ├── antigravity/          # Antigravity .elfpatch 配置
+│   ├── bun/                  # Bun .elfpatch 配置及历史源码补丁
+│   ├── claude-code/          # Claude Code .elfpatch 配置
+│   ├── codex/                # Codex .elfpatch 配置
+│   ├── glibc/                # glibc 2.38 鸿蒙补丁与构建文档
+│   ├── rust/                 # Rust 原生 ELF TLS 与自举补丁
+│   └── ...                   # 其余软件包补丁
+├── bootstrap/                # 运行时与自举构建所需归档
+├── scripts/                  # Bottle 构建与本地辅助脚本
+├── ci-runner/                # CI Docker 镜像与环境初始化脚本
+├── Archive/                  # 已归档的历史配方与补丁
+├── docs/                     # 使用、规范与移植文档
 └── .github/workflows/
-    └── bottle.yml         # CI 工作流（tag 触发 + 手动触发）
+    └── bottle.yml            # GitHub Actions Bottle 构建流水线
 ```
+
+## 文档索引
+
+- 使用指南：[`docs/USAGE.md`](docs/USAGE.md)
+- 内存 ELF 补丁加载器与 `TRAP_SIGSYS` 指南：[`patches/elf-patch-loader/README.md`](patches/elf-patch-loader/README.md)
+- 配方规范与样板：[`docs/FORMULA_SPEC.md`](docs/FORMULA_SPEC.md) · [`docs/FORMULA_TEMPLATE.md`](docs/FORMULA_TEMPLATE.md)
+- 本地构建与 CI 流程：[`docs/LOCAL_BUILD.md`](docs/LOCAL_BUILD.md) · [`docs/CI_FLOW.md`](docs/CI_FLOW.md)
+- glibc 鸿蒙补丁说明：[`patches/glibc/README.md`](patches/glibc/README.md)
+
+---
+
+<a id="english"></a>
+
+> [!NOTE]
+> **Personal Tap Disclaimer**: This repository is a **personal** unofficial Homebrew tap maintained for the author's own use on HarmonyOS / OpenHarmony PC (`arm64_ohos`). It is **not** affiliated with the official `harmonybrew/core` repository. Formulae, patches, and historical archives may change or be removed without notice, with no stability or support SLA. Use at your own risk.
+
+A personal Homebrew tap distributing CLI packages for HarmonyOS / OpenHarmony that are missing from official `harmonybrew/core`, closed-source/prebuilt, ahead of upstream core versions, or require platform-specific patches (such as native ELF TLS for Rust or in-memory `SIGSYS` syscall trapping).
+
+## Quick Start
+
+```sh
+# Add this personal tap
+brew tap nknkol/cask https://github.com/nknkol/harmonybrew-cask.git
+
+# Prefer fully-qualified names to avoid collisions with harmonybrew/core
+brew install nknkol/cask/antigravity
+brew install nknkol/cask/claude-code
+brew install nknkol/cask/codex
+brew install nknkol/cask/bun
+brew install nknkol/cask/binary-sign-tool
+```
+
+## Formula Categories
+
+| Category | Examples | Notes |
+| :--- | :--- | :--- |
+| **In-Memory ELF Patch Loader** | `antigravity`, `bun`, `claude-code`, `codex` | Upstream Linux ARM64 ELF binaries remain unmodified on disk. At launch, the 29 KB [`elf-patch-loader`](patches/elf-patch-loader/README.md) injects `DT_RUNPATH`, applies declarative in-memory patches, and optionally installs `TRAP_SIGSYS` guards. Only the tiny loader is signed at build time. |
+| **Source Build + Patches** | `binary-sign-tool`, `rust` (native ELF TLS), `adbcli`, `deepseek-harness`, `hapsigntool`, `libgcc` | Built from source with HarmonyOS patches. Notably, `rust` enables native `GeneralDynamic` ELF TLS (whereas official `harmonybrew/core/rust` still defaults to `emulated` TLS). |
+| **Runtimes / Prebuilt Tools** | `glibc` (keg-only, bundled with GCC runtime libs), `magpie`, `sheldon`, `starship` | Patched glibc 2.38 runtime and utility CLIs. (Note: `deepseek-harness`, `sheldon`, and `starship` are now also available in official `harmonybrew/core`.) |
+
+## Versioned Historical Formulae
+
+Pinned historical versions live alongside current formulae as `Formula/<name>@<version>.rb` (`keg_only :versioned_formula`):
+
+```text
+Formula/
+├── antigravity.rb          ← Latest (1.5.4_1)
+├── antigravity@1.5.2.rb    ← Archived
+└── antigravity@1.4.2.rb    ← Archived
+```
+
+## Building & Publishing Bottles
+
+1. **Local Container Build (Primary Workflow)**: Build bottles in a reusable HarmonyOS Docker container (e.g. `codex-bottle2` inside `loh`) via `scripts/build-bottle.sh`, then incrementally upload assets with `gh release upload bottles/<formula> ... --clobber` so historical bottle tarballs are preserved. See [`docs/LOCAL_BUILD.md`](docs/LOCAL_BUILD.md).
+2. **GitHub Actions CI**: Triggered via `workflow_dispatch` or pushing tag `bottles/<formula>`. Note that the workflow recreates the release on upload; see [`docs/CI_FLOW.md`](docs/CI_FLOW.md).
+
+## Documentation Index
+
+- Usage Guide: [`docs/USAGE.md`](docs/USAGE.md)
+- In-Memory ELF Patch Loader & `TRAP_SIGSYS`: [`patches/elf-patch-loader/README.md`](patches/elf-patch-loader/README.md)
+- Formula Spec & Templates: [`docs/FORMULA_SPEC.md`](docs/FORMULA_SPEC.md) · [`docs/FORMULA_TEMPLATE.md`](docs/FORMULA_TEMPLATE.md)
+- Local Build & CI Flow: [`docs/LOCAL_BUILD.md`](docs/LOCAL_BUILD.md) · [`docs/CI_FLOW.md`](docs/CI_FLOW.md)
+- HarmonyOS glibc Patch Notes: [`patches/glibc/README.md`](patches/glibc/README.md)
