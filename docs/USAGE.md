@@ -26,11 +26,11 @@ brew install -s nknkol/cask/binary-sign-tool
 ## 目录结构
 
 ```text
-├── Formula/                  # Ruby 配方文件（含历史版本化 @version 配方）
+├── Formula/                  # 现役主配方文件
 ├── patches/
 │   ├── elf-patch-loader/     # 通用内存态 ELF 补丁加载器、TRAP_SIGSYS 与 install_loader.rb
 │   ├── antigravity/          # agy.elfpatch
-│   ├── bun/                  # bun.elfpatch 及历史补丁
+│   ├── bun/                  # bun.elfpatch
 │   ├── claude-code/          # claude.elfpatch
 │   ├── codex/                # codex.elfpatch
 │   ├── glibc/                # glibc 2.38 补丁与构建文档
@@ -41,7 +41,7 @@ brew install -s nknkol/cask/binary-sign-tool
 │   ├── local-build.sh        # 本地常驻容器构建封装
 │   └── docker-test.sh        # 容器内 brew test 封装
 ├── ci-runner/                # CI Docker 镜像与初始化脚本
-├── Archive/                  # 已归档的历史配方与补丁
+├── Archive/                  # 历史版本化配方（@version）、退役配方及对应历史补丁
 ├── docs/                     # 文档目录
 └── .github/workflows/
     └── bottle.yml            # CI 工作流
@@ -106,22 +106,22 @@ brew install -s nknkol/cask/binary-sign-tool
 ## Directory Layout
 
 ```text
-├── Formula/                  # Ruby formulae (including archived @version formulae)
+├── Formula/                  # Active primary formulae
 ├── patches/
 │   ├── elf-patch-loader/     # Universal in-memory ELF patch loader, TRAP_SIGSYS & install_loader.rb
 │   ├── antigravity/          # agy.elfpatch
-│   ├── bun/                  # bun.elfpatch and historical patches
+│   ├── bun/                  # bun.elfpatch
 │   ├── claude-code/          # claude.elfpatch
 │   ├── codex/                # codex.elfpatch
 │   ├── glibc/                # glibc 2.38 HarmonyOS patch & build guide
-│   └── <formula>/            # Source patches for source-built formulae
+│   └── <formula>/            # Source patches for active source-built formulae
 ├── bootstrap/                # Runtime / bootstrap archives
 ├── scripts/
 │   ├── build-bottle.sh       # Container bottle build script
 │   ├── local-build.sh        # Persistent local container helper
 │   └── docker-test.sh        # Container brew test wrapper
 ├── ci-runner/                # Docker image & toolchain bootstrap script
-├── Archive/                  # Retired formulae and patches
+├── Archive/                  # Archived @version formulae, retired formulae & their patches
 ├── docs/                     # Documentation
 └── .github/workflows/
     └── bottle.yml            # GitHub Actions workflow

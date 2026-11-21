@@ -24,8 +24,8 @@
 
 ## 历史版本说明
 
-- 历史归档配方 `Formula/codex@0.162.1.rb` 使用独立冻结的离线补丁脚本 [`patch-harmonyos-0.162.1.rb`](patch-harmonyos-0.162.1.rb)。
-- 旧版 `0.167.0` 离线补丁脚本 [`patch-harmonyos.rb`](patch-harmonyos.rb) 已被 `codex.elfpatch` 取代，不再被当前配方引用。
+- 历史归档配方（`codex@0.144.5` ～ `codex@0.162.1`）已统一移至 `Archive/Formula/`，其中 `codex@0.162.1` 使用独立冻结的离线补丁脚本 [`Archive/patches/codex/patch-harmonyos-0.162.1.rb`](../../Archive/patches/codex/patch-harmonyos-0.162.1.rb)。
+- 旧版 `0.167.0` 离线补丁脚本 `patch-harmonyos.rb` 已被 `codex.elfpatch` 取代并清理。
 
 ---
 
@@ -47,5 +47,5 @@
 
 ## Historical Versions
 
-- `Formula/codex@0.162.1.rb` uses the frozen offline patcher [`patch-harmonyos-0.162.1.rb`](patch-harmonyos-0.162.1.rb).
-- The previous offline `0.167.0` patcher [`patch-harmonyos.rb`](patch-harmonyos.rb) is superseded by `codex.elfpatch` and no longer referenced by active formulae.
+- Archived formulae (`codex@0.144.5` through `codex@0.162.1`) live under `Archive/Formula/`, with `codex@0.162.1` referencing [`Archive/patches/codex/patch-harmonyos-0.162.1.rb`](../../Archive/patches/codex/patch-harmonyos-0.162.1.rb).
+- The superseded offline `0.167.0` patcher `patch-harmonyos.rb` has been removed.

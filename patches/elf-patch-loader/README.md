@@ -3,7 +3,7 @@
 > [!NOTE]
 > **个人自用说明 / Personal Tap Notice**：本组件属于个人自用 Homebrew Tap `nknkol/cask`，用于在鸿蒙 PC（HarmonyOS / OpenHarmony `arm64_ohos`）上以零磁盘改动方式运行并修补上游 Linux AArch64 ELF 二进制。
 >
-> **English Summary**: `elf-patch-loader` is a standalone, zero-dependency, 29 KB AArch64 PIE loader (`-nostdlib -Wl,--no-dynamic-linker`) that loads pristine upstream Linux ARM64 ELFs into anonymous memory, injects `DT_RUNPATH`/`PT_INTERP` without polluting child `LD_LIBRARY_PATH`, applies declarative in-memory patches (`GO_SYM`, `REDIRECT_ADRP`, `SEARCH`, `OFFSET`), enables `PROT_EXEC` via HarmonyOS `prctl(PR_HM_JIT = 0x6a6974)`, and provides `TRAP_SIGSYS` — a zero-stack resident `SIGSYS -> -ENOSYS` signal trap paired with automatic Go (`runtime.rt_sigaction`/`runtime.rtsigprocmask`) and PLT (`sigaction`/`pthread_sigmask`/`sigprocmask`/`sigfillset`) guards to eliminate seccomp `SIGSYS` crashes across versions. See the detailed Chinese architecture & maintenance guide below.
+> **English Summary**: `elf-patch-loader` is a standalone, zero-dependency, 29 KB AArch64 PIE loader (`-nostdlib -Wl,--no-dynamic-linker`) supporting **both dynamic (`glibc`) and static (`ET_DYN` static-PIE / `ET_EXEC` non-PIE, e.g. static musl or `CGO_ENABLED=0` Go)** Linux ARM64 ELFs. It loads pristine upstream ELFs into anonymous memory, injects `DT_RUNPATH`/`PT_INTERP` when dynamic without polluting child `LD_LIBRARY_PATH`, applies declarative in-memory patches (`GO_SYM`, `REDIRECT_ADRP`, `SEARCH`, `OFFSET`), enables `PROT_EXEC` via HarmonyOS `prctl(PR_HM_JIT = 0x6a6974)`, and provides `TRAP_SIGSYS` — a zero-stack resident `SIGSYS -> -ENOSYS` signal trap paired with automatic Go (`runtime.rt_sigaction`/`runtime.rtsigprocmask`) and PLT (`sigaction`/`pthread_sigmask`/`sigprocmask`/`sigfillset`) guards to eliminate seccomp `SIGSYS` crashes across versions. See the detailed Chinese architecture, static-ELF analysis, and maintenance guide below.
 
 本目录提供 Harmonybrew Cask 通用的 **AArch64 内存态 ELF 补丁加载器**，用于在 **不修改上游二进制文件（零 `patchelf`、零磁盘字节改动、无需对大体积主程序重新签名）** 的前提下，在运行前内存中完成动态链接器切换、`DT_RUNPATH` 注入、环境变量注入、`TRAP_SIGSYS` 陷阱守卫以及指令/数据热补丁。
 
@@ -230,4 +230,30 @@ ld-linux-aarch64.so.1 --library-path <glibc>/lib --preload <libohos_hook.so> <ta
 - **稳定性评估与注意事项**：
   - **高稳定场景**：拦截函数入口并直接按标准 ARM64 AAPCS64 调用约定（参数 `x0~x7`，返回值 `x0`）替换整个函数行为（例如将 `can_use_memfd()` 入口替换为返回 `0`）。
   - **存在跨版本风险的场景**：拦截函数中间指令，或 Hook 被 LTO 内联优化 / 采用自定义寄存器分配的 Rust/Zig 内部私有函数。此类场景在跨大版本升级时可能因寄存器分配变化而需要重新核对反汇编，因此**优先推荐使用层级 1（`SIGSYS` 陷阱）和层级 2（`ld.so --preload` 符号拦截）**，仅在必要时使用层级 3。
+
+---
+
+## 9. 静态 ELF（Static ELF）支持原理与边界 / Static ELF Support & Edge Cases
+
+`elf-patch-loader` 原生支持无 `PT_INTERP` 的静态链接 ELF（仓库中的 `claude-code` 为静态 musl Bun、`codex` 为静态 musl Rust，均已在线验证）。配置 `.elfpatch` 时只需省略 `INTERP` 与 `RUNPATH` 指令，加载器即可跳过动态链接器直接跳入 `prog.entry`。
+
+### 9.1 加载与地址映射机制
+
+| 静态 ELF 类型 | ELF 头特征 | 加载器映射策略 | 注意事项 |
+| :--- | :--- | :--- | :--- |
+| **静态 PIE**（现代 Rust / Go / musl `-static-pie`） | `e_type == ET_DYN`，无 `PT_INTERP` | 由内核自动分配随机虚拟基址，计算重定位偏移 `bias`，与动态 PIE 完全一致 | **兼容性最好**；无地址冲突风险 |
+| **固定基址静态 ELF**（传统 `-static`） | `e_type == ET_EXEC`，无 `PT_INTERP` | 以 `MAP_FIXED_NOREPLACE` 按 `minva` 原址映射（`bias = 0`） | 常见静态程序基址在 `0x400000` 附近，一般与 PIE 加载器不冲突；仅极少数超大体积 `ET_EXEC` 若内存范围与加载器自身随机加载址重叠，可能触发 `MAP_FIXED_NOREPLACE` 失败 |
+
+### 9.2 补丁能力与 `TRAP_SIGSYS` 在静态 ELF 下的表现
+
+- **所有指令/数据补丁规则完全适用**：`SEARCH` / `SEARCH_ALL`、`OFFSET`、`REDIRECT_ADRP`、`GO_SYM` 均不依赖动态链接器，对静态 ELF 100% 有效（静态 Go 二进制的 `.gopclntab` 直接携带非零 `text_start`，解析反而更直接）。
+- **`TRAP_SIGSYS` 在不同静态语言运行时下的差异**：
+
+| 静态 ELF 运行时 | 常驻 `__sigsys_handler` | 防覆盖 / 防屏蔽守卫（`apply_sigsys_guards`） | 实战建议 |
+| :--- | :--- | :--- | :--- |
+| **静态 Go**（`CGO_ENABLED=0`） | ✅ 100% 生效 | ✅ **自动完整覆盖**：静态 Go 仍保留 `.gopclntab`，自动挂载 `runtime.rt_sigaction` 与 `runtime.rtsigprocmask` 守卫 | 直接开启 `TRAP_SIGSYS` 即可 100% 免疫 |
+| **静态 C / C++ / Rust / Zig**（静态 musl） | ✅ 常规调用直接生效 | ⚠️ **存在 PLT 盲区**：静态 musl 无 `PT_DYNAMIC` / `.plt`，当前的 `hook_plt_symbol` 不会命中 | • 若程序不修改 `SIGSYS` 处理器、不在受限 syscall 前屏蔽全部信号，开启 `TRAP_SIGSYS` 即可兜底；<br>• 若内部调用静态链接的 `sigaction(31)` 或 `sigprocmask`/`pthread_sigmask`（如 musl `posix_spawn`）屏蔽全部信号后再发受限 syscall，会触发内核 `force_sig_seccomp` 强杀；此时可采用针对性 `SEARCH` 补丁（如 `claude-code`、`codex`），或在 `apply_sigsys_guards` 中扩展扫描静态 musl 的 `mov x8, #134/135; svc #0` 封装点挂载同样跳板。 |
+
+> **English Note on Static ELFs**: Static PIE (`ET_DYN` without `PT_INTERP`) and fixed-address static ELFs (`ET_EXEC`) are both supported by omitting `INTERP` and `RUNPATH` in `.elfpatch` (already used in production by `claude-code` and `codex`). All declarative patches (`SEARCH`, `OFFSET`, `REDIRECT_ADRP`, `GO_SYM`) work identically. With `TRAP_SIGSYS`, static Go binaries (`CGO_ENABLED=0`) receive full automatic protection via `.gopclntab`, whereas static musl binaries lack `.plt` so `hook_plt_symbol` does not apply—ordinary unmasked restricted syscalls are still trapped cleanly, while critical sections that mask all signals via static `sigprocmask` should either use targeted `SEARCH` patches or extend `apply_sigsys_guards` to hook static `rt_sigaction (134)` / `rt_sigprocmask (135)` stubs.
+
 

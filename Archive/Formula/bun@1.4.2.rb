@@ -17,11 +17,6 @@ class BunAT142 < Formula
   ]
   keg_only :versioned_formula
 
-  bottle do
-    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbun"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "05d483ed2e23c0a7a502d5573bf2d5a443a8a1585ad06fc332d6db957909e53d"
-  end
-
   depends_on "nknkol/cask/glibc"
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "llvm@21" => :build

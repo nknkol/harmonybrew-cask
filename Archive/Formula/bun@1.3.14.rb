@@ -15,10 +15,7 @@ class BunAT1314 < Formula
     "Zlib",              # zlib-ng
     "Apache-2.0" => { with: "LLVM-exception" },
   ]
-
-  bottle do
-    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fbun"
-  end
+  keg_only :versioned_formula
 
   depends_on "bash" => :build
   depends_on "nknkol/cask/binary-sign-tool" => :build
@@ -37,19 +34,19 @@ class BunAT1314 < Formula
 
   patch do
     # HarmonyOS platform/filesystem fixes for the bootstrap bun.
-    file "patches/bun/0001-fix-platform-syscalls.patch"
+    file "Archive/patches/bun/0001-fix-platform-syscalls.patch"
   end
 
   patch do
-    file "patches/bun/0002-fix-resolver-traversal.patch"
+    file "Archive/patches/bun/0002-fix-resolver-traversal.patch"
   end
 
   patch do
-    file "patches/bun/0003-fix-hmdfs-filesystem.patch"
+    file "Archive/patches/bun/0003-fix-hmdfs-filesystem.patch"
   end
 
   patch do
-    file "patches/bun/0004-fix-harmonyos-path-permissions.patch"
+    file "Archive/patches/bun/0004-fix-harmonyos-path-permissions.patch"
   end
 
   resource "bootstrap" do

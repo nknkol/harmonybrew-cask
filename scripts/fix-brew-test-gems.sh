@@ -11,7 +11,7 @@
 
 set -e
 
-RUBY_DIR=$(brew --prefix)/Homebrew/Library/Homebrew/vendor/portable-ruby/4.0.5
+RUBY_DIR=$(brew --prefix)/Homebrew/Library/Homebrew/vendor/portable-ruby/current
 BUNDLE_DIR=$(brew --prefix)/Homebrew/Library/Homebrew/vendor/bundle/ruby/4.0.0
 GEMLOCK=$(brew --prefix)/Homebrew/Library/Homebrew/Gemfile.lock
 INSTALL_BIN=$(brew --prefix)/bin/install

@@ -29,19 +29,24 @@ brew install nknkol/cask/binary-sign-tool
 
 | 类型 | 代表配方 | 说明 |
 | :--- | :--- | :--- |
-| **内存态 ELF 补丁加载器** | `antigravity`、`bun`、`claude-code`、`codex` | 保持上游 Linux ARM64 二进制磁盘零修改，运行前通过 29 KB 的 [`elf-patch-loader`](patches/elf-patch-loader/README.md) 在内存中完成 `DT_RUNPATH` 注入、指令热补丁及 `TRAP_SIGSYS` 系统调用陷阱保护，构建期仅对加载器签名。 |
-| **源码编译 + 平台补丁** | `binary-sign-tool`、`rust`（启用原生 ELF TLS）、`adbcli`、`deepseek-harness`、`hapsigntool`、`libgcc` | 从上游源码打补丁编译；其中 `rust` 补充了原生 `GeneralDynamic` ELF TLS 补丁（官方 `harmonybrew/core` 目前仍为 `emulated` TLS）。 |
-| **运行库 / 预编译工具** | `glibc`（keg-only，含 GCC 运行库）、`magpie`、`sheldon`、`starship` | 提供鸿蒙补丁版 glibc 2.38 运行时及常用 CLI 工具（注：`deepseek-harness`、`sheldon`、`starship` 等已被 `harmonybrew/core` 收录，可直接按需选用官方版）。 |
+| **内存态 ELF 补丁加载器** | `antigravity`、`bun`、`claude-code`、`codex` | 同时支持动态（`glibc`）与静态（`ET_DYN` 静态 PIE / `ET_EXEC` 静态 musl/Go）Linux ARM64 二进制；上游文件磁盘零修改，运行前通过 29 KB 的 [`elf-patch-loader`](patches/elf-patch-loader/README.md) 在内存中完成 `DT_RUNPATH` 注入、指令热补丁及 `TRAP_SIGSYS` 保护，构建期仅对加载器签名。 |
+| **源码编译 + 平台补丁** | `binary-sign-tool`、`rust`（启用原生 ELF TLS）、`adbcli`、`hapsigntool`、`libgcc` | 从上游源码打补丁编译；其中 `rust` 补充了原生 `GeneralDynamic` ELF TLS 补丁（官方 `harmonybrew/core` 目前仍为 `emulated` TLS）。 |
+| **运行库 / 预编译工具** | `glibc`（keg-only，含 GCC 运行库）、`magpie`、`sheldon`、`starship` | 提供鸿蒙补丁版 glibc 2.38 运行时及常用 CLI 工具（注：`deepseek-harness` 已由官方 `harmonybrew/core` 接管并归档至 `Archive/`；`sheldon`、`starship` 亦已进入官方源，可按需选用）。 |
 
-## 多版本历史归档
+## 多版本与退役配方归档
 
-历史版本配方以 `<formula>@<version>.rb` 形式保留在 `Formula/` 下（均标记 `keg_only :versioned_formula`），例如：
+历史版本化配方（`<formula>@<version>.rb`）及已被官方 `harmonybrew/core` 接管的退役配方统一归档至 `Archive/Formula/`，对应专属历史补丁同步归档至 `Archive/patches/`，保持主目录 `Formula/` 与 `patches/` 仅包含现役配方：
 
 ```text
 Formula/
-├── antigravity.rb          ← 当前最新版 (1.5.4_1)
-├── antigravity@1.5.2.rb    ← 历史归档
-└── antigravity@1.4.2.rb    ← 历史归档
+├── antigravity.rb                ← 当前最新版 (1.5.4_1)
+└── ...
+Archive/
+├── Formula/
+│   ├── antigravity@1.5.2.rb      ← 历史版本归档
+│   ├── deepseek-harness.rb       ← 已被 harmonybrew/core 接管归档
+│   └── ...
+└── patches/                      ← 归档配方对应的专属补丁
 ```
 
 ## 构建与发布方式
@@ -52,20 +57,20 @@ Formula/
 ## 目录结构
 
 ```text
-├── Formula/                  # 当前配方与历史版本化配方（@version）
+├── Formula/                  # 现役主配方文件
 ├── patches/
 │   ├── elf-patch-loader/     # 通用 AArch64 内存态 ELF 补丁加载器、TRAP_SIGSYS 与安装脚本
 │   ├── antigravity/          # Antigravity .elfpatch 配置
-│   ├── bun/                  # Bun .elfpatch 配置及历史源码补丁
+│   ├── bun/                  # Bun .elfpatch 配置
 │   ├── claude-code/          # Claude Code .elfpatch 配置
 │   ├── codex/                # Codex .elfpatch 配置
 │   ├── glibc/                # glibc 2.38 鸿蒙补丁与构建文档
 │   ├── rust/                 # Rust 原生 ELF TLS 与自举补丁
-│   └── ...                   # 其余软件包补丁
+│   └── ...                   # 其余现役软件包补丁
 ├── bootstrap/                # 运行时与自举构建所需归档
 ├── scripts/                  # Bottle 构建与本地辅助脚本
 ├── ci-runner/                # CI Docker 镜像与环境初始化脚本
-├── Archive/                  # 已归档的历史配方与补丁
+├── Archive/                  # 历史版本化配方（@version）、退役配方及对应历史补丁
 ├── docs/                     # 使用、规范与移植文档
 └── .github/workflows/
     └── bottle.yml            # GitHub Actions Bottle 构建流水线
@@ -106,19 +111,24 @@ brew install nknkol/cask/binary-sign-tool
 
 | Category | Examples | Notes |
 | :--- | :--- | :--- |
-| **In-Memory ELF Patch Loader** | `antigravity`, `bun`, `claude-code`, `codex` | Upstream Linux ARM64 ELF binaries remain unmodified on disk. At launch, the 29 KB [`elf-patch-loader`](patches/elf-patch-loader/README.md) injects `DT_RUNPATH`, applies declarative in-memory patches, and optionally installs `TRAP_SIGSYS` guards. Only the tiny loader is signed at build time. |
-| **Source Build + Patches** | `binary-sign-tool`, `rust` (native ELF TLS), `adbcli`, `deepseek-harness`, `hapsigntool`, `libgcc` | Built from source with HarmonyOS patches. Notably, `rust` enables native `GeneralDynamic` ELF TLS (whereas official `harmonybrew/core/rust` still defaults to `emulated` TLS). |
-| **Runtimes / Prebuilt Tools** | `glibc` (keg-only, bundled with GCC runtime libs), `magpie`, `sheldon`, `starship` | Patched glibc 2.38 runtime and utility CLIs. (Note: `deepseek-harness`, `sheldon`, and `starship` are now also available in official `harmonybrew/core`.) |
+| **In-Memory ELF Patch Loader** | `antigravity`, `bun`, `claude-code`, `codex` | Supports both dynamic (`glibc`) and static (`ET_DYN` static-PIE / `ET_EXEC` static musl or Go) Linux ARM64 ELF binaries. Upstream binaries remain untouched on disk; at launch, the 29 KB [`elf-patch-loader`](patches/elf-patch-loader/README.md) injects `DT_RUNPATH` (if dynamic), applies declarative in-memory patches, and optionally installs `TRAP_SIGSYS` guards. |
+| **Source Build + Patches** | `binary-sign-tool`, `rust` (native ELF TLS), `adbcli`, `hapsigntool`, `libgcc` | Built from source with HarmonyOS patches. Notably, `rust` enables native `GeneralDynamic` ELF TLS (whereas official `harmonybrew/core/rust` still defaults to `emulated` TLS). |
+| **Runtimes / Prebuilt Tools** | `glibc` (keg-only, bundled with GCC runtime libs), `magpie`, `sheldon`, `starship` | Patched glibc 2.38 runtime and utility CLIs. (`deepseek-harness` has been archived under `Archive/` after upstream adoption in `harmonybrew/core`; `sheldon` and `starship` are also available in official core.) |
 
-## Versioned Historical Formulae
+## Archived & Historical Formulae
 
-Pinned historical versions live alongside current formulae as `Formula/<name>@<version>.rb` (`keg_only :versioned_formula`):
+Pinned historical versions (`<name>@<version>.rb`) and retired formulae taken over by `harmonybrew/core` (such as `deepseek-harness`) are archived under `Archive/Formula/` alongside their dedicated patches in `Archive/patches/`, keeping `Formula/` and `patches/` focused on active packages:
 
 ```text
 Formula/
-├── antigravity.rb          ← Latest (1.5.4_1)
-├── antigravity@1.5.2.rb    ← Archived
-└── antigravity@1.4.2.rb    ← Archived
+├── antigravity.rb                ← Latest (1.5.4_1)
+└── ...
+Archive/
+├── Formula/
+│   ├── antigravity@1.5.2.rb      ← Archived version
+│   ├── deepseek-harness.rb       ← Retired (in harmonybrew/core)
+│   └── ...
+└── patches/                      ← Patches for archived formulae
 ```
 
 ## Building & Publishing Bottles

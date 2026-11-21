@@ -111,8 +111,8 @@ end
 ## 3. 历史版本化固钉配方（`<name>@<version>.rb`）
 
 ```ruby
-# Formula/some-tool.rb       ← 最新版
-# Formula/some-tool@1.0.rb   ← 历史版本归档
+# Formula/some-tool.rb                 ← 最新版
+# Archive/Formula/some-tool@1.0.rb     ← 历史版本归档
 
 class SomeToolAT10 < Formula
   desc "Example CLI (archived 1.0)"

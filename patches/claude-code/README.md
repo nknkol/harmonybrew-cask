@@ -24,7 +24,7 @@
 
 ## 历史版本说明
 
-历史归档配方 `Formula/claude-code@2.1.292.rb` 与 `Formula/claude-code@2.1.318.rb` 仍保留旧的离线二进制修补脚本 [`patch-bun-runtime.rb`](patch-bun-runtime.rb) 供参考或源码重建使用。
+历史归档配方 [`Archive/Formula/claude-code@2.1.292.rb`](../../Archive/Formula/claude-code@2.1.292.rb) 与 [`Archive/Formula/claude-code@2.1.318.rb`](../../Archive/Formula/claude-code@2.1.318.rb) 及其旧离线二进制修补脚本 [`Archive/patches/claude-code/patch-bun-runtime.rb`](../../Archive/patches/claude-code/patch-bun-runtime.rb) 已移至 `Archive/` 目录保存。
 
 ---
 
@@ -48,4 +48,4 @@
 
 ## Historical Versions
 
-Archived formulae `Formula/claude-code@2.1.292.rb` and `Formula/claude-code@2.1.318.rb` continue to reference the legacy offline ELF patcher [`patch-bun-runtime.rb`](patch-bun-runtime.rb).
+Archived formulae [`Archive/Formula/claude-code@2.1.292.rb`](../../Archive/Formula/claude-code@2.1.292.rb) and [`Archive/Formula/claude-code@2.1.318.rb`](../../Archive/Formula/claude-code@2.1.318.rb) together with the legacy offline patcher [`Archive/patches/claude-code/patch-bun-runtime.rb`](../../Archive/patches/claude-code/patch-bun-runtime.rb) are stored under `Archive/`.

@@ -6,11 +6,6 @@ class ClaudeCodeAT21318 < Formula
   version "2.1.318"
   keg_only :versioned_formula
 
-  bottle do
-    root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2Fclaude-code"
-    sha256 cellar: :any_skip_relocation, arm64_ohos: "2230fa2e7af411145442b138697277d5b09d718ceb62f436f9b4d97faf0e056b"
-  end
-
   depends_on "nknkol/cask/binary-sign-tool" => :build
   depends_on "llvm@21" => :build
 

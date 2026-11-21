@@ -48,10 +48,11 @@
 ## 三、Bottle 与多版本归档规范
 
 1. **主配方**：必须声明 `bottle do` 与 `root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2F<formula>"`，发布前将构建得到的 `arm64_ohos` `sha256` 写回配方。
-2. **历史版本归档（`<formula>@<version>.rb`）**：
+2. **历史版本与退役配方归档（`Archive/Formula/<formula>@<version>.rb`）**：
+   - 历史版本化配方与已被官方 `harmonybrew/core` 接管的退役配方统一移至 `Archive/Formula/`，其专属历史补丁同步移至 `Archive/patches/`；
    - 类名遵循 Homebrew 命名规则（如 `AntigravityAT152`、`CodexAT01621`）；
    - **必须**声明 `keg_only :versioned_formula`，避免与主配方链接冲突；
-   - **不应**保留指向原主配方瓶子名的 `bottle do` 块（Homebrew 安装 `@version` 配方时会请求 `<formula>@<version>--<version>...` 导致 404），保留源码/原始包构建能力即可；历史瓶子资产继续保存在原 `bottles/<formula>` Release 中。
+   - **不应**保留指向原主配方瓶子名的 `bottle do` 块（Homebrew 安装 `@version` 配方时会请求 `<formula>@<version>--<version>...` 导致 404）；历史瓶子资产继续保存在原 `bottles/<formula>` Release 中。
 
 ## 四、依赖声明
 
@@ -103,10 +104,11 @@ For upstream prebuilt Linux ARM64 binaries (`glibc` or `musl`) or binaries affec
 ## 3. Bottles & Versioned Archives
 
 1. **Primary Formulae**: Declare `root_url "https://github.com/nknkol/harmonybrew-cask/releases/download/bottles%2F<formula>"` and record the `arm64_ohos` bottle `sha256`.
-2. **Archived Versioned Formulae (`<formula>@<version>.rb`)**:
+2. **Archived & Retired Formulae (`Archive/Formula/<formula>@<version>.rb`)**:
+   - Store historical versioned formulae and retired formulae (e.g. `deepseek-harness`) under `Archive/Formula/`, with their exclusive patches in `Archive/patches/`.
    - Use Homebrew's `AT` class naming (e.g. `AntigravityAT152`).
    - **Must** declare `keg_only :versioned_formula`.
-   - **Must not** keep a stale `bottle do` block from the primary formula (Homebrew requests `<formula>@<version>--<version>...`, which 404s on the primary release). Keep them buildable from source/archive while preserving historical bottle assets on the primary release.
+   - **Must not** keep a stale `bottle do` block from the primary formula (Homebrew requests `<formula>@<version>--<version>...`, which 404s on the primary release). Keep historical bottle assets on the primary release.
 
 ## 4. Dependencies
 
