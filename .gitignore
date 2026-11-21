@@ -1,2 +1,5 @@
-workspace
-.git
+workspace/
+artifacts/
+.patch-work/
+*.bak
+.DS_Store
